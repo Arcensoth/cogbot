@@ -1,0 +1,19 @@
+{
+  "description": "A bot with all of the standard extensions.",
+  "extensions": [
+    "cogbot.extensions.ping",
+    "cogbot.extensions.about",
+    "cogbot.extensions.vote",
+    "cogbot.extensions.groups"
+  ],
+  "extension_options": {
+    "cogbot.extensions.about": {
+      "repo_url": "https://github.com/Arcensoth/cogbot"
+    },
+    "cogbot.extensions.groups": {
+      "cooldown_rate": 2,
+      "cooldown_per": 10,
+      "add_remove_permissions": ["administrator"]
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "command_prefix": ">",
+  "description": "A basic bot.",
+  "extensions": [
+    "cogbot.extensions.ping"
+  ]
+}

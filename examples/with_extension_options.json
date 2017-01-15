@@ -1,0 +1,12 @@
+{
+  "description": "A bot with extension-specific configuration.",
+  "extensions": [
+    "cogbot.extensions.ping",
+    "cogbot.extensions.about"
+  ],
+  "extension_options": {
+    "cogbot.extensions.about": {
+      "repo_url": "https://github.com/Arcensoth/cogbot"
+    }
+  }
+}
