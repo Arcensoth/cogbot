@@ -27,37 +27,37 @@ class GroupDirectory(object):
         raise NoSuchRoleNameError(role_name=role_name)
 
     def groups(self, server):
-        if server in self._role_map:
-            yield from self._role_map[server].keys()
+        if server.id in self._role_map:
+            yield from self._role_map[server.id].keys()
 
     def add_group(self, server, group):
         role = self._get_server_role_by_name(server, group)
 
-        if server not in self._role_map:
-            self._role_map[server] = {}
+        if server.id not in self._role_map:
+            self._role_map[server.id] = {}
 
-        if group in self._role_map[server]:
+        if group in self._role_map[server.id]:
             raise GroupAlreadyExistsError(group=group)
 
-        self._role_map[server][group] = role.id
+        self._role_map[server.id][group] = role.id
 
         log.info(f'{server}: added group {group} (id {role.id})')
 
     def remove_group(self, server, group):
-        if (server not in self._role_map) or (group not in self._role_map[server]):
+        if (server.id not in self._role_map) or (group not in self._role_map[server.id]):
             raise NoSuchGroupError(group=group)
 
-        role_id = self._role_map[server][group]
+        role_id = self._role_map[server.id][group]
 
-        del self._role_map[server][group]
+        del self._role_map[server.id][group]
 
         log.info(f'{server}: removed group {group} (id {role_id})')
 
     def get_role(self, server, group):
-        if (server not in self._role_map) or (group not in self._role_map[server]):
+        if (server.id not in self._role_map) or (group not in self._role_map[server.id]):
             raise NoSuchGroupError(group=group)
 
-        role_id = self._role_map[server][group]
+        role_id = self._role_map[server.id][group]
 
         try:
             role = self._get_server_role_by_id(server, role_id)
