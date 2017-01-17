@@ -42,7 +42,7 @@ class Groups:
 
         self._group_directory = GroupDirectory()
 
-        for server, groups in self.config.server_groups:
+        for server, groups in self.config.server_groups.items():
             for group in groups:
                 self._group_directory.add_group(server, group)
 
