@@ -8,7 +8,7 @@ log = logging.getLogger(__name__)
 
 class GroupDirectory(object):
     def __init__(self):
-        # accessing role_map[server][role_name] gives role_id
+        # accessing role_map[server_id][role_name] gives role_id
         # don't store role object directly (not persistent)
         self._role_map = {}
 
