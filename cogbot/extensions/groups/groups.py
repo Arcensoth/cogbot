@@ -42,7 +42,8 @@ class Groups:
 
         self._group_directory = GroupDirectory()
 
-        for server, groups in self.config.server_groups.items():
+        for server_id, groups in self.config.server_groups.items():
+            server = self.bot.get_server(server_id)
             for group in groups:
                 self._group_directory.add_group(server, group)
 
