@@ -4,6 +4,7 @@
     "cogbot.extensions.ping",
     "cogbot.extensions.about",
     "cogbot.extensions.vote",
+    "cogbot.extensions.lmgtfy",
     "cogbot.extensions.groups"
   ],
   "extension_options": {
