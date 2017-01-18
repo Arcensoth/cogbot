@@ -13,7 +13,10 @@
     "cogbot.extensions.groups": {
       "cooldown_rate": 2,
       "cooldown_per": 10,
-      "add_remove_permissions": ["administrator"]
+      "add_remove_permissions": ["administrator"],
+      "server_groups": {
+        "247089194357358592": ["red", "blue"]
+      }
     }
   }
 }

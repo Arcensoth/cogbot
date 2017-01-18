@@ -42,11 +42,6 @@ class Groups:
 
         self._group_directory = GroupDirectory()
 
-        for server_id, groups in self.config.server_groups.items():
-            server = self.bot.get_server(server_id)
-            for group in groups:
-                self._group_directory.add_group(server, group)
-
         self._add_remove_permissions = discord.Permissions.none()
         self._add_remove_permissions.update(manage_roles=True, **self.config.add_remove_permissions_dict)
 
@@ -58,6 +53,13 @@ class Groups:
         user_permissions = user.permissions_in(channel)
         if not required_permissions.is_subset(user_permissions):
             raise PermissionDeniedError(denied_message)
+
+    async def on_ready(self):
+        # Load initial groups after the bot has made associations with servers.
+        for server_id, groups in self.config.server_groups.items():
+            server = self.bot.get_server(server_id)
+            for group in groups:
+                self._group_directory.add_group(server, group)
 
     async def add_group(self, ctx: Context, group: str):
         try:

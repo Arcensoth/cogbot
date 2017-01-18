@@ -49,6 +49,12 @@ class CogBot(commands.Bot):
 
     async def on_ready(self):
         log.info(f'logged in as {self.user.name} (id {self.user.id})')
+        # call on_ready() for extensions
+        # TODO this is gross, clean it up with an ABC or something
+        for cog_name, cog in self.cogs.items():
+            on_ready_fn = getattr(cog, 'on_ready', None)
+            if on_ready_fn:
+                await on_ready_fn()
 
     async def on_message(self, message):
         if (message.author != self.user) and message.content.startswith(self.command_prefix):
