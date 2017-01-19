@@ -16,7 +16,9 @@ def is_manager():
 def is_moderator_check(ctx: Context):
     if is_manager_check(ctx):
         return True
-    return False  # FIXME
+
+    # TODO check if user has appropriate server permissions
+    return False
 
 
 def is_moderator():

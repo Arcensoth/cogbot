@@ -67,7 +67,7 @@ class About:
         if ctx.invoked_subcommand is None:
             await self.bot.say(self.about_message)
 
-    @checks.is_moderator()
+    @checks.is_manager_check()
     @cmd_about.command(pass_context=True, name='reload', hidden=True)
     async def cmd_about_reload(self, ctx: Context):
         await self.reload_about_message()
