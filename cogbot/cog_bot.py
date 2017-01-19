@@ -28,7 +28,7 @@ class CogBot(commands.Bot):
                 try:
                     self.load_extension(ext)
                 except Exception as e:
-                    log.warning(f'    -> failed to load extension due to: {e.args[0]}')
+                    log.error(f'    -> failed to load extension due to: {e.args[0]}')
 
         else:
             log.info('no extensions to load')
@@ -84,6 +84,9 @@ class CogBot(commands.Bot):
             elif isinstance(orig_error, CommandError):
                 await self.send_error(ctx, ctx.message.author, orig_error)
                 await self.react_failure(ctx)
+
+            else:
+                await self.react_poop(ctx)
 
         elif isinstance(error, CommandNotFound):
             await self.send_error(ctx, ctx.message.author, error)
