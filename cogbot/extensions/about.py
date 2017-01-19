@@ -47,7 +47,7 @@ class About:
 
         actual_repos = self.config.repos + BASE_REPOS
 
-        repos_str = '**Powered by**:\n    - ' + '\n    - '.join(repo for repo in actual_repos)
+        repos_str = '**Powered by**:\n    - <' + '>\n    - <'.join(repo for repo in actual_repos) + '>'
         parts.append(repos_str)
 
         about_message = '\n\n'.join(parts)
