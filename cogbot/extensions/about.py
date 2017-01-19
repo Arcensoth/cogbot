@@ -16,7 +16,6 @@ BASE_REPOS = [
 class AboutConfig:
     def __init__(self, **options):
         self.description = options.pop('description', '')
-        self.host = options.pop('host', '')
         self.repos = options.pop('repos', [])
 
 
@@ -31,19 +30,23 @@ class About:
     async def make_about_message(self):
         parts = [self.config.description]
 
-        if self.config.host:
-            try:
-                host_user = await self.bot.get_user_info(self.config.host)
-                host_mention = host_user.mention
-            except:
-                host_mention = self.config.host
+        if self.bot.config.managers:
+            managers = []
 
-            host_str = f'**My host**: {host_mention}'
-            parts.append(host_str)
+            for manager in self.bot.config.managers:
+                try:
+                    manager_user = await self.bot.get_user_info(manager)
+                    manager_mention = manager_user.mention
+                except:
+                    manager_mention = manager
+                managers.append(manager_mention)
+
+            managers_str = '**Managed by**:\n    - ' + '\n    - '.join(m for m in managers)
+            parts.append(managers_str)
 
         actual_repos = self.config.repos + BASE_REPOS
 
-        repos_str = '**My code**:\n- ' + '\n- '.join(repo for repo in actual_repos)
+        repos_str = '**Powered by**:\n    - ' + '\n    - '.join(repo for repo in actual_repos)
         parts.append(repos_str)
 
         about_message = '\n\n'.join(parts)

@@ -1,6 +1,9 @@
 {
   "command_prefix": ">",
   "description": "A basic bot.",
+  "managers": [
+    "135616361157099520"
+  ],
   "extensions": [
     "cogbot.extensions.ext",
     "cogbot.extensions.ping"

@@ -1,5 +1,8 @@
 {
   "description": "A bot with all of the standard extensions.",
+  "managers": [
+    "135616361157099520"
+  ],
   "extensions": [
     "cogbot.extensions.ext",
     "cogbot.extensions.ping",
@@ -9,15 +12,14 @@
     "cogbot.extensions.groups"
   ],
   "extension_options": {
-    "cogbot.extensions.about": {
-      "host": "135616361157099520"
-    },
     "cogbot.extensions.groups": {
       "cooldown_rate": 2,
       "cooldown_per": 10,
-      "add_remove_permissions": ["administrator"],
       "server_groups": {
-        "247089194357358592": ["red", "blue"]
+        "247089194357358592": [
+          "red",
+          "blue"
+        ]
       }
     }
   }
