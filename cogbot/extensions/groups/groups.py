@@ -124,24 +124,24 @@ class Groups:
                 log.info('-> group members: ' + members_str)
 
                 if members:
-                    reply = f'{ctx.message.author.mention} Group **{group}** has members: {members_str}'
+                    reply = f'Group **{group}** has members: {members_str}'
 
                 else:
-                    reply = f'{ctx.message.author.mention} Group **{group}** has no members.'
+                    reply = f'Group **{group}** has no members.'
 
             except NoSuchGroupError:
                 log.warning('-> group does not exist')
-                reply = f'{ctx.message.author.mention} Group **{group}** does not exist.'
+                reply = f'Group **{group}** does not exist.'
 
         else:
             groups = list(self._group_directory.groups(ctx.message.server))
             groups_str = ', '.join([('**' + group + '**') for group in groups])
 
             if groups:
-                reply = f'{ctx.message.author.mention} Available groups: {groups_str}'
+                reply = f'Available groups: {groups_str}'
 
             else:
-                reply = f'{ctx.message.author.mention} No groups available.'
+                reply = f'No groups available.'
 
         await self.bot.send_message(ctx.message.channel, reply)
 
