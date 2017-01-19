@@ -1,6 +1,7 @@
 {
   "description": "A bot with extension-specific configuration.",
   "extensions": [
+    "cogbot.extensions.ext",
     "cogbot.extensions.ping",
     "cogbot.extensions.about"
   ],

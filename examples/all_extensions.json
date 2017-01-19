@@ -1,6 +1,7 @@
 {
   "description": "A bot with all of the standard extensions.",
   "extensions": [
+    "cogbot.extensions.ext",
     "cogbot.extensions.ping",
     "cogbot.extensions.about",
     "cogbot.extensions.vote",
