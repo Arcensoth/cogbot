@@ -33,20 +33,10 @@ class CogBot(commands.Bot):
 
         log.info('initialization successful')
 
-    async def send_help(self, ctx: Context, destination):
-        pages = self.formatter.format_help_for(ctx, ctx.command)
-
-        if destination is None or (self.pm_help is None and sum(map(lambda l: len(l), pages)) > 1000):
-            destination = ctx.message.author
-
-        for page in pages:
-            await self.send_message(destination, page)
-
     async def send_error(self, ctx: Context, destination, error: CommandError):
         place = '' if ctx.message.server is None else f' on **{ctx.message.server}**'
         reply = f'There was a problem with your command{place}: *{error.args[0]}*'
         await self.send_message(destination, reply)
-        await self.send_help(ctx, destination)
 
     async def on_ready(self):
         log.info(f'logged in as {self.user.name} (id {self.user.id})')
