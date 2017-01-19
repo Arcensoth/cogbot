@@ -1,79 +1,73 @@
 import logging
 
 from discord.ext import commands
+from discord.ext.commands import Context
 
 from cogbot.cog_bot import CogBot
 
-
 log = logging.getLogger(__name__)
 
-
-def _load_authors(repo_url: str):
-    log.info('attempting to dynamically load authors...')
-
-    try:
-        if repo_url.startswith('https://github.com'):
-            import re
-            url_pattern = re.compile('https://github.com/(\w*)/(\w*)')
-            url_matches = url_pattern.findall(repo_url)
-            user = url_matches[0][0]
-            repo = url_matches[0][1]
-            url = f'https://api.github.com/repos/{user}/{repo}/contributors'
-            log.info(f'  from: {url}')
-
-            import urllib.request
-            response = urllib.request.urlopen(url)
-            content = response.read().decode('utf8')
-
-            import json
-            contributors = json.loads(content)
-            contributors = sorted(contributors, key=lambda d: -d['contributions'])
-            # total_ctbs = sum([ctb['contributions'] for ctb in contributors])
-            authors = []
-            for ctb in contributors:
-                name = ctb['login']
-                contribs = ctb['contributions']
-                page = f'{repo_url}/commits?author={name}'
-                authors.append(f'**{name}** with {contribs} contributions: <{page}>')
-                log.info(f'dynamically loaded {len(authors)} authors')
-
-            return authors
-
-        raise ValueError('unrecognized repo url')
-
-    except Exception as e:
-        log.info(f'could not load authors dynamically: {e}')
+BASE_REPOS = [
+    "https://github.com/Arcensoth/cogbot",
+    "https://github.com/Rapptz/discord.py"
+]
 
 
 class AboutConfig:
     def __init__(self, **options):
         self.description = options.pop('description', '')
-        self.repo_url = options.pop('repo_url', '')
-        self.authors = options.pop('authors', _load_authors(self.repo_url))
-
-        message = self.description
-
-        if self.repo_url:
-            message += f'\n\nMy code: {self.repo_url}'
-
-        if self.authors:
-            author_str = '\n'.join(f'- {author}' for author in self.authors)
-            message += f'\n\nMy creators:\n{author_str}'
-
-        self.message = message
+        self.host = options.pop('host', '')
+        self.repos = options.pop('repos', [])
 
 
 class About:
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: CogBot, ext: str):
         self.bot = bot
-        options = bot.config.get_extension_options(__name__) if isinstance(bot, CogBot) else {}
+        options = bot.config.get_extension_options(ext)
         options['description'] = options.get('description', bot.description)
         self.config = AboutConfig(**options)
+        self.about_message = ''
 
-    @commands.command()
-    async def about(self):
-        await self.bot.say(self.config.message)
+    async def make_about_message(self):
+        parts = [self.config.description]
+
+        if self.config.host:
+            try:
+                host_user = await self.bot.get_user_info(self.config.host)
+                host_mention = host_user.mention
+            except:
+                host_mention = self.config.host
+
+            host_str = f'**My host**: {host_mention}'
+            parts.append(host_str)
+
+        actual_repos = self.config.repos + BASE_REPOS
+
+        repos_str = '**My code**:\n- ' + '\n- '.join(repo for repo in actual_repos)
+        parts.append(repos_str)
+
+        about_message = '\n\n'.join(parts)
+
+        return about_message
+
+    async def reload_about_message(self):
+        log.info('reloading about message...')
+        self.about_message = await self.make_about_message()
+        log.info('about message has been reloaded')
+
+    async def on_ready(self):
+        await self.reload_about_message()
+
+    @commands.group(pass_context=True, name='about')
+    async def cmd_about(self, ctx: Context):
+        if ctx.invoked_subcommand is None:
+            await self.bot.say(self.about_message)
+
+    @cmd_about.command(pass_context=True, name='reload')
+    async def cmd_about_reload(self, ctx: Context):
+        await self.reload_about_message()
+        await self.bot.react_success(ctx)
 
 
 def setup(bot):
-    bot.add_cog(About(bot))
+    bot.add_cog(About(bot, __name__))
