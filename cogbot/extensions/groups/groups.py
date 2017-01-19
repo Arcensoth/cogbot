@@ -1,15 +1,13 @@
 import logging
 
-import discord
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands.errors import *
 
+from cogbot import checks
 from cogbot.cog_bot import CogBot
-from cogbot.error import *
 from cogbot.extensions.groups.error import *
 from cogbot.extensions.groups.group_directory import GroupDirectory
-
 
 log = logging.getLogger(__name__)
 
@@ -22,11 +20,6 @@ class GroupsConfig:
         self.cooldown_rate = options.pop('cooldown_rate', self.DEFAULT_COOLDOWN_RATE)
         self.cooldown_per = options.pop('cooldown_per', self.DEFAULT_COOLDOWN_PER)
         self.server_groups = options.pop('server_groups', {})
-        self.add_remove_permissions = options.pop('add_remove_permissions', [])
-        self.join_leave_permissions = options.pop('join_leave_permissions', [])
-
-        self.add_remove_permissions_dict = {perm: True for perm in self.add_remove_permissions}
-        self.join_leave_permissions_dict = {perm: True for perm in self.join_leave_permissions}
 
 
 class Groups:
@@ -41,18 +34,6 @@ class Groups:
         self.cmd_groups._buckets._cooldown.per = self.config.cooldown_per
 
         self._group_directory = GroupDirectory()
-
-        self._add_remove_permissions = discord.Permissions.none()
-        self._add_remove_permissions.update(manage_roles=True, **self.config.add_remove_permissions_dict)
-
-        self._join_leave_permissions = discord.Permissions.none()
-        self._join_leave_permissions.update(send_messages=True, **self.config.join_leave_permissions_dict)
-
-    @staticmethod
-    async def _assert_permissions(user, channel, required_permissions, denied_message):
-        user_permissions = user.permissions_in(channel)
-        if not required_permissions.is_subset(user_permissions):
-            raise PermissionDeniedError(denied_message)
 
     async def on_ready(self):
         # Load initial groups after the bot has made associations with servers.
@@ -112,11 +93,14 @@ class Groups:
         except NoSuchGroupError:
             raise UserInputError(f'cannot leave non-existent group "{group}"')
 
-    async def groups(self, ctx: Context):
+    @commands.cooldown(GroupsConfig.DEFAULT_COOLDOWN_RATE, GroupsConfig.DEFAULT_COOLDOWN_PER, commands.BucketType.user)
+    @commands.group(pass_context=True, name='groups')
+    async def cmd_groups(self, ctx: Context):
         if ctx.invoked_subcommand is None:
-            raise UserInputError('no groups subcommand specified')
+            await self.cmd_groups_list(ctx)
 
-    async def groups_list(self, ctx: Context, group: str = None):
+    @cmd_groups.command(pass_context=True, name='list')
+    async def cmd_groups_list(self, ctx: Context, group: str = None):
         if group:
             try:
                 members = self._group_directory.get_members(ctx.message.server, group)
@@ -145,51 +129,20 @@ class Groups:
 
         await self.bot.send_message(ctx.message.channel, reply)
 
-    async def groups_add(self, ctx: Context, group: str):
-        await self._assert_permissions(
-            ctx.message.author, ctx.message.channel, self._add_remove_permissions,
-            f'not enough permissions to add group "{group}"')
-        await self.add_group(ctx, group)
-
-    async def groups_remove(self, ctx: Context, group: str):
-        await self._assert_permissions(
-            ctx.message.author, ctx.message.channel, self._add_remove_permissions,
-            f'not enough permissions to remove group "{group}"')
-        await self.remove_group(ctx, group)
-
-    async def groups_join(self, ctx: Context, group: str):
-        await self._assert_permissions(
-            ctx.message.author, ctx.message.channel, self._join_leave_permissions,
-            f'not enough permissions to join group "{group}"')
-        await self.join_group(ctx, group)
-
-    async def groups_leave(self, ctx: Context, group: str):
-        await self._assert_permissions(
-            ctx.message.author, ctx.message.channel, self._join_leave_permissions,
-            f'not enough permissions to leave group "{group}"')
-        await self.leave_group(ctx, group)
-
-    @commands.cooldown(GroupsConfig.DEFAULT_COOLDOWN_RATE, GroupsConfig.DEFAULT_COOLDOWN_PER, commands.BucketType.user)
-    @commands.group(pass_context=True, name='groups')
-    async def cmd_groups(self, ctx: Context):
-        await self.groups(ctx)
-
-    @cmd_groups.command(pass_context=True, name='list')
-    async def cmd_groups_list(self, ctx: Context, group: str = None):
-        await self.groups_list(ctx, group)
-
-    @cmd_groups.command(pass_context=True, name='add')
-    async def cmd_groups_add(self, ctx: Context, group: str):
-        await self.groups_add(ctx, group)
-
-    @cmd_groups.command(pass_context=True, name='remove')
-    async def cmd_groups_remove(self, ctx: Context, group: str):
-        await self.groups_remove(ctx, group)
-
     @cmd_groups.command(pass_context=True, name='join')
     async def cmd_groups_join(self, ctx: Context, group: str):
-        await self.groups_join(ctx, group)
+        await self.join_group(ctx, group)
 
     @cmd_groups.command(pass_context=True, name='leave')
     async def cmd_groups_leave(self, ctx: Context, group: str):
-        await self.groups_leave(ctx, group)
+        await self.leave_group(ctx, group)
+
+    @checks.is_moderator()
+    @cmd_groups.command(pass_context=True, name='add')
+    async def cmd_groups_add(self, ctx: Context, group: str):
+        await self.add_group(ctx, group)
+
+    @checks.is_moderator()
+    @cmd_groups.command(pass_context=True, name='remove')
+    async def cmd_groups_remove(self, ctx: Context, group: str):
+        await self.remove_group(ctx, group)

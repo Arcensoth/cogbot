@@ -3,6 +3,7 @@ import logging
 from discord.ext import commands
 from discord.ext.commands import Context
 
+from cogbot import checks
 from cogbot.cog_bot import CogBot
 
 log = logging.getLogger(__name__)
@@ -12,7 +13,8 @@ class Ext:
     def __init__(self, bot: CogBot, ext: str):
         self.bot = bot
 
-    @commands.group(pass_context=True, name='ext')
+    @checks.is_manager()
+    @commands.group(pass_context=True, name='ext', hidden=True)
     async def cmd_ext(self, ctx: Context):
         if ctx.invoked_subcommand is None:
             ext_str = ', '.join([f'`{ext}`' for ext in self.bot.extensions])

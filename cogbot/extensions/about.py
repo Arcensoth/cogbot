@@ -1,5 +1,6 @@
 import logging
 
+from cogbot import checks
 from discord.ext import commands
 from discord.ext.commands import Context
 
@@ -66,6 +67,7 @@ class About:
         if ctx.invoked_subcommand is None:
             await self.bot.say(self.about_message)
 
+    @checks.is_moderator()
     @cmd_about.command(pass_context=True, name='reload')
     async def cmd_about_reload(self, ctx: Context):
         await self.reload_about_message()

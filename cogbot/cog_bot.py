@@ -5,8 +5,6 @@ from discord.ext.commands import Context
 from discord.ext.commands.errors import *
 
 from cogbot.cog_bot_config import CogBotConfig
-from cogbot.error import *
-
 
 log = logging.getLogger(__name__)
 
@@ -64,36 +62,23 @@ class CogBot(commands.Bot):
             log.info(f'[{message.server}/{message.author}] {message.content}')
             await super().on_message(message)
 
-    async def on_command_error(self, error: CommandError, ctx: Context):
-        log.warning(f'[{ctx.message.server}/{ctx.message.author}] {error.__class__.__name__}: {error.args[0]}')
+    async def on_command_error(self, e: CommandError, ctx: Context):
+        log.warning(f'[{ctx.message.server}/{ctx.message.author}] {e.__class__.__name__}: {e.args[0]}')
 
-        if isinstance(error, CommandOnCooldown):
-            await self.react_cooldown(ctx)
+        error = e.original if isinstance(e, CommandInvokeError) else e
 
-        elif isinstance(error, CommandInvokeError):
-            orig_error = error.original
-
-            if isinstance(orig_error, PermissionDeniedError):
-                await self.send_error(ctx, ctx.message.author, orig_error)
-                await self.react_denied(ctx)
-
-            elif isinstance(error, CommandNotFound):
-                await self.send_error(ctx, ctx.message.author, orig_error)
-                await self.react_question(ctx)
-
-            elif isinstance(orig_error, CommandError):
-                await self.send_error(ctx, ctx.message.author, orig_error)
-                await self.react_failure(ctx)
-
-            else:
-                await self.react_poop(ctx)
-
-        elif isinstance(error, CommandNotFound):
+        if isinstance(error, CommandNotFound):
             await self.send_error(ctx, ctx.message.author, error)
             await self.react_question(ctx)
 
+        elif isinstance(error, CheckFailure):
+            await self.react_denied(ctx)
+
+        elif isinstance(error, CommandOnCooldown):
+            await self.react_cooldown(ctx)
+
+        # Keep this one last because some others subclass it.
         elif isinstance(error, CommandError):
-            await self.send_error(ctx, ctx.message.author, error)
             await self.react_failure(ctx)
 
         else:
