@@ -68,7 +68,7 @@ class About:
             await self.bot.say(self.about_message)
 
     @checks.is_moderator()
-    @cmd_about.command(pass_context=True, name='reload')
+    @cmd_about.command(pass_context=True, name='reload', hidden=True)
     async def cmd_about_reload(self, ctx: Context):
         await self.reload_about_message()
         await self.bot.react_success(ctx)

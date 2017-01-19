@@ -138,11 +138,11 @@ class Groups:
         await self.leave_group(ctx, group)
 
     @checks.is_moderator()
-    @cmd_groups.command(pass_context=True, name='add')
+    @cmd_groups.command(pass_context=True, name='add', hidden=True)
     async def cmd_groups_add(self, ctx: Context, group: str):
         await self.add_group(ctx, group)
 
     @checks.is_moderator()
-    @cmd_groups.command(pass_context=True, name='remove')
+    @cmd_groups.command(pass_context=True, name='remove', hidden=True)
     async def cmd_groups_remove(self, ctx: Context, group: str):
         await self.remove_group(ctx, group)
