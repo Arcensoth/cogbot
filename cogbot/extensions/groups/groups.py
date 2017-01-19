@@ -93,41 +93,48 @@ class Groups:
         except NoSuchGroupError:
             raise UserInputError(f'cannot leave non-existent group "{group}"')
 
+    async def list_groups(self, ctx: Context):
+        groups = list(self._group_directory.groups(ctx.message.server))
+        groups_str = ', '.join([('**' + group + '**') for group in groups])
+
+        if groups:
+            reply = f'Available groups: {groups_str}'
+
+        else:
+            reply = f'No groups available.'
+
+        await self.bot.send_message(ctx.message.channel, reply)
+
+    async def list_group_members(self, ctx: Context, group: str):
+        try:
+            members = self._group_directory.get_members(ctx.message.server, group)
+            members_str = ', '.join([member.name for member in members])
+            log.info('-> group members: ' + members_str)
+
+            if members:
+                reply = f'Group **{group}** has members: {members_str}'
+
+            else:
+                reply = f'Group **{group}** has no members.'
+
+        except NoSuchGroupError:
+            log.warning('-> group does not exist')
+            reply = f'Group **{group}** does not exist.'
+
+        await self.bot.send_message(ctx.message.channel, reply)
+
     @commands.cooldown(GroupsConfig.DEFAULT_COOLDOWN_RATE, GroupsConfig.DEFAULT_COOLDOWN_PER, commands.BucketType.user)
     @commands.group(pass_context=True, name='groups')
     async def cmd_groups(self, ctx: Context):
         if ctx.invoked_subcommand is None:
-            await self.cmd_groups_list(ctx)
+            await self.list_groups(ctx)
 
     @cmd_groups.command(pass_context=True, name='list')
     async def cmd_groups_list(self, ctx: Context, group: str = None):
         if group:
-            try:
-                members = self._group_directory.get_members(ctx.message.server, group)
-                members_str = ', '.join([member.name for member in members])
-                log.info('-> group members: ' + members_str)
-
-                if members:
-                    reply = f'Group **{group}** has members: {members_str}'
-
-                else:
-                    reply = f'Group **{group}** has no members.'
-
-            except NoSuchGroupError:
-                log.warning('-> group does not exist')
-                reply = f'Group **{group}** does not exist.'
-
+            await self.list_group_members(ctx, group)
         else:
-            groups = list(self._group_directory.groups(ctx.message.server))
-            groups_str = ', '.join([('**' + group + '**') for group in groups])
-
-            if groups:
-                reply = f'Available groups: {groups_str}'
-
-            else:
-                reply = f'No groups available.'
-
-        await self.bot.send_message(ctx.message.channel, reply)
+            await self.list_groups(ctx)
 
     @cmd_groups.command(pass_context=True, name='join')
     async def cmd_groups_join(self, ctx: Context, group: str):
