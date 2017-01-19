@@ -42,7 +42,9 @@ Some extensions may be provided with their own specific configuration. This can 
 {
   "extensions": [ "cogbot.extensions.about" ],
   "extension_options": {
-    "cogbot.extensions.about": { "repo_url": "https://github.com/Arcensoth/cogbot" }
+    "cogbot.extensions.about": {
+      "repos": ["https://github.com/Arcensoth/cogbot"]
+    }
   }
 }
 ```

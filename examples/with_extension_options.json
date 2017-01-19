@@ -7,7 +7,7 @@
   ],
   "extension_options": {
     "cogbot.extensions.about": {
-      "host": "135616361157099520"
+      "repos": ["https://github.com/Arcensoth/cogbot"]
     }
   }
 }
