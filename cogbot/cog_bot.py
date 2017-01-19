@@ -74,13 +74,24 @@ class CogBot(commands.Bot):
                 await self.send_error(ctx, ctx.message.author, orig_error)
                 await self.react_denied(ctx)
 
+            elif isinstance(error, CommandNotFound):
+                await self.send_error(ctx, ctx.message.author, orig_error)
+                await self.react_question(ctx)
+
             elif isinstance(orig_error, CommandError):
                 await self.send_error(ctx, ctx.message.author, orig_error)
                 await self.react_failure(ctx)
 
+        elif isinstance(error, CommandNotFound):
+            await self.send_error(ctx, ctx.message.author, error)
+            await self.react_question(ctx)
+
         elif isinstance(error, CommandError):
             await self.send_error(ctx, ctx.message.author, error)
             await self.react_failure(ctx)
+
+        else:
+            await self.react_poop(ctx)
 
     async def react_success(self, ctx: Context):
         await self.add_reaction(ctx.message, u'✔')
