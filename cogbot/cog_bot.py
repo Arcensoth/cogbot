@@ -25,7 +25,10 @@ class CogBot(commands.Bot):
             log.info(f'loading {len(self.config.extensions)} extensions...')
             for ext in self.config.extensions:
                 log.info(f'  -> {ext}')
-                self.load_extension(ext)
+                try:
+                    self.load_extension(ext)
+                except Exception as e:
+                    log.warning(f'    -> failed to load extension due to: {e.args[0]}')
 
         else:
             log.info('no extensions to load')
