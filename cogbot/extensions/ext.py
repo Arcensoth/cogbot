@@ -17,20 +17,24 @@ class Ext:
     @commands.group(pass_context=True, name='ext', hidden=True)
     async def cmd_ext(self, ctx: Context):
         if ctx.invoked_subcommand is None:
-            ext_str = ', '.join([f'`{ext}`' for ext in self.bot.extensions])
-            reply = f'Loaded extensions: {ext_str}'
+            reply = '\n'.join(['Loaded extensions:'] + [f'    - {ext}' for ext in self.bot.extensions])
             await self.bot.send_message(ctx.message.channel, reply)
 
     @cmd_ext.command(pass_context=True, name='load')
     async def cmd_ext_load(self, ctx: Context, *extensions):
-        for ext in extensions:
-            self.bot.load_extension(ext)
+        self.bot.load_extensions(*extensions)
         await self.bot.react_success(ctx)
 
     @cmd_ext.command(pass_context=True, name='unload')
     async def cmd_ext_unload(self, ctx: Context, *extensions):
-        for ext in extensions:
-            self.bot.unload_extension(ext)
+        self.bot.unload_extensions(*extensions)
+        await self.bot.react_success(ctx)
+
+    @cmd_ext.command(pass_context=True, name='reload')
+    async def cmd_ext_reload(self, ctx: Context, *extensions):
+        # Unload in order, then load in reverse order.
+        self.bot.unload_extensions(*extensions)
+        self.bot.load_extensions(*tuple(reversed(extensions)))
         await self.bot.react_success(ctx)
 
 

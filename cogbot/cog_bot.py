@@ -20,18 +20,31 @@ class CogBot(commands.Bot):
         self.config = config
 
         if self.config.extensions:
-            log.info(f'loading {len(self.config.extensions)} extensions...')
-            for ext in self.config.extensions:
-                log.info(f'  -> {ext}')
-                try:
-                    self.load_extension(ext)
-                except Exception as e:
-                    log.error(f'    -> failed to load extension due to: {e.args[0]}')
-
+            self.load_extensions(*self.config.extensions)
         else:
             log.info('no extensions to load')
 
         log.info('initialization successful')
+
+    def load_extensions(self, *extensions):
+        log.info(f'loading {len(extensions)} extensions...')
+        for ext in extensions:
+            log.info(f'loading extension {ext}...')
+            try:
+                self.load_extension(ext)
+            except Exception as e:
+                log.warning(f'failed to load extension {ext} because: {e.__class__.__name__}: {e}')
+        log.info(f'finished loading extensions')
+
+    def unload_extensions(self, *extensions):
+        log.info(f'unloading {len(extensions)} extensions...')
+        for ext in extensions:
+            log.info(f'unloading extension {ext}...')
+            try:
+                self.unload_extension(ext)
+            except Exception as e:
+                log.warning(f'failed to unload extension {ext} because: {e.__class__.__name__}: {e}')
+        log.info(f'finished unloading extensions')
 
     async def send_error(self, ctx: Context, destination, error: CommandError):
         place = '' if ctx.message.server is None else f' on **{ctx.message.server}**'
