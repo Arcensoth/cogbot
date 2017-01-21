@@ -37,10 +37,12 @@ class Groups:
 
     async def on_ready(self):
         # Load initial groups after the bot has made associations with servers.
+        # TODO sometimes runs multiple times, figure out a better way
         for server_id, groups in self.config.server_groups.items():
             server = self.bot.get_server(server_id)
-            for group in groups:
-                self._group_directory.add_group(server, group)
+            if server_id not in self._group_directory._role_map:
+                for group in groups:
+                    self._group_directory.add_group(server, group)
 
     async def add_group(self, ctx: Context, group: str):
         try:
