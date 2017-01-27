@@ -24,8 +24,9 @@ These are the generic configuration options available for bots. They may be defi
 
 | Options           | Type | Default | Description
 | ----------------- | ---- | ------- | -----------
-| command_prefix    | str  | `'!'`   | The message prefix used by the bot to detect commands.
+| command_prefix    | str  | `'>'`   | The message prefix used by the bot to detect commands.
 | description       | str  | `''`    | A description of the bot, displayed by the help command.
+| managers          | list | `[]`    | A list of user ids who are allowed to manage the bot.
 | hide_help         | bool | `False` | Whether the built-in help command should be hidden.
 | extensions        | list | `[]`    | A list of [bot extensions](#extensions) to use.
 | extension_options | dict | `{}`    | A mapping of [extension-specific configuration](#extension-options).
