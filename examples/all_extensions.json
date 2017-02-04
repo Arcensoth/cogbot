@@ -13,7 +13,7 @@
   ],
   "extension_options": {
     "cogbot.extensions.groups": {
-      "cooldown_rate": 2,
+      "cooldown_rate": 5,
       "cooldown_per": 10,
       "server_groups": {
         "247089194357358592": [
