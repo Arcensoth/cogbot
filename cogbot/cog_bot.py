@@ -71,7 +71,6 @@ class CogBot(commands.Bot):
         error = e.original if isinstance(e, CommandInvokeError) else e
 
         if isinstance(error, CommandNotFound):
-            await self.send_error(ctx, ctx.message.author, error)
             await self.react_question(ctx)
 
         elif isinstance(error, CheckFailure):
