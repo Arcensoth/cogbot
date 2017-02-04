@@ -61,7 +61,9 @@ class CogBot(commands.Bot):
                 await on_ready_fn()
 
     async def on_message(self, message):
-        if (message.author != self.user) and message.content.startswith(self.command_prefix):
+        if (message.author != self.user) \
+                and message.server is not None \
+                and message.content.startswith(self.command_prefix):
             log.info(f'[{message.server}/{message.author}] {message.content}')
             await super().on_message(message)
 
