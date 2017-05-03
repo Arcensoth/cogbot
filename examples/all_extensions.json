@@ -9,7 +9,8 @@
     "cogbot.extensions.about",
     "cogbot.extensions.vote",
     "cogbot.extensions.lmgtfy",
-    "cogbot.extensions.groups"
+    "cogbot.extensions.groups",
+    "cogbot.extensions.feed"
   ],
   "extension_options": {
     "cogbot.extensions.groups": {
@@ -20,6 +21,14 @@
           "red",
           "blue"
         ]
+      }
+    },
+    "cogbot.extensions.feed": {
+      "polling_interval": 1,
+      "subscriptions": {
+        "249707118754660353": {
+          "lorem": "http://lorem-rss.herokuapp.com/feed?unit=second&interval=10"
+        }
       }
     }
   }
