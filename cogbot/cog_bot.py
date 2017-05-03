@@ -55,10 +55,10 @@ class CogBot(commands.Bot):
         log.info(f'logged in as {self.user.name} (id {self.user.id})')
         # call on_ready() for extensions
         # TODO this is gross, clean it up with an ABC or something
-        for cog_name, cog in self.cogs.items():
-            on_ready_fn = getattr(cog, 'on_ready', None)
-            if on_ready_fn:
-                await on_ready_fn()
+        # for cog_name, cog in self.cogs.items():
+        #     on_ready_fn = getattr(cog, 'on_ready', None)
+        #     if on_ready_fn:
+        #         await on_ready_fn()
 
     async def on_message(self, message):
         if (message.author != self.user) \
