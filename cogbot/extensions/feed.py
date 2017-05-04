@@ -1,13 +1,14 @@
+import asyncio
 import logging
 import threading
 
-import asyncio
 import feedparser
 from discord import Channel
 from discord.ext import commands
 from discord.ext.commands import Context
 from typing import Dict
 
+from cogbot import checks
 from cogbot.cog_bot import CogBot
 
 log = logging.getLogger(__name__)
@@ -149,6 +150,7 @@ class Feed:
             await self._update_feed(channel, name)
         await self.bot.react_success(ctx)
 
+    @checks.is_moderator()
     @commands.group(pass_context=True, name='feed')
     async def cmd_feed(self, ctx: Context):
         if ctx.invoked_subcommand is None:
