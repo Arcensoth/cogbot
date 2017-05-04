@@ -26,8 +26,10 @@ class FeedSubscription:
         # Only bother checking entries if the feed has been updated.
         if data.feed.updated_parsed > self.timestamp:
             for entry in data.entries:
+                # Try first for the published timestamp, then for the updated timestamp.
+                entry_timestamp = entry.get('published_parsed', entry.updated_parsed)
                 # Yield the entry only if it has been updated since our last update.
-                if entry.updated_parsed > self.timestamp:
+                if entry_timestamp > self.timestamp:
                     yield entry
             self.timestamp = data.feed.updated_parsed
 
