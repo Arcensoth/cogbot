@@ -29,4 +29,4 @@ class CogBotState:
         self.help_attrs = dict(name='_help', hidden=True) if self.hide_help else {}
 
     def get_extension_state(self, ext) -> dict:
-        return self.extension_state.get(ext, {})
+        return self.extension_state.get(ext, {}).copy()
