@@ -8,7 +8,7 @@
     "cogbot.extensions.ping",
     "cogbot.extensions.about"
   ],
-  "extension_options": {
+  "extension_state": {
     "cogbot.extensions.about": {
       "repos": ["https://github.com/Arcensoth/cogbot"]
     }

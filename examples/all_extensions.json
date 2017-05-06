@@ -12,7 +12,7 @@
     "cogbot.extensions.groups",
     "cogbot.extensions.feed"
   ],
-  "extension_options": {
+  "extension_state": {
     "cogbot.extensions.groups": {
       "cooldown_rate": 5,
       "cooldown_per": 10,

@@ -4,47 +4,47 @@ from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands.errors import *
 
-from cogbot.cog_bot_config import CogBotConfig
+from cogbot.cog_bot_state import CogBotState
 
 log = logging.getLogger(__name__)
 
 
 class CogBot(commands.Bot):
-    def __init__(self, config: CogBotConfig, **options):
+    def __init__(self, state: CogBotState, **options):
         super().__init__(
-            command_prefix=config.command_prefix,
-            description=config.description,
-            help_attrs=config.help_attrs,
+            command_prefix=state.command_prefix,
+            description=state.description,
+            help_attrs=state.help_attrs,
             **options)
 
-        self.config = config
+        self.state = state
 
-        if self.config.extensions:
-            self.load_extensions(*self.config.extensions)
+        if self.state.extensions:
+            self.load_extensions(*self.state.extensions)
         else:
-            log.info('no extensions to load')
+            log.info('No extensions to load')
 
-        log.info('initialization successful')
+        log.info('Initialization successful')
 
     def load_extensions(self, *extensions):
-        log.info(f'loading {len(extensions)} extensions...')
+        log.info(f'Loading {len(extensions)} extensions...')
         for ext in extensions:
-            log.info(f'loading extension {ext}...')
+            log.info(f'Loading extension {ext}...')
             try:
                 self.load_extension(ext)
             except Exception as e:
-                log.warning(f'failed to load extension {ext} because: {e.__class__.__name__}: {e}')
-        log.info(f'finished loading extensions')
+                log.warning(f'Failed to load extension {ext} because: {e.__class__.__name__}: {e}')
+        log.info(f'Finished loading extensions')
 
     def unload_extensions(self, *extensions):
-        log.info(f'unloading {len(extensions)} extensions...')
+        log.info(f'Unloading {len(extensions)} extensions...')
         for ext in extensions:
-            log.info(f'unloading extension {ext}...')
+            log.info(f'Unloading extension {ext}...')
             try:
                 self.unload_extension(ext)
             except Exception as e:
-                log.warning(f'failed to unload extension {ext} because: {e.__class__.__name__}: {e}')
-        log.info(f'finished unloading extensions')
+                log.warning(f'Failed to unload extension {ext} because: {e.__class__.__name__}: {e}')
+        log.info(f'Finished unloading extensions')
 
     async def send_error(self, ctx: Context, destination, error: CommandError):
         place = '' if ctx.message.server is None else f' on **{ctx.message.server}**'
@@ -52,13 +52,7 @@ class CogBot(commands.Bot):
         await self.send_message(destination, reply)
 
     async def on_ready(self):
-        log.info(f'logged in as {self.user.name} (id {self.user.id})')
-        # call on_ready() for extensions
-        # TODO this is gross, clean it up with an ABC or something
-        # for cog_name, cog in self.cogs.items():
-        #     on_ready_fn = getattr(cog, 'on_ready', None)
-        #     if on_ready_fn:
-        #         await on_ready_fn()
+        log.info(f'Logged in as {self.user.name} (id {self.user.id})')
 
     async def on_message(self, message):
         if (message.author != self.user) \

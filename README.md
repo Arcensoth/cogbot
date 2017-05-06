@@ -1,7 +1,7 @@
 # cogbot
 A collection of [discord.py](https://github.com/Rapptz/discord.py) wrappers and extensions.
 
-You can [run a bot](#running-a-bot) without writing any code. All you need are the [dependencies](#dependencies) and - if you want the bot to do something - a [configuration](#configuration) file.
+You can [run a bot](#running-a-bot) without writing any code. All you need are the [dependencies](#dependencies) and, if you want to configure the bot up-front, some [configuration](#configuration) options.
 
 ## Dependencies
 
@@ -13,36 +13,37 @@ You can [run a bot](#running-a-bot) without writing any code. All you need are t
 * [loggy](https://github.com/Arcensoth/loggy) for pretty logs
 
 ## Running a bot
-This is an example script that runs a bot using the configuration file `examples/basic.json`. You can copy and run it, replacing arguments as necessary, but you will need to replace `token` with **your own bot token**. Paths are relative to the root directory of the module.
+This is an example script that runs a bot using the state file `examples/basic.json`. You can copy and run it, replacing arguments as necessary, but you will need to replace `token` with **your own bot token**. Paths are relative to the root directory of the module.
 
 ```bash
-python3 run.py --log INFO --config ../examples/config.json "token"
+python3 run.py --log INFO --state ../examples/basic.json "token"
 ```
 
 ### Configuration
-These are the generic configuration options available for bots. They may be defined in the configuration file (specified by `--config`) or passed into the bot config programmatically.
+These are the generic configuration options available for bots. They may be defined in the state file (specified by `--state`) or passed into the bot state object programmatically.
 
-| Options           | Type | Default | Description
-| ----------------- | ---- | ------- | -----------
-| command_prefix    | str  | `'>'`   | The message prefix used by the bot to detect commands.
-| description       | str  | `''`    | A description of the bot, displayed by the help command.
-| managers          | list | `[]`    | A list of user ids who are allowed to manage the bot.
-| hide_help         | bool | `False` | Whether the built-in help command should be hidden.
-| extensions        | list | `[]`    | A list of [bot extensions](#extensions) to use.
-| extension_options | dict | `{}`    | A mapping of [extension-specific configuration](#extension-options).
+| Option            | Type  | Default   | Description
+| ----------------- | ----- | --------- | -----------
+| command_prefix    | str   | `'>'`     | The message prefix used by the bot to detect commands.
+| description       | str   | `''`      | A description of the bot, displayed by the help command.
+| managers          | list  | `[]`      | A list of user ids who are allowed to manage the bot.
+| restart_delay     | float | `10`      | The number of seconds until the bot will restart after crashing.
+| hide_help         | bool  | `False`   | Whether the built-in help command should be hidden.
+| extensions        | list  | `[]`      | A list of [bot extensions](#extensions) to use.
+| extension_state   | dict  | `{}`      | A mapping of extension name to [extension-specific state](#extension-configuration).
 
 ### Extensions
 Extensions are specialized Python scripts that integrate with the bot to provide additional functionality. On startup, they are loaded in the same order as defined in the bot configuration `extensions` list.
 
 There are several extensions already available in this repository, however none of them are loaded by default.
 
-### Extension options
-Some extensions may be provided with their own specific configuration. This can be accomplished by configuring an entry in the `extension_options` mapping, like so:
+### Extension configuration
+Some extensions may be provided with their own specific configuration, by defining an entry in the `extension_state` mapping, like so:
 
 ```json
 {
   "extensions": [ "cogbot.extensions.about" ],
-  "extension_options": {
+  "extension_state": {
     "cogbot.extensions.about": {
       "repos": ["https://github.com/Arcensoth/cogbot"]
     }
@@ -50,4 +51,4 @@ Some extensions may be provided with their own specific configuration. This can 
 }
 ```
 
-See `examples/with_extension_options.json` for a complete example.
+See `examples/with_extension_state.json` for a complete example.

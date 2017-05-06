@@ -23,7 +23,7 @@ class AboutConfig:
 class About:
     def __init__(self, bot: CogBot, ext: str):
         self.bot = bot
-        options = bot.config.get_extension_options(ext)
+        options = bot.state.get_extension_state(ext)
         options['description'] = options.get('description', bot.description)
         self.config = AboutConfig(**options)
         self.about_message = ''
@@ -31,10 +31,10 @@ class About:
     async def make_about_message(self):
         parts = [self.config.description]
 
-        if self.bot.config.managers:
+        if self.bot.state.managers:
             managers = []
 
-            for manager in self.bot.config.managers:
+            for manager in self.bot.state.managers:
                 try:
                     manager_user = await self.bot.get_user_info(manager)
                     manager_mention = manager_user.mention

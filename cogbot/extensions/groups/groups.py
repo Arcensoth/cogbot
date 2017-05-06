@@ -26,7 +26,7 @@ class Groups:
     def __init__(self, bot: CogBot, ext: str):
         self.bot = bot
 
-        options = bot.config.get_extension_options(ext)
+        options = bot.state.get_extension_state(ext)
         self.config = GroupsConfig(**options)
 
         # TODO fix hack

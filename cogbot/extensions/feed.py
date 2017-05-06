@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import threading
 
 import feedparser
 from discord import Channel
@@ -41,24 +40,14 @@ class Feed:
     def __init__(self, bot: CogBot, ext: str):
         self.bot = bot
 
-        self.options = bot.config.get_extension_options(ext)
+        self.options = bot.state.get_extension_state(ext)
 
         self.polling_interval: str = self.options.pop('polling_interval', self.DEFAULT_POLLING_INTERVAL)
 
         # Access like so: self.subscriptions[channel_id][name]
         self.subscriptions: Dict[str, Dict[str, FeedSubscription]] = {}
 
-        # TODO use purely asyncio, not threading, if possible
-
-        self.stop_event = threading.Event()
-
-        event_loop = asyncio.get_event_loop()
-
-        def loop():
-            while not self.stop_event.wait(self.polling_interval):
-                event_loop.call_soon_threadsafe(asyncio.async, self._update_feeds())
-
-        self.polling_thread = threading.Thread(target=loop)
+        self.polling_task = None
 
     async def on_ready(self):
         # Initialize subscriptions.
@@ -72,8 +61,14 @@ class Feed:
             for name, url in v.items():
                 self._add_feed(channel, name, url)
 
-        # Start the feed polling thread.
-        self.polling_thread.start()
+        # Start the polling task.
+        self.polling_task = self.bot.loop.create_task(self._loop_poll())
+
+    async def _loop_poll(self):
+        while self.bot.is_logged_in:
+            await self.update_all_feeds()
+            await asyncio.sleep(self.polling_interval)
+        log.info('Bot logged out, polling loop terminated')
 
     def _add_feed(self, channel: Channel, name: str, url: str):
         sub = FeedSubscription(url)
@@ -100,14 +95,9 @@ class Feed:
         sub = subs[name]
 
         for entry in sub.update():
+            log.info(f'Found an update for feed "{name}": {entry.title}')
             message = f'**{entry.title}**\n{entry.link}'
             await self.bot.send_message(channel, message)
-
-    async def _update_feeds(self):
-        for channel_id, subs in self.subscriptions.items():
-            channel = self.bot.get_channel(channel_id)
-            for name, sub in subs.items():
-                await self._update_feed(channel, name)
 
     async def add_feed(self, ctx: Context, name: str, url: str):
         channel = ctx.message.channel
@@ -145,10 +135,18 @@ class Feed:
         await self.bot.send_message(ctx.message.channel, reply)
 
     async def update_feeds(self, ctx: Context, *names):
+        """ Update only the given feeds for the channel in context. """
         channel = ctx.message.channel
         for name in names:
             await self._update_feed(channel, name)
         await self.bot.react_success(ctx)
+
+    async def update_all_feeds(self):
+        """ Update all feeds for all channels. """
+        for channel_id, subs in self.subscriptions.items():
+            channel = self.bot.get_channel(channel_id)
+            for name, sub in subs.items():
+                await self._update_feed(channel, name)
 
     @checks.is_moderator()
     @commands.group(pass_context=True, name='feed')

@@ -6,7 +6,7 @@ from cogbot.cog_bot import CogBot
 
 def is_manager_check(ctx: Context):
     bot = ctx.bot  # type: CogBot
-    return ctx.message.author.id in bot.config.managers
+    return ctx.message.author.id in bot.state.managers
 
 
 def is_manager():
