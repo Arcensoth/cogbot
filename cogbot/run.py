@@ -8,20 +8,8 @@ from cogbot.cog_bot_state import CogBotState
 
 log = logging.getLogger(__name__)
 
-arg_parser = argparse.ArgumentParser()
-arg_parser.add_argument('token')
-arg_parser.add_argument('--log', help='Log level', default='WARNING')
-arg_parser.add_argument('--state', help='Bot state file', default='bot.json')
-args = arg_parser.parse_args()
-
 
 def run():
-    try:
-        import loggy
-        loggy.install(level=args.log)
-    except:
-        logging.basicConfig(level=args.log)
-
     state = CogBotState(args.state)
 
     loop = asyncio.get_event_loop()
@@ -63,6 +51,19 @@ def run():
 
     log.info('Bot terminated')
 
+
+arg_parser = argparse.ArgumentParser()
+arg_parser.add_argument('token')
+arg_parser.add_argument('--log', help='Log level', default='WARNING')
+arg_parser.add_argument('--state', help='Bot state file', default='bot.json')
+args = arg_parser.parse_args()
+
+try:
+    import loggy
+
+    loggy.install(level=args.log)
+except:
+    logging.basicConfig(level=args.log)
 
 log.info('Hello!')
 run()
