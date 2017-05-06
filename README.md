@@ -13,10 +13,10 @@ You can [run a bot](#running-a-bot) without writing any code. All you need are t
 * [loggy](https://github.com/Arcensoth/loggy) for pretty logs
 
 ## Running a bot
-This is an example script that runs a bot using the state file `examples/basic.json`. You can copy and run it, replacing arguments as necessary, but you will need to replace `token` with **your own bot token**. Paths are relative to the root directory of the module.
+This is an example script that runs a bot using the state file `bot.json`. You can copy and run it, replacing arguments as necessary, but you will need to replace `token` with **your own bot token**.
 
 ```bash
-python3 run.py --log INFO --state ../examples/basic.json "token"
+python3.6 -m cogbot.run --log INFO --state bot.json "token"
 ```
 
 ### Configuration
