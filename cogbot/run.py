@@ -14,9 +14,16 @@ def run():
 
     loop = asyncio.get_event_loop()
 
+    last_death = None
+
     while True:
         log.info('Starting bot...')
         bot = CogBot(state=state, loop=loop)
+
+        if last_death:
+            for manager in state.managers:
+                message = f'Hello! I\'ve just recovered from a fatal crash caused by: **{last_death}**'
+                bot.queue_message(bot.get_user_info, manager, message)
 
         try:
             loop.run_until_complete(bot.start(args.token))
@@ -41,6 +48,7 @@ def run():
             break
 
         except Exception as ex:
+            last_death = ex
             log.critical('Encountered a fatal exception:')
             log.error(ex)
             log.warning(f'Restarting bot in {state.restart_delay} seconds...')

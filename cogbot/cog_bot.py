@@ -19,12 +19,18 @@ class CogBot(commands.Bot):
 
         self.state = state
 
+        # A queue of messages to send after login.
+        self.queued_messages = []
+
         if self.state.extensions:
             self.load_extensions(*self.state.extensions)
         else:
             log.info('No extensions to load')
 
         log.info('Initialization successful')
+
+    def queue_message(self, dest_getter, dest_id, content):
+        self.queued_messages.append((dest_getter, dest_id, content))
 
     def load_extensions(self, *extensions):
         log.info(f'Loading {len(extensions)} extensions...')
@@ -53,6 +59,12 @@ class CogBot(commands.Bot):
 
     async def on_ready(self):
         log.info(f'Logged in as {self.user.name} (id {self.user.id})')
+        # Send any queued messages.
+        if self.queued_messages:
+            log.info(f'Sending {len(self.queued_messages)} queued messages...')
+            for dest_getter, dest_id, content in self.queued_messages:
+                dest = await dest_getter(dest_id)
+                await self.send_message(dest, content)
 
     async def on_message(self, message):
         if (message.author != self.user) \
