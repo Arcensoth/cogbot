@@ -101,7 +101,7 @@ class Feed:
 
     async def add_feed(self, ctx: Context, name: str, url: str):
         channel = ctx.message.channel
-        subs = self.subscriptions[channel.id]
+        subs = self.subscriptions.get(channel.id)
 
         if name not in subs:
             self._add_feed(channel, name, url)
@@ -112,7 +112,7 @@ class Feed:
 
     async def remove_feed(self, ctx: Context, name: str):
         channel = ctx.message.channel
-        subs = self.subscriptions[channel.id]
+        subs = self.subscriptions.get(channel.id)
 
         if name in subs:
             self._remove_feed(channel, name)
@@ -123,7 +123,7 @@ class Feed:
 
     async def list_feeds(self, ctx: Context):
         channel = ctx.message.channel
-        subs = self.subscriptions[channel.id]
+        subs = self.subscriptions.get(channel.id)
 
         if subs:
             subs_str = '\n'.join([f'  - {name}: {sub.url}' for name, sub in subs.items()])
