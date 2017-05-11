@@ -1,9 +1,12 @@
 import logging
+from typing import List
 
+from discord import User, Message, Channel, Server, Member
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands.errors import *
 
+from cogbot import utils
 from cogbot.cog_bot_state import CogBotState
 
 log = logging.getLogger(__name__)
@@ -51,6 +54,71 @@ class CogBot(commands.Bot):
             except Exception as e:
                 log.warning(f'Failed to unload extension {ext} because: {e.__class__.__name__}: {e}')
         log.info(f'Finished unloading extensions')
+
+    def get_server_members_from_username(self, server: Server, name):
+        if len(name) > 5 and name[-5] == '#':
+            potential_discriminator = name[-4:]
+            results = utils.gets(server.members, name=name[:-5], discriminator=potential_discriminator)
+            if results:
+                yield from results
+
+    def get_server_members_named(self, server: Server, name):
+        """ see `discord.Server.get_member_named()` """
+        name_lower = name.lower()
+
+        def pred(m: Member):
+            return name_lower in (m.nick or '').lower() or name_lower in m.name.lower()
+
+        return filter(pred, server.members)
+
+    async def disambiguate_user(self, ctx: Context, user_obj):
+        """ Attempt to disambiguate a single user from the given object. If multiple potential resuilts are found, raise
+         an exception and print the candidates. """
+
+        message: Message = ctx.message
+        server: Server = message.server
+        channel: Channel = message.channel
+
+        # Return immediately if the object is already a user.
+        if isinstance(user_obj, User):
+            return user_obj
+
+        elif isinstance(user_obj, str):
+            # Attempt to extract id from mention.
+            id_from_mention = None
+            if user_obj.startswith('<@') and user_obj.endswith('>'):
+                id_from_mention = user_obj[2:-1]
+
+            # Attempt to resolve from id.
+            try:
+                user_from_id = await self.get_user_info(id_from_mention or user_obj)
+                if user_from_id:
+                    return user_from_id
+            except:
+                pass
+
+            # Attempt to resolve from username (name + discriminator).
+            users_from_username: List[User] = list(self.get_server_members_from_username(server, user_obj))
+
+            # If we found exactly one user from the username, we have successfully disambiguated.
+            if len(users_from_username) == 1:
+                return users_from_username[0]
+
+            # Otherwise we'll need to look through nick/display names and have the author provide an id.
+            else:
+                users_from_name = list(self.get_server_members_named(server, user_obj))
+
+            if users_from_name:
+                users_str = \
+                    '\n'.join((f'  - {user.name}#{user.discriminator} <**{user.id}**>' for user in users_from_name))
+                reply = f'{message.author.mention} Please be more specific about the user by providing their id:' \
+                        f'\n{users_str}'
+                await self.send_message(channel, reply)
+                raise BadArgument(f'Cannot disambiguate user from: {user_obj}')
+
+            # Otherwise, if no users were found, back out.
+            await self.send_message(channel, f'{message.author.mention} No such user.')
+            raise BadArgument(f'Cannot resolve user from: {user_obj}')
 
     async def send_error(self, ctx: Context, destination, error: CommandError):
         place = '' if ctx.message.server is None else f' on **{ctx.message.server}**'
