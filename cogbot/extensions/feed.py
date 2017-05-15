@@ -22,16 +22,19 @@ class FeedSubscription:
         self.timestamp = data.feed.updated_parsed
 
     def update(self):
-        data = feedparser.parse(self.url)
-        # Only bother checking entries if the feed has been updated.
-        if data.feed.updated_parsed > self.timestamp:
-            for entry in data.entries:
-                # Try first for the published timestamp, then for the updated timestamp.
-                entry_timestamp = entry.get('published_parsed', entry.updated_parsed)
-                # Yield the entry only if it has been updated since our last update.
-                if entry_timestamp > self.timestamp:
-                    yield entry
-            self.timestamp = data.feed.updated_parsed
+        try:
+            data = feedparser.parse(self.url)
+            # Only bother checking entries if the feed has been updated.
+            if data.feed.updated_parsed > self.timestamp:
+                for entry in data.entries:
+                    # Try first for the published timestamp, then for the updated timestamp.
+                    entry_timestamp = entry.get('published_parsed', entry.updated_parsed)
+                    # Yield the entry only if it has been updated since our last update.
+                    if entry_timestamp > self.timestamp:
+                        yield entry
+                self.timestamp = data.feed.updated_parsed
+        except Exception as ex:
+            log.error(f'Error occurred while parsing feed "{self.url}": {ex}')
 
 
 class Feed:
