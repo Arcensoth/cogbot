@@ -6,6 +6,7 @@
   "extensions": [
     "cogbot.extensions.ext",
     "cogbot.extensions.ping",
+    "cogbot.extensions.say",
     "cogbot.extensions.about",
     "cogbot.extensions.vote",
     "cogbot.extensions.lmgtfy",
