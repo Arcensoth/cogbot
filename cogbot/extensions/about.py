@@ -65,7 +65,8 @@ class About:
     @commands.group(pass_context=True, name='about')
     async def cmd_about(self, ctx: Context):
         if ctx.invoked_subcommand is None:
-            await self.bot.say(self.about_message)
+            message = await self.bot.say('_')
+            await self.bot.edit_message(message, self.about_message)
 
     @checks.is_manager()
     @cmd_about.command(pass_context=True, name='reload', hidden=True)
