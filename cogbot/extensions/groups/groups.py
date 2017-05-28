@@ -43,7 +43,7 @@ class Groups:
                 for group in groups:
                     self._group_directory.add_group(server, group)
 
-    async def add_group(self, ctx: Context, *groups):
+    async def add_groups(self, ctx: Context, *groups):
         for group in groups:
             try:
                 self._group_directory.add_group(ctx.message.server, group)
@@ -58,7 +58,7 @@ class Groups:
                 log.warning(f'[{ctx.message.server}/{ctx.message.author}] Tried to add pre-existing group "{group}"')
                 await self.bot.react_failure(ctx)
 
-    async def remove_group(self, ctx: Context, *groups):
+    async def remove_groups(self, ctx: Context, *groups):
         for group in groups:
             try:
                 self._group_directory.remove_group(ctx.message.server, group)
@@ -69,7 +69,7 @@ class Groups:
                 log.warning(f'[{ctx.message.server}/{ctx.message.author}] Tried to remove non-existent group "{group}"')
                 await self.bot.react_failure(ctx)
 
-    async def join_group(self, ctx: Context, *groups):
+    async def join_groups(self, ctx: Context, *groups):
         for group in groups:
             try:
                 role = self._group_directory.get_role(ctx.message.server, group)
@@ -86,7 +86,7 @@ class Groups:
             except NoSuchGroupError:
                 await self.bot.react_failure(ctx)
 
-    async def leave_group(self, ctx: Context, *groups):
+    async def leave_groups(self, ctx: Context, *groups):
         for group in groups:
             try:
                 role = self._group_directory.get_role(ctx.message.server, group)
@@ -139,12 +139,24 @@ class Groups:
         if ctx.invoked_subcommand is None:
             await self.list_groups(ctx)
 
+    @checks.is_moderator()
+    @cmd_groups.command(pass_context=True, name='add', hidden=True)
+    async def cmd_groups_add(self, ctx: Context, *, groups):
+        await self.add_groups(ctx, groups)
+
+    @checks.is_moderator()
+    @cmd_groups.command(pass_context=True, name='remove', hidden=True)
+    async def cmd_groups_remove(self, ctx: Context, *, groups):
+        await self.remove_groups(ctx, groups)
+
+    @checks.is_moderator()
+    @cmd_groups.command(pass_context=True, name='members', hidden=True)
+    async def cmd_groups_members(self, ctx: Context, group: str):
+        await self.list_group_members(ctx, group)
+
     @cmd_groups.command(pass_context=True, name='list')
-    async def cmd_groups_list(self, ctx: Context, group: str = None):
-        if group:
-            await self.list_group_members(ctx, group)
-        else:
-            await self.list_groups(ctx)
+    async def cmd_groups_list(self, ctx: Context):
+        await self.list_groups(ctx)
 
     @cmd_groups.command(pass_context=True, name='join')
     async def cmd_groups_join(self, ctx: Context, *, groups):
@@ -153,13 +165,3 @@ class Groups:
     @cmd_groups.command(pass_context=True, name='leave')
     async def cmd_groups_leave(self, ctx: Context, *, groups):
         await self.leave_groups(ctx, groups)
-
-    @checks.is_moderator()
-    @cmd_groups.command(pass_context=True, name='add', hidden=True)
-    async def cmd_groups_add(self, ctx: Context, group: str):
-        await self.add_group(ctx, group)
-
-    @checks.is_moderator()
-    @cmd_groups.command(pass_context=True, name='remove', hidden=True)
-    async def cmd_groups_remove(self, ctx: Context, group: str):
-        await self.remove_group(ctx, group)
