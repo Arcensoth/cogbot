@@ -2,7 +2,6 @@ import logging
 
 from discord.ext import commands
 from discord.ext.commands import Context
-from discord.ext.commands.errors import *
 
 from cogbot import checks
 from cogbot.cog_bot import CogBot
@@ -44,56 +43,65 @@ class Groups:
                 for group in groups:
                     self._group_directory.add_group(server, group)
 
-    async def add_group(self, ctx: Context, group: str):
-        try:
-            self._group_directory.add_group(ctx.message.server, group)
-            log.info(f'[{ctx.message.server}/{ctx.message.author}] added group "{group}"')
-            await self.bot.react_success(ctx)
-
-        except NoSuchRoleNameError:
-            raise UserInputError(f'tried to add group "{group}" without a role')
-
-        except GroupAlreadyExistsError:
-            raise UserInputError(f'tried to add pre-existing group "{group}"')
-
-    async def remove_group(self, ctx: Context, group: str):
-        try:
-            self._group_directory.remove_group(ctx.message.server, group)
-            log.info(f'[{ctx.message.server}/{ctx.message.author}] removed group "{group}"')
-            await self.bot.react_success(ctx)
-
-        except NoSuchGroupError:
-            raise UserInputError(f'tried to remove non-existent group "{group}"')
-
-    async def join_group(self, ctx: Context, group: str):
-        try:
-            role = self._group_directory.get_role(ctx.message.server, group)
-
-            if role in ctx.message.author.roles:
-                raise UserInputError(f'tried to join pre-joined group "{group}"')
-
-            else:
-                await self.bot.add_roles(ctx.message.author, role)
-                log.info(f'[{ctx.message.server}/{ctx.message.author}] joined group "{group}"')
+    async def add_group(self, ctx: Context, *groups):
+        for group in groups:
+            try:
+                self._group_directory.add_group(ctx.message.server, group)
+                log.info(f'[{ctx.message.server}/{ctx.message.author}] Added group "{group}"')
                 await self.bot.react_success(ctx)
 
-        except NoSuchGroupError:
-            raise UserInputError(f'tried to join non-existent group "{group}"')
+            except NoSuchRoleNameError:
+                log.warning(f'[{ctx.message.server}/{ctx.message.author}] Tried to add group "{group}" without a role')
+                await self.bot.react_failure(ctx)
 
-    async def leave_group(self, ctx: Context, group: str):
-        try:
-            role = self._group_directory.get_role(ctx.message.server, group)
+            except GroupAlreadyExistsError:
+                log.warning(f'[{ctx.message.server}/{ctx.message.author}] Tried to add pre-existing group "{group}"')
+                await self.bot.react_failure(ctx)
 
-            if role not in ctx.message.author.roles:
-                raise UserInputError(f'tried to leave un-joined group "{group}"')
-
-            else:
-                await self.bot.remove_roles(ctx.message.author, role)
-                log.info(f'[{ctx.message.server}/{ctx.message.author}] left group "{group}"')
+    async def remove_group(self, ctx: Context, *groups):
+        for group in groups:
+            try:
+                self._group_directory.remove_group(ctx.message.server, group)
+                log.info(f'[{ctx.message.server}/{ctx.message.author}] Removed group "{group}"')
                 await self.bot.react_success(ctx)
 
-        except NoSuchGroupError:
-            raise UserInputError(f'cannot leave non-existent group "{group}"')
+            except NoSuchGroupError:
+                log.warning(f'[{ctx.message.server}/{ctx.message.author}] Tried to remove non-existent group "{group}"')
+                await self.bot.react_failure(ctx)
+
+    async def join_group(self, ctx: Context, *groups):
+        for group in groups:
+            try:
+                role = self._group_directory.get_role(ctx.message.server, group)
+
+                if role in ctx.message.author.roles:
+                    log.warning(f'[{ctx.message.server}/{ctx.message.author}] Tried to join pre-joined group "{group}"')
+                    await self.bot.react_neutral(ctx)
+
+                else:
+                    await self.bot.add_roles(ctx.message.author, role)
+                    log.info(f'[{ctx.message.server}/{ctx.message.author}] Joined group "{group}"')
+                    await self.bot.react_success(ctx)
+
+            except NoSuchGroupError:
+                await self.bot.react_failure(ctx)
+
+    async def leave_group(self, ctx: Context, *groups):
+        for group in groups:
+            try:
+                role = self._group_directory.get_role(ctx.message.server, group)
+
+                if role not in ctx.message.author.roles:
+                    log.warning(f'[{ctx.message.server}/{ctx.message.author}] Tried to leave un-joined group "{group}"')
+                    await self.bot.react_neutral(ctx)
+
+                else:
+                    await self.bot.remove_roles(ctx.message.author, role)
+                    log.info(f'[{ctx.message.server}/{ctx.message.author}] Left group "{group}"')
+                    await self.bot.react_success(ctx)
+
+            except NoSuchGroupError:
+                await self.bot.react_failure(ctx)
 
     async def list_groups(self, ctx: Context):
         groups = list(self._group_directory.groups(ctx.message.server))
@@ -139,12 +147,12 @@ class Groups:
             await self.list_groups(ctx)
 
     @cmd_groups.command(pass_context=True, name='join')
-    async def cmd_groups_join(self, ctx: Context, group: str):
-        await self.join_group(ctx, group)
+    async def cmd_groups_join(self, ctx: Context, *, groups):
+        await self.join_groups(ctx, groups)
 
     @cmd_groups.command(pass_context=True, name='leave')
-    async def cmd_groups_leave(self, ctx: Context, group: str):
-        await self.leave_group(ctx, group)
+    async def cmd_groups_leave(self, ctx: Context, *, groups):
+        await self.leave_groups(ctx, groups)
 
     @checks.is_moderator()
     @cmd_groups.command(pass_context=True, name='add', hidden=True)
