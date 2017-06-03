@@ -1,4 +1,6 @@
 # cogbot
+
+[![Join the chat at https://gitter.im/arcensoth-cogbot/Lobby](https://badges.gitter.im/arcensoth-cogbot/Lobby.svg)](https://gitter.im/arcensoth-cogbot/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 A collection of [discord.py](https://github.com/Rapptz/discord.py) wrappers and extensions.
 
 You can [run a bot](#running-a-bot) without writing any code. All you need are the [dependencies](#dependencies) and, if you want to configure the bot up-front, some [configuration](#configuration) options.
