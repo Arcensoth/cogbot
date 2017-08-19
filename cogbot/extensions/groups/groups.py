@@ -44,70 +44,111 @@ class Groups:
                     self._group_directory.add_group(server, group)
 
     async def add_groups(self, ctx: Context, *groups):
-        for group in groups:
-            try:
-                self._group_directory.add_group(ctx.message.server, group)
-                log.info(f'[{ctx.message.server}/{ctx.message.author}] Added group "{group}"')
-                await self.bot.react_success(ctx)
+        server, author = ctx.message.server, ctx.message.author
 
-            except NoSuchRoleNameError:
-                log.warning(f'[{ctx.message.server}/{ctx.message.author}] Tried to add group "{group}" without a role')
-                await self.bot.react_failure(ctx)
+        # TODO filter valid groups beforehand
 
-            except GroupAlreadyExistsError:
-                log.warning(f'[{ctx.message.server}/{ctx.message.author}] Tried to add pre-existing group "{group}"')
-                await self.bot.react_failure(ctx)
+        if groups:
+            for group in groups:
+                try:
+                    self._group_directory.add_group(server, group)
+                    log.info(f'[{server}/{author}] Added group "{group}"')
+                    await self.bot.react_success(ctx)
+
+                except NoSuchRoleNameError:
+                    log.warning(f'[{server}/{author}] Tried to add group "{group}" without a role')
+                    await self.bot.react_failure(ctx)
+
+                except GroupAlreadyExistsError:
+                    log.warning(f'[{server}/{author}] Tried to add pre-existing group "{group}"')
+                    await self.bot.react_failure(ctx)
+
+        else:
+            await self.bot.react_question(ctx)
 
     async def remove_groups(self, ctx: Context, *groups):
-        for group in groups:
-            try:
-                self._group_directory.remove_group(ctx.message.server, group)
-                log.info(f'[{ctx.message.server}/{ctx.message.author}] Removed group "{group}"')
-                await self.bot.react_success(ctx)
+        server, author = ctx.message.server, ctx.message.author
 
-            except NoSuchGroupError:
-                log.warning(f'[{ctx.message.server}/{ctx.message.author}] Tried to remove non-existent group "{group}"')
-                await self.bot.react_failure(ctx)
+        # TODO filter valid groups beforehand
+
+        if groups:
+            for group in groups:
+                try:
+                    self._group_directory.remove_group(server, group)
+                    log.info(f'[{server}/{author}] Removed group "{group}"')
+                    await self.bot.react_success(ctx)
+
+                except NoSuchGroupError:
+                    log.warning(f'[{server}/{author}] Tried to remove non-existent group "{group}"')
+                    await self.bot.react_failure(ctx)
+
+        else:
+            await self.bot.react_question(ctx)
 
     async def join_groups(self, ctx: Context, *groups):
-        for group in groups:
-            try:
-                role = self._group_directory.get_role(ctx.message.server, group)
+        server, author = ctx.message.server, ctx.message.author
 
-                if role in ctx.message.author.roles:
-                    log.warning(f'[{ctx.message.server}/{ctx.message.author}] Tried to join pre-joined group "{group}"')
-                    await self.bot.react_neutral(ctx)
+        # TODO filter valid groups beforehand
 
-                else:
-                    await self.bot.add_roles(ctx.message.author, role)
-                    log.info(f'[{ctx.message.server}/{ctx.message.author}] Joined group "{group}"')
-                    await self.bot.react_success(ctx)
+        if groups:
+            for group in groups:
+                try:
+                    role = self._group_directory.get_role(server, group)
 
-            except NoSuchGroupError:
-                await self.bot.react_failure(ctx)
+                    if role in author.roles:
+                        log.info(f'[{server}/{author}] Tried to join pre-joined group "{group}"')
+                        await self.bot.react_neutral(ctx)
+
+                    else:
+                        await self.bot.add_roles(author, role)
+                        log.info(f'[{server}/{author}] Joined group "{group}"')
+                        await self.bot.react_success(ctx)
+
+                except NoSuchGroupError:
+                    log.warning(f'[{server}/{author}] Tried to join non-existent group "{group}"')
+                    await self.bot.react_failure(ctx)
+
+        else:
+            await self.bot.react_question(ctx)
 
     async def leave_groups(self, ctx: Context, *groups):
-        for group in groups:
-            try:
-                role = self._group_directory.get_role(ctx.message.server, group)
+        server, author = ctx.message.server, ctx.message.author
 
-                if role not in ctx.message.author.roles:
-                    log.warning(f'[{ctx.message.server}/{ctx.message.author}] Tried to leave un-joined group "{group}"')
-                    await self.bot.react_neutral(ctx)
+        # TODO filter valid groups beforehand
 
-                else:
-                    await self.bot.remove_roles(ctx.message.author, role)
-                    log.info(f'[{ctx.message.server}/{ctx.message.author}] Left group "{group}"')
-                    await self.bot.react_success(ctx)
+        if groups:
+            for group in groups:
+                try:
+                    role = self._group_directory.get_role(server, group)
 
-            except NoSuchGroupError:
-                await self.bot.react_failure(ctx)
+                    if role in author.roles:
+                        await self.bot.remove_roles(author, role)
+                        log.info(f'[{server}/{author}] Left group "{group}"')
+                        await self.bot.react_success(ctx)
+
+                    else:
+                        log.info(f'[{server}/{author}] Tried to leave un-joined group "{group}"')
+                        await self.bot.react_neutral(ctx)
+
+                except NoSuchGroupError:
+                    log.warning(f'[{server}/{author}] Tried to leave non-existent group "{group}"')
+                    await self.bot.react_failure(ctx)
+
+        else:
+            await self.bot.react_question(ctx)
+
+    async def leave_all_groups(self, ctx: Context):
+        server, author = ctx.message.server, ctx.message.author
+        group_roles = [role for role in author.roles if self._group_directory.is_role(server, str(role))]
+        await self.bot.remove_roles(author, *group_roles)
+        log.info(f'[{server}/{author}] Left all {len(group_roles)} groups')
+        await self.bot.react_success(ctx)
 
     async def list_groups(self, ctx: Context):
         groups = list(self._group_directory.groups(ctx.message.server))
-        groups_str = ', '.join([('**' + group + '**') for group in groups])
 
         if groups:
+            groups_str = ', '.join([('**' + group + '**') for group in groups])
             reply = f'Available groups: {groups_str}'
 
         else:
@@ -141,13 +182,13 @@ class Groups:
 
     @checks.is_moderator()
     @cmd_groups.command(pass_context=True, name='add', hidden=True)
-    async def cmd_groups_add(self, ctx: Context, *, groups):
-        await self.add_groups(ctx, groups)
+    async def cmd_groups_add(self, ctx: Context, *groups):
+        await self.add_groups(ctx, *groups)
 
     @checks.is_moderator()
     @cmd_groups.command(pass_context=True, name='remove', hidden=True)
-    async def cmd_groups_remove(self, ctx: Context, *, groups):
-        await self.remove_groups(ctx, groups)
+    async def cmd_groups_remove(self, ctx: Context, *groups):
+        await self.remove_groups(ctx, *groups)
 
     @checks.is_moderator()
     @cmd_groups.command(pass_context=True, name='members', hidden=True)
@@ -159,9 +200,13 @@ class Groups:
         await self.list_groups(ctx)
 
     @cmd_groups.command(pass_context=True, name='join')
-    async def cmd_groups_join(self, ctx: Context, *, groups):
-        await self.join_groups(ctx, groups)
+    async def cmd_groups_join(self, ctx: Context, *groups):
+        await self.join_groups(ctx, *groups)
 
     @cmd_groups.command(pass_context=True, name='leave')
-    async def cmd_groups_leave(self, ctx: Context, *, groups):
-        await self.leave_groups(ctx, groups)
+    async def cmd_groups_leave(self, ctx: Context, *groups):
+        await self.leave_groups(ctx, *groups)
+
+    @cmd_groups.command(pass_context=True, name='leaveall')
+    async def cmd_groups_leaveall(self, ctx: Context):
+        await self.leave_all_groups(ctx)
