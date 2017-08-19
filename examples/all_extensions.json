@@ -29,7 +29,7 @@
       "polling_interval": 1,
       "subscriptions": {
         "249707118754660353": {
-          "lorem": "http://lorem-rss.herokuapp.com/feed?unit=second&interval=10"
+          "lorem": "http://lorem-rss.herokuapp.com/feed?unit=second&interval=60"
         }
       }
     }
