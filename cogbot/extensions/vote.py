@@ -1,15 +1,29 @@
+import logging
+
 from discord.ext import commands
-from discord.ext.commands import Context
+from discord.ext.commands import CommandError, Context
+
+log = logging.getLogger(__name__)
 
 
 class Vote:
+    DEFAULT_REACTIONS = u'✔ ✖'
+
     def __init__(self, bot):
         self.bot = bot
 
     @commands.command(pass_context=True)
-    async def vote(self, ctx: Context):
-        await self.bot.add_reaction(ctx.message, u'✔')
-        await self.bot.add_reaction(ctx.message, u'✖')
+    async def vote(self, ctx: Context, *, reactions=DEFAULT_REACTIONS):
+        reactions = reactions.split()
+        failure = True
+        for reaction in reactions:
+            try:
+                await self.bot.add_reaction(ctx.message, reaction)
+                failure = False
+            except Exception as ex:
+                log.warning('Invalid reaction "{}" caused error: {}'.format(reaction, ex))
+        if failure:
+            raise CommandError('All instances failed')
 
 
 def setup(bot):
