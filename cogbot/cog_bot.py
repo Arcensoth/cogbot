@@ -52,6 +52,9 @@ class CogBot(commands.Bot):
                 log.warning(f'Failed to unload extension {ext} because: {e.__class__.__name__}: {e}')
         log.info(f'Finished unloading extensions')
 
+    def force_logout(self):
+        self._is_logged_in.clear()
+
     async def send_error(self, ctx: Context, destination, error: CommandError):
         place = '' if ctx.message.server is None else f' on **{ctx.message.server}**'
         reply = f'There was a problem with your command{place}: *{error.args[0]}*'
