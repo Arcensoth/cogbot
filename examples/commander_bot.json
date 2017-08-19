@@ -1,0 +1,46 @@
+{
+  "description": "The /r/MinecraftCommands personal assistant.",
+  "managers": [
+    "135616361157099520"
+  ],
+  "extensions": [
+    "cogbot.extensions.groups",
+    "cogbot.extensions.about",
+    "cogbot.extensions.ext",
+    "cogbot.extensions.feed",
+    "cogbot.extensions.ping",
+    "cogbot.extensions.react",
+    "cogbot.extensions.say",
+    "cogbot.extensions.vote",
+    "cogbot.extensions.mcc"
+  ],
+  "extension_state": {
+    "cogbot.extensions.groups": {
+      "cooldown_rate": 10,
+      "cooldown_per": 60,
+      "server_groups": {
+        "154777837382008833": [
+          "NBT",
+          "Text-components",
+          "Structures",
+          "Loot-tables",
+          "Add-ons",
+          "Resource-packs",
+          "Models",
+          "Game-code",
+          "Advancements"
+        ]
+      }
+    },
+    "cogbot.extensions.feed": {
+      "polling_interval": 30,
+      "subscriptions": {
+        "247818621005332480": {
+          "subreddit": "https://www.reddit.com/r/MinecraftCommands/new/.rss",
+          "arqade": "https://gaming.stackexchange.com/feeds/tag/minecraft-commands",
+          "minecraft": "https://minecraft.net/en-us/feeds/community-content/rss"
+        }
+      }
+    }
+  }
+}
