@@ -13,23 +13,34 @@ log = logging.getLogger(__name__)
 
 
 class MinecraftCommandsState:
-    # system path where server-generated data is located
-    # generated data root for <version> looks something like `./versions/<version>/generated/`
-    # invoke this command on the server jar to generate data:
-    # java -cp minecraft_server.<version>.jar net.minecraft.data.Main --all
     DEFAULT_VERSIONS_STORAGE_PATH = './versions'
-
-    # number of subcommands that cause a parent command to render `...` instead of expanding all subcommands
-    # so a threshold of 4 means that a command with 4 subcommands will be compacted into `command ...` instead
-    # warning: high threshold may be slow and/or cause errors as messages become large
     DEFAULT_COLLAPSE_THRESHOLD = 4
 
     def __init__(self, **options):
+        # system path where server-generated data is located
+        # generated data root for <version> looks something like `./versions/<version>/generated/`
+        # invoke this command on the server jar to generate data:
+        # java -cp minecraft_server.<version>.jar net.minecraft.data.Main --all
         self.versions_storage_path = options.pop('version_storage_path', self.DEFAULT_VERSIONS_STORAGE_PATH)
+
+        # version definitions, such as which data parser to use
         self.versions = options.pop('versions', {})
+
+        # versions to load and make available (planned: pass `-v <version>` for a specific version)
+        # all versions to load should be defined in `versions`
         self.load_versions = set(options.pop('load_versions', ()))
+
+        # versions to render in the output
+        # all versions to show should be listed in `load_versions`
         self.show_versions = set(options.pop('show_versions', ()))
+
+        # number of subcommands that cause a parent command to render `...` instead of expanding all subcommands
+        # so a threshold of 4 means that a command with 4 subcommands will be compacted into `command ...` instead
+        # warning: high threshold may be slow and/or cause errors as messages become large
         self.collapse_threshold = options.pop('collapse_threshold', self.DEFAULT_COLLAPSE_THRESHOLD)
+
+        # base http url to append root commands and provide a help link
+        # compiled as `<help_url><command>` so make sure to include a trailing slash if necessary
         self.help_url = options.pop('help_url', None)
 
         # can't load versions that haven't been defined with a parser
