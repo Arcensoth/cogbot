@@ -84,13 +84,17 @@ class MinecraftCommands:
         if relevant:
             yield command
 
-        # if depth is still counting down or we're below the population threshold, yield without restraint
-        # depth = 1 basically means we always want to expand at least one level of subcommands
-        if (depth > 0) or (population < self.state.collapse_threshold):
+        # determine whether to expand the command into subcommands
+        # if any of the following are true, continue expansion:
+        #   1. depth has not reached 0
+        #   2. collapse threshold has not been reached
+        #   3. only one subcommand to expand
+        # note that depth = 1 is useful here because we always want to expand at least one level of subcommands
+        if (depth > 0) or (population < self.state.collapse_threshold) or (len(children) < 2):
             for child in children.values():
                 yield from self.command_lines_from_data(child, depth - 1)
 
-        # otherwise if both depth depleted and population threshold reached, yield a short form
+        # otherwise render a collapsed form
         else:
             yield ' '.join((command, '...'))
 
