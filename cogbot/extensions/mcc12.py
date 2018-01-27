@@ -11,7 +11,7 @@ from discord.ext.commands.errors import *
 log = logging.getLogger(__name__)
 
 
-class MinecraftCommandsConfig:
+class LegacyMinecraftCommandsConfig:
     DEFAULT_COMMAND_MANIFEST = \
         'https://gist.githubusercontent.com/Arcensoth/0f3f91161352383e65f2259cb4d90230/raw/minecraft_commands.json'
     DEFAULT_COMMAND_PAGE = 'http://minecraft.gamepedia.com/Commands'
@@ -21,11 +21,11 @@ class MinecraftCommandsConfig:
         self.command_page = options.pop('command_page', self.DEFAULT_COMMAND_PAGE)
 
 
-class MinecraftCommands:
+class LegacyMinecraftCommands:
     def __init__(self, bot: CogBot, ext: str):
         self.bot = bot
         options = bot.state.get_extension_state(ext)
-        self.config = MinecraftCommandsConfig(**options)
+        self.config = LegacyMinecraftCommandsConfig(**options)
         self.command_messages = {}
         self._reload_commands()
 
@@ -88,15 +88,15 @@ class MinecraftCommands:
         except:
             await self.bot.react_failure(ctx)
 
-    @commands.command(pass_context=True, name='mcc')
+    @commands.command(pass_context=True, name='mcc12')
     async def cmd_mcc(self, ctx: Context, *, command: str):
         await self.mcc(ctx, command)
 
     @checks.is_manager()
-    @commands.command(pass_context=True, name='mccreload', hidden=True)
+    @commands.command(pass_context=True, name='mcc12reload', hidden=True)
     async def cmd_mccreload(self, ctx):
         await self.mccreload(ctx)
 
 
 def setup(bot):
-    bot.add_cog(MinecraftCommands(bot, __name__))
+    bot.add_cog(LegacyMinecraftCommands(bot, __name__))
