@@ -9,12 +9,14 @@
     "cogbot.extensions.say",
     "cogbot.extensions.react",
     "cogbot.extensions.about",
+    "cogbot.extensions.vote",
     "cogbot.extensions.mcc",
     "cogbot.extensions.mcc12"
   ],
   "extension_state": {
     "cogbot.extensions.mcc": {
       "help_url": "https://minecraft.gamepedia.com/Commands/",
+      "version_storage_path": "/repo/mcdata",
       "versions": {
         "18w01a": {
           "parser": "v1"
