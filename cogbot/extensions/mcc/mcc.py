@@ -40,7 +40,6 @@ class MinecraftCommandsState:
         self.versions = options.pop('versions', {})
 
         # versions to load and make available
-        # TODO planned: pass `-v <version>` for a specific version
         # all versions to load should be defined in `versions`
         self.load_versions = set(options.pop('load_versions', ()))
 
@@ -51,7 +50,6 @@ class MinecraftCommandsState:
         # number of subcommands that cause a parent command to render `...` instead of expanding all subcommands
         # so a threshold of 4 means that a command with 4 subcommands will be compacted into `command ...` instead
         # warning: high threshold may be slow and/or cause errors as messages become large
-        # TODO planned: pass `-e` to fully expand subcommands, bypassing the threshold
         self.collapse_threshold = options.pop('collapse_threshold', self.DEFAULT_COLLAPSE_THRESHOLD)
 
         # base http url to append root commands and provide a help link
