@@ -14,12 +14,15 @@ from cogbot.extensions.mcc.parsers.v1_minecraft_commands_parser import V1Minecra
 
 log = logging.getLogger(__name__)
 
-argparser = argparse.ArgumentParser('mcc', add_help=False)
-argparser.add_argument('-e', '--explode', action='store_true', help='whether to render all subcommands')
-argparser.add_argument('-v', '--version', action='append', help='use a particular version for the command')
-argparser.add_argument('command', nargs='+', help='the command to query')
-
-mcc_help = ''.join(('>', argparser.format_usage().split(maxsplit=1)[1]))
+argparser = argparse.ArgumentParser(
+    'mcc',
+    description='Minecraft command query program. An extension of the in-game help command, with version reporting and'
+                'expandable regex search.',
+    add_help=False)
+argparser.add_argument('-e', '--explode', action='store_true', help='whether to expand all subcommands')
+argparser.add_argument('-t', '--types', action='store_true', help='whether to include argument types')
+argparser.add_argument('-v', '--version', action='append', help='which version(s) to use for the command (repeatable)')
+argparser.add_argument('command', nargs='+', help='the command query')
 
 
 class MinecraftCommandsState:
@@ -85,19 +88,21 @@ class MinecraftCommands:
     async def on_ready(self):
         await self.reload()
 
-    def _command_lines_from_node(self, node: dict, explode: bool = False):
-        relevant = node.get('relevant')
-        command = node.get('command')
+    def _command_lines_from_node(self, node: dict, explode: bool = False, types: bool = False):
         children = node.get('children', {})
         population = node.get('population')
+        relevant = node.get('relevant')
+        command = node.get('command')
+        command_t = node.get('command_t')
         collapsed = node.get('collapsed', command)
+        collapsed_t = node.get('collapsed_t', command_t)
 
         # only render relevant commands
         # all executable commands should render: `scoreboard players list`, `scoreboard players list <target>`
         # all chainable (redirect) commands should render: `execute as <entity> -> execute ...`
         # other commands should generally not render: `scoreboard`, `scoreboard players`, etc
         if relevant:
-            yield command
+            yield command_t if types else command
 
         # determine whether to expand the command into subcommands
         # if any of the following are true, continue expansion:
@@ -105,13 +110,14 @@ class MinecraftCommands:
         #   2. only one subcommand to expand
         if explode or (population < self.state.collapse_threshold) or (len(children) < 2):
             for child in children.values():
-                yield from self._command_lines_from_node(child, explode=explode)
+                yield from self._command_lines_from_node(child, explode=explode, types=types)
 
         # otherwise render a collapsed form
         else:
-            yield collapsed
+            yield collapsed_t if types else collapsed
 
-    def _command_lines_recursive(self, node: dict, token: str, tokens: tuple, explode: bool = False):
+    def _command_lines_recursive(
+            self, node: dict, token: str, tokens: tuple, explode: bool = False, types: bool = False):
         search_children = ()
 
         if token:
@@ -127,13 +133,13 @@ class MinecraftCommands:
             next_token = tokens[0] if tokens else ()
             next_tokens = tokens[1:] if len(tokens) > 1 else ()
             for child in search_children:
-                yield from self._command_lines_recursive(child, next_token, next_tokens, explode=explode)
+                yield from self._command_lines_recursive(child, next_token, next_tokens, explode=explode, types=types)
 
         # leaf: no children to branch to, start rendering commands from here
         if not search_children:
-            yield from self._command_lines_from_node(node, explode=explode)
+            yield from self._command_lines_from_node(node, explode=explode, types=types)
 
-    def command_lines(self, version: str, token: str, tokens: tuple, explode: bool = False):
+    def command_lines(self, version: str, token: str, tokens: tuple, explode: bool = False, types: bool = False):
         # make sure the command exists before anything else
         next_node = self.data[version]['children'][token]
 
@@ -142,7 +148,7 @@ class MinecraftCommands:
         next_tokens = tokens[1:] if len(tokens) > 1 else ()
 
         # recursively yield all subcommands that match the given input
-        yield from self._command_lines_recursive(next_node, next_token, next_tokens, explode=explode)
+        yield from self._command_lines_recursive(next_node, next_token, next_tokens, explode=explode, types=types)
 
     async def mcc(self, ctx: Context, command: str):
         # split into tokens using shell-like syntax (preserve quoted substrings)
@@ -161,12 +167,13 @@ class MinecraftCommands:
             return
 
         explode = parsed_args.explode
+        types = parsed_args.types
 
         version_lines = {}
 
         for version in show_versions:
             try:
-                lines = list(self.command_lines(version, mc_command, mc_args, explode=explode))
+                lines = list(self.command_lines(version, mc_command, mc_args, explode=explode, types=types))
                 if lines:
                     version_lines[version] = lines
                 else:
@@ -241,7 +248,7 @@ class MinecraftCommands:
         except:
             await self.bot.react_failure(ctx)
 
-    @commands.command(pass_context=True, name='mcc', help=mcc_help)
+    @commands.command(pass_context=True, name='mcc', help=argparser.format_help())
     async def cmd_mcc(self, ctx: Context, *, command: str):
         await self.mcc(ctx, command)
 
