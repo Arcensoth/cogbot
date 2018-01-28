@@ -146,7 +146,10 @@ class MinecraftCommands:
 
     async def mcc(self, ctx: Context, command: str):
         # split into tokens using shell-like syntax (preserve quoted substrings)
-        parsed_args = self.argparser.parse_args(shlex.split(command))
+        try:
+            parsed_args = argparser.parse_args(shlex.split(command))
+        except:
+            raise CommandError('failed to parse arguments for mcc')
 
         mc_command = parsed_args.command[0]  # required
         mc_args = tuple(parsed_args.command[1:] if len(parsed_args.command) > 1 else ())
