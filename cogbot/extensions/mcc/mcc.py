@@ -19,15 +19,25 @@ argparser = argparse.ArgumentParser(
     description='Minecraft command query program. Inspired by the in-game help command, with added features like '
                 'version reporting and expandable regex search.',
     add_help=False)
-argparser.add_argument('-e', '--explode', action='store_true', help='whether to expand all subcommands')
-argparser.add_argument('-t', '--types', action='store_true', help='whether to include argument types')
-argparser.add_argument('-v', '--version', action='append', help='which version(s) to use for the command (repeatable)')
-argparser.add_argument('command', nargs='+', help='the command query')
+
+argparser.add_argument(
+    '-t', '--types', action='store_true', help='whether to include argument types')
+
+argparser.add_argument(
+    '-e', '--explode', action='store_true', help='whether to expand all subcommands, regardless of capacity')
+
+argparser.add_argument(
+    '-c', '--capacity', type=int, default=4, help='maximum number of subcommands to render before collapsing')
+
+argparser.add_argument(
+    '-v', '--version', action='append', help='which version(s) to use for the command (repeatable)')
+
+argparser.add_argument(
+    'command', nargs='+', help='the command query')
 
 
 class MinecraftCommandsState:
     DEFAULT_VERSIONS_STORAGE_PATH = './versions'
-    DEFAULT_COLLAPSE_THRESHOLD = 4
 
     def __init__(self, **options):
         # system path where server-generated data is located
@@ -46,11 +56,6 @@ class MinecraftCommandsState:
         # versions to render in the output
         # all versions to show should be listed in `load_versions`
         self.show_versions = set(options.pop('show_versions', ()))
-
-        # number of subcommands that cause a parent command to render `...` instead of expanding all subcommands
-        # so a threshold of 4 means that a command with 4 subcommands will be compacted into `command ...` instead
-        # warning: high threshold may be slow and/or cause errors as messages become large
-        self.collapse_threshold = options.pop('collapse_threshold', self.DEFAULT_COLLAPSE_THRESHOLD)
 
         # base http url to append root commands and provide a help link
         # compiled as `<help_url><command>` so make sure to include a trailing slash if necessary
@@ -86,7 +91,9 @@ class MinecraftCommands:
     async def on_ready(self):
         await self.reload()
 
-    def _command_lines_from_node(self, node: dict, explode: bool = False, types: bool = False):
+    def _command_lines_from_node(
+            self, node: dict,
+            types: bool = False, explode: bool = False, capacity: int = 4):
         children = node.get('children', {})
         population = node.get('population')
         relevant = node.get('relevant')
@@ -104,16 +111,17 @@ class MinecraftCommands:
         # if any of the following are true, continue expansion:
         #   1. collapse threshold has not been reached
         #   2. only one subcommand to expand
-        if explode or (population < self.state.collapse_threshold) or (len(children) < 2):
+        if explode or (population <= capacity) or (len(children) < 2):
             for child in children.values():
-                yield from self._command_lines_from_node(child, explode=explode, types=types)
+                yield from self._command_lines_from_node(child, types=types, explode=explode, capacity=capacity)
 
         # otherwise render a collapsed form
         else:
             yield collapsed
 
     def _command_lines_recursive(
-            self, node: dict, token: str, tokens: tuple, explode: bool = False, types: bool = False):
+            self, node: dict, token: str, tokens: tuple,
+            types: bool = None, explode: bool = None, capacity: int = None):
         search_children = ()
 
         if token:
@@ -129,13 +137,16 @@ class MinecraftCommands:
             next_token = tokens[0] if tokens else ()
             next_tokens = tokens[1:] if len(tokens) > 1 else ()
             for child in search_children:
-                yield from self._command_lines_recursive(child, next_token, next_tokens, explode=explode, types=types)
+                yield from self._command_lines_recursive(
+                    child, next_token, next_tokens, types=types, explode=explode, capacity=capacity)
 
         # leaf: no children to branch to, start rendering commands from here
         if not search_children:
-            yield from self._command_lines_from_node(node, explode=explode, types=types)
+            yield from self._command_lines_from_node(node, types=types, explode=explode, capacity=capacity)
 
-    def command_lines(self, version: str, token: str, tokens: tuple, explode: bool = False, types: bool = False):
+    def command_lines(
+            self, version: str, token: str, tokens: tuple,
+            types: bool = None, explode: bool = None, capacity: int = None):
         # make sure the command exists before anything else
         next_node = self.data[version]['children'][token]
 
@@ -144,32 +155,36 @@ class MinecraftCommands:
         next_tokens = tokens[1:] if len(tokens) > 1 else ()
 
         # recursively yield all subcommands that match the given input
-        yield from self._command_lines_recursive(next_node, next_token, next_tokens, explode=explode, types=types)
+        yield from self._command_lines_recursive(
+            next_node, next_token, next_tokens, types=types, explode=explode, capacity=capacity)
 
     async def mcc(self, ctx: Context, command: str):
         # split into tokens using shell-like syntax (preserve quoted substrings)
         try:
             parsed_args = argparser.parse_args(shlex.split(command))
+
+            mc_command = parsed_args.command[0]  # required
+            mc_args = tuple(parsed_args.command[1:] if len(parsed_args.command) > 1 else ())
+
+            show_versions = set(parsed_args.version or self.state.show_versions).intersection(self.state.load_versions)
+
+            capacity = parsed_args.capacity
+            explode = parsed_args.explode
+            types = parsed_args.types
+
         except:
             raise CommandError('failed to parse arguments for mcc')
-
-        mc_command = parsed_args.command[0]  # required
-        mc_args = tuple(parsed_args.command[1:] if len(parsed_args.command) > 1 else ())
-
-        show_versions = set(parsed_args.version or self.state.show_versions).intersection(self.state.load_versions)
 
         if not show_versions:
             await self.bot.add_reaction(ctx.message, u'😭')
             return
 
-        explode = parsed_args.explode
-        types = parsed_args.types
-
         version_lines = {}
 
         for version in show_versions:
             try:
-                lines = list(self.command_lines(version, mc_command, mc_args, explode=explode, types=types))
+                lines = list(self.command_lines(
+                    version, mc_command, mc_args, types=types, explode=explode, capacity=capacity))
                 if lines:
                     version_lines[version] = lines
                 else:
