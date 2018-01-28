@@ -159,35 +159,35 @@ class MinecraftCommands:
 
         explode = parsed_args.explode
 
-        paras = []
+        version_lines = {}
 
         for version in show_versions:
             try:
-                para = tuple(self.command_lines(version, mc_command, mc_args, explode=explode))
-                # only 1 command? put the version right after it on the same line
-                if len(para) == 1:
-                    paras.append(('{}  # {}'.format(para[0], version),))
-                # multiple commands? put the version at the top
-                elif len(para) > 1:
-                    paras.append(('# {}'.format(version), *para))
-                # otherwise something went wrong (shouldn't happen)
+                lines = list(self.command_lines(version, mc_command, mc_args, explode=explode))
+                if lines:
+                    version_lines[version] = lines
                 else:
                     raise ValueError('somehow got no command lines')
             except:
                 log.exception('Unable to get version {} info for command: {} {}'.format(version, mc_command, mc_args))
                 continue
 
-        # let the user know if the command couldn't be processed
-        if not paras:
+        # let the user know if there were no results
+        if not version_lines:
             await self.bot.add_reaction(ctx.message, u'🤷')
             return
 
-        # if all versions rendered just 1 command, don't put newlines between them
-        # otherwise, if at least one version render multiple commands, make some space between versions
-        compact = not tuple(len(para) > 1 for para in paras).count(True)
-        para_sep = '\n' if compact else '\n\n'
-        code_section = '```python\n{}\n```'.format(
-            para_sep.join('\n'.join(line for line in para) for para in paras))
+        # if any version produced more than one command, render one paragraph per version
+        if next((True for lines in version_lines.values() if len(lines) > 1), False):
+            paragraphs = ('\n'.join(('# {}'.format(version), *lines)) for version, lines in version_lines.items())
+            command_text = '\n\n'.join(paragraphs)
+
+        # otherwise, if all versions rendered just 1 command, render one line per version (compact)
+        else:
+            command_text = '\n'.join('{}  # {}'.format(lines[0], version) for version, lines in version_lines.items())
+
+        # render the full code section
+        code_section = '```python\n{}\n```'.format(command_text)
 
         # render the help url, if enabled
         help_url = self.state.help_url
