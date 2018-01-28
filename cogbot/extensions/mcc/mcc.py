@@ -140,8 +140,8 @@ class MinecraftCommands:
                 yield from self._command_lines_recursive(
                     child, next_token, next_tokens, types=types, explode=explode, capacity=capacity)
 
-        # leaf: no children to branch to, start rendering commands from here
-        if not search_children:
+        # leaf: no children to branch to, no token to search, start rendering commands from here
+        elif not token:
             yield from self._command_lines_from_node(node, types=types, explode=explode, capacity=capacity)
 
     def command_lines(
