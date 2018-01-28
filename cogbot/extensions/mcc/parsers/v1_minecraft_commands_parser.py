@@ -34,7 +34,7 @@ class V1MinecraftCommandsParser(MinecraftCommandsParser):
 
         # special case for `execute run`
         if not (executable or redirect or children):
-            args += ('...',)
+            args += ('->', '*')
             relevant = True
 
         # build command
