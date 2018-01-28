@@ -235,7 +235,7 @@ class MinecraftCommands:
         message = 'Loaded commands for {} versions: {}'.format(len(self.data.keys()), ', '.join(self.data))
         log.info(message)
         if ctx:
-            await self.bot.send_message(ctx.message.channel, message)
+            await self.bot.send_message(ctx.message.channel, ' '.join((ctx.message.author.mention, message)))
 
     async def mccreload(self, ctx: Context):
         try:
