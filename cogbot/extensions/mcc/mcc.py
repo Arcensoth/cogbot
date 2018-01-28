@@ -1,6 +1,8 @@
 import json
 import logging
 import os
+import re
+import shlex
 
 from discord.ext import commands
 from discord.ext.commands import Context
@@ -73,12 +75,12 @@ class MinecraftCommands:
     async def on_ready(self):
         await self.reload()
 
-    def command_lines_from_data(self, data: dict):
-        relevant = data.get('relevant')
-        command = data.get('command')
-        children = data.get('children', {})
-        population = data.get('population')
-        collapsed = data.get('collapsed', command)
+    def _command_lines_from_node(self, node: dict):
+        relevant = node.get('relevant')
+        command = node.get('command')
+        children = node.get('children', {})
+        population = node.get('population')
+        collapsed = node.get('collapsed', command)
 
         # only render relevant commands
         # all executable commands should render: `scoreboard players list`, `scoreboard players list <target>`
@@ -93,36 +95,54 @@ class MinecraftCommands:
         #   2. only one subcommand to expand
         if (population < self.state.collapse_threshold) or (len(children) < 2):
             for child in children.values():
-                yield from self.command_lines_from_data(child)
+                yield from self._command_lines_from_node(child)
 
         # otherwise render a collapsed form
         else:
             yield collapsed
 
-    def command_lines(self, version: str, command: str):
-        data = self.data[version]
+    def _command_lines_recursive(self, node: dict, token: str, tokens: tuple):
+        search_children = ()
 
-        tokens = command.split()
+        if token:
+            # use regex to search for the key in the patternized token
+            # special case shortcut where a provided single '.' becomes '.*'
+            pattern = '^{}$'.format('.*' if token == '.' else token)
+            search_children = tuple(
+                child for child_key, child in node.get('children', {}).items()
+                if re.match(pattern, child_key, re.A))
 
-        # make sure we can at least get past the root node
-        dummy = data['children'][tokens[0]]
+        # branch: search all matching children recursively (depth-first) for subcommands
+        if search_children:
+            next_token = tokens[0] if tokens else ()
+            next_tokens = tokens[1:] if len(tokens) > 1 else ()
+            for child in search_children:
+                yield from self._command_lines_recursive(child, next_token, next_tokens)
 
-        # recursively position ourselves at the deepest subcommand that matches the given input
-        for token in tokens:
-            try:
-                data = data['children'][token]
-            except:
-                break
+        # leaf: no children to branch to, start rendering commands from here
+        if not search_children:
+            yield from self._command_lines_from_node(node)
 
-        # from there, start rendering subcommands
-        yield from self.command_lines_from_data(data)
+    def command_lines(self, version: str, command: str, arguments: str):
+        # make sure the command exists before anything else
+        next_node = self.data[version]['children'][command]
 
-    async def mcc(self, ctx: Context, command: str):
+        # split into tokens using shell-like syntax (preserve quoted substrings)
+        tokens = tuple(shlex.split(arguments))
+
+        # determine root token and tokens to start recursion
+        next_token = tokens[0] if tokens else ()
+        next_tokens = tokens[1:] if len(tokens) > 1 else ()
+
+        # recursively yield all subcommands that match the given input
+        yield from self._command_lines_recursive(next_node, next_token, next_tokens)
+
+    async def mcc(self, ctx: Context, command: str, arguments: str):
         paras = []
 
         for version in self.state.show_versions:
             try:
-                para = tuple(self.command_lines(version, command))
+                para = tuple(self.command_lines(version, command, arguments))
                 # only 1 command? put the version right after it on the same line
                 if len(para) == 1:
                     paras.append(('{}  # {}'.format(para[0], version),))
@@ -131,9 +151,9 @@ class MinecraftCommands:
                     paras.append(('# {}'.format(version), *para))
                 # otherwise something went wrong (shouldn't happen)
                 else:
-                    raise ValueError()
+                    raise ValueError('somehow got no command lines')
             except:
-                log.exception('Unable to get version {} info for command: {}'.format(version, command))
+                log.exception('Unable to get version {} info for command: {} {}'.format(version, command, arguments))
                 continue
 
         if paras:
@@ -141,11 +161,12 @@ class MinecraftCommands:
             # otherwise, if at least one version render multiple commands, make some space between versions
             compact = not tuple(len(para) > 1 for para in paras).count(True)
             para_sep = '\n' if compact else '\n\n'
-            code_section = '```python\n{}\n```'.format(para_sep.join('\n'.join(line for line in para) for para in paras))
+            code_section = '```python\n{}\n```'.format(
+                para_sep.join('\n'.join(line for line in para) for para in paras))
 
             # render the help url, if enabled
             help_url = self.state.help_url
-            help_section = '<{}{}>'.format(help_url, command.split(maxsplit=1)[0]) if help_url else None
+            help_section = '<{}{}>'.format(help_url, command) if help_url else None
 
             # leave out blank sections
             message = '\n'.join(section for section in (code_section, help_section) if section is not None)
@@ -197,8 +218,8 @@ class MinecraftCommands:
             await self.bot.react_failure(ctx)
 
     @commands.command(pass_context=True, name='mcc')
-    async def cmd_mcc(self, ctx: Context, *, command: str):
-        await self.mcc(ctx, command)
+    async def cmd_mcc(self, ctx: Context, command: str, *, arguments: str = ''):
+        await self.mcc(ctx, command, arguments)
 
     @checks.is_manager()
     @commands.command(pass_context=True, name='mccreload', hidden=True)
