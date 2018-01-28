@@ -1,3 +1,4 @@
+import argparse
 import json
 import logging
 import os
@@ -67,15 +68,24 @@ class MinecraftCommands:
         self.bot = bot
         self.state = MinecraftCommandsState(**bot.state.get_extension_state(ext))
         self.data = {}
+
+        # instantiate a copy of each supported parser
         self.parsers = {
             # v1: for all 1.13 snapshots so far (18w01a to 18w03b)
             'v1': V1MinecraftCommandsParser()
         }
 
+        # setup an argument parser for optional arguments
+        # TODO show argparser help on command help
+        self.argparser = argparse.ArgumentParser()
+        self.argparser.add_argument('-e', '--explode', action='store_true', help='whether to render all subcommands')
+        self.argparser.add_argument('-v', '--version', action='append', help='use a particular version for the command')
+        self.argparser.add_argument('command', nargs=argparse.REMAINDER, help='the command to query')
+
     async def on_ready(self):
         await self.reload()
 
-    def _command_lines_from_node(self, node: dict):
+    def _command_lines_from_node(self, node: dict, explode: bool = False):
         relevant = node.get('relevant')
         command = node.get('command')
         children = node.get('children', {})
@@ -93,15 +103,15 @@ class MinecraftCommands:
         # if any of the following are true, continue expansion:
         #   1. collapse threshold has not been reached
         #   2. only one subcommand to expand
-        if (population < self.state.collapse_threshold) or (len(children) < 2):
+        if explode or (population < self.state.collapse_threshold) or (len(children) < 2):
             for child in children.values():
-                yield from self._command_lines_from_node(child)
+                yield from self._command_lines_from_node(child, explode=explode)
 
         # otherwise render a collapsed form
         else:
             yield collapsed
 
-    def _command_lines_recursive(self, node: dict, token: str, tokens: tuple):
+    def _command_lines_recursive(self, node: dict, token: str, tokens: tuple, explode: bool = False):
         search_children = ()
 
         if token:
@@ -117,32 +127,43 @@ class MinecraftCommands:
             next_token = tokens[0] if tokens else ()
             next_tokens = tokens[1:] if len(tokens) > 1 else ()
             for child in search_children:
-                yield from self._command_lines_recursive(child, next_token, next_tokens)
+                yield from self._command_lines_recursive(child, next_token, next_tokens, explode=explode)
 
         # leaf: no children to branch to, start rendering commands from here
         if not search_children:
-            yield from self._command_lines_from_node(node)
+            yield from self._command_lines_from_node(node, explode=explode)
 
-    def command_lines(self, version: str, command: str, arguments: str):
+    def command_lines(self, version: str, token: str, tokens: tuple, explode: bool = False):
         # make sure the command exists before anything else
-        next_node = self.data[version]['children'][command]
-
-        # split into tokens using shell-like syntax (preserve quoted substrings)
-        tokens = tuple(shlex.split(arguments))
+        next_node = self.data[version]['children'][token]
 
         # determine root token and tokens to start recursion
         next_token = tokens[0] if tokens else ()
         next_tokens = tokens[1:] if len(tokens) > 1 else ()
 
         # recursively yield all subcommands that match the given input
-        yield from self._command_lines_recursive(next_node, next_token, next_tokens)
+        yield from self._command_lines_recursive(next_node, next_token, next_tokens, explode=explode)
 
-    async def mcc(self, ctx: Context, command: str, arguments: str):
+    async def mcc(self, ctx: Context, command: str):
+        # split into tokens using shell-like syntax (preserve quoted substrings)
+        parsed_args = self.argparser.parse_args(shlex.split(command))
+
+        mc_command = parsed_args.command[0]  # required
+        mc_args = tuple(parsed_args.command[1:] if len(parsed_args.command) > 1 else ())
+
+        show_versions = set(parsed_args.version or self.state.show_versions).intersection(self.state.load_versions)
+
+        if not show_versions:
+            await self.bot.add_reaction(ctx.message, u'😭')
+            return
+
+        explode = parsed_args.explode
+
         paras = []
 
-        for version in self.state.show_versions:
+        for version in show_versions:
             try:
-                para = tuple(self.command_lines(version, command, arguments))
+                para = tuple(self.command_lines(version, mc_command, mc_args, explode=explode))
                 # only 1 command? put the version right after it on the same line
                 if len(para) == 1:
                     paras.append(('{}  # {}'.format(para[0], version),))
@@ -153,29 +174,29 @@ class MinecraftCommands:
                 else:
                     raise ValueError('somehow got no command lines')
             except:
-                log.exception('Unable to get version {} info for command: {} {}'.format(version, command, arguments))
+                log.exception('Unable to get version {} info for command: {} {}'.format(version, mc_command, mc_args))
                 continue
 
-        if paras:
-            # if all versions rendered just 1 command, don't put newlines between them
-            # otherwise, if at least one version render multiple commands, make some space between versions
-            compact = not tuple(len(para) > 1 for para in paras).count(True)
-            para_sep = '\n' if compact else '\n\n'
-            code_section = '```python\n{}\n```'.format(
-                para_sep.join('\n'.join(line for line in para) for para in paras))
-
-            # render the help url, if enabled
-            help_url = self.state.help_url
-            help_section = '<{}{}>'.format(help_url, command) if help_url else None
-
-            # leave out blank sections
-            message = '\n'.join(section for section in (code_section, help_section) if section is not None)
-
-            await self.bot.send_message(ctx.message.channel, message)
-
-        # otherwise, let the user know the command couldn't be processed
-        else:
+        # let the user know if the command couldn't be processed
+        if not paras:
             await self.bot.add_reaction(ctx.message, u'🤷')
+            return
+
+        # if all versions rendered just 1 command, don't put newlines between them
+        # otherwise, if at least one version render multiple commands, make some space between versions
+        compact = not tuple(len(para) > 1 for para in paras).count(True)
+        para_sep = '\n' if compact else '\n\n'
+        code_section = '```python\n{}\n```'.format(
+            para_sep.join('\n'.join(line for line in para) for para in paras))
+
+        # render the help url, if enabled
+        help_url = self.state.help_url
+        help_section = '<{}{}>'.format(help_url, mc_command) if help_url else None
+
+        # leave out blank sections
+        message = '\n'.join(section for section in (code_section, help_section) if section is not None)
+
+        await self.bot.send_message(ctx.message.channel, message)
 
     async def reload(self, ctx: Context = None):
         self.data = {}
@@ -218,8 +239,8 @@ class MinecraftCommands:
             await self.bot.react_failure(ctx)
 
     @commands.command(pass_context=True, name='mcc')
-    async def cmd_mcc(self, ctx: Context, command: str, *, arguments: str = ''):
-        await self.mcc(ctx, command, arguments)
+    async def cmd_mcc(self, ctx: Context, *, command: str):
+        await self.mcc(ctx, command)
 
     @checks.is_manager()
     @commands.command(pass_context=True, name='mccreload', hidden=True)
