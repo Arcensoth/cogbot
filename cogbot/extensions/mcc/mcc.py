@@ -90,17 +90,15 @@ class MinecraftCommands:
         children = node.get('children', {})
         population = node.get('population')
         relevant = node.get('relevant')
-        command = node.get('command')
-        command_t = node.get('command_t')
-        collapsed = node.get('collapsed', command)
-        collapsed_t = node.get('collapsed_t', command_t)
+        command = node.get('command_t' if types else 'command')
+        collapsed = node.get('collapsed_t' if types else 'collapsed', command)
 
         # only render relevant commands
         # all executable commands should render: `scoreboard players list`, `scoreboard players list <target>`
         # all chainable (redirect) commands should render: `execute as <entity> -> execute ...`
         # other commands should generally not render: `scoreboard`, `scoreboard players`, etc
         if relevant:
-            yield command_t if types else command
+            yield command
 
         # determine whether to expand the command into subcommands
         # if any of the following are true, continue expansion:
@@ -112,7 +110,7 @@ class MinecraftCommands:
 
         # otherwise render a collapsed form
         else:
-            yield collapsed_t if types else collapsed
+            yield collapsed
 
     def _command_lines_recursive(
             self, node: dict, token: str, tokens: tuple, explode: bool = False, types: bool = False):
