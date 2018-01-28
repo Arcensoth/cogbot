@@ -130,7 +130,7 @@ class MinecraftCommands:
             pattern = '^{}$'.format('.*' if token == '.' else token)
             search_children = tuple(
                 child for child_key, child in node.get('children', {}).items()
-                if re.match(pattern, child_key, re.A))
+                if re.match(pattern, child_key, re.IGNORECASE))
 
         # branch: search all matching children recursively (depth-first) for subcommands
         if search_children:
