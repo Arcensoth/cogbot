@@ -16,8 +16,8 @@ log = logging.getLogger(__name__)
 
 argparser = argparse.ArgumentParser(
     'mcc',
-    description='Minecraft command query program. An extension of the in-game help command, with version reporting and'
-                'expandable regex search.',
+    description='Minecraft command query program. Inspired by the in-game help command, with added features like '
+                'version reporting and expandable regex search.',
     add_help=False)
 argparser.add_argument('-e', '--explode', action='store_true', help='whether to expand all subcommands')
 argparser.add_argument('-t', '--types', action='store_true', help='whether to include argument types')
