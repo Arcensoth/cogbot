@@ -13,42 +13,51 @@ class V1MinecraftCommandsParser(MinecraftCommandsParser):
 
         # build my argument string
         if type_ == 'root':
-            my_arguments = ()
+            args = ()
         elif type_ == 'literal':
-            my_arguments = (key,)
+            args = (key,)
         elif type_ == 'argument':
             parser = node['parser'].split(sep=':', maxsplit=1)[1]  # get the `string` from `brigadier:string`
-            my_arguments = ('<{}: {}>'.format(key, parser),)
+            args = ('<{}: {}>'.format(key, parser),)
         else:
-            my_arguments = ('{}*'.format(key),)
+            args = ('{}*'.format(key),)
+
+        # argument to provide for parents when collapsing
+        argument = args[0] if args else None
 
         if redirect:
-            my_arguments = (*my_arguments, '->', '|'.join(redirect), '...')
+            # redirect is a list and there may be multiple
+            args = (*args, '->', '|'.join(redirect), '...')
             relevant = True
 
         # special case for `execute run`
         if not (executable or redirect or children):
-            my_arguments = (*my_arguments, '->', '...')
+            args = (*args, '->', '...')
             relevant = True
 
         # build command
-        my_command = ' '.join(arg for arg in (command or None, *my_arguments) if arg is not None)
+        my_command = ' '.join(arg for arg in (command or None, *args) if arg is not None)
 
         # build children, if any
         my_children = {k: self._build(k, v, my_command) for k, v in children.items()}
 
         # count population
-        # my_population = 1 + sum(child['population'] for child in my_children.values())
-        my_population = sum(child['population'] for child in my_children.values())
+        population = sum(child['population'] for child in my_children.values())
         if relevant:
-            my_population += 1
+            population += 1
+
+        # build collapsed form
+        collapsed = ' '.join((my_command, '|'.join((child['argument'] for child in my_children.values())), '...')) \
+            if my_children else None
 
         # compile and return result
         result = {
-            'relevant': relevant,
+            'relevant': relevant if relevant else None,
             'command': my_command if my_command else None,
             'children': my_children if my_children else None,
-            'population': my_population
+            'population': population,
+            'argument': argument if argument else None,
+            'collapsed': collapsed if collapsed else None
         }
 
         result = {k: v for k, v in result.items() if v is not None}

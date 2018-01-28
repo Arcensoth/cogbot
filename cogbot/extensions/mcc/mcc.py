@@ -73,11 +73,12 @@ class MinecraftCommands:
     async def on_ready(self):
         await self.reload()
 
-    def command_lines_from_data(self, data: dict, depth: int = 1):
+    def command_lines_from_data(self, data: dict):
         relevant = data.get('relevant')
         command = data.get('command')
         children = data.get('children', {})
-        population = data.get('population', 0)
+        population = data.get('population')
+        collapsed = data.get('collapsed', command)
 
         # only render relevant commands
         # all executable commands should render: `scoreboard players list`, `scoreboard players list <target>`
@@ -88,25 +89,26 @@ class MinecraftCommands:
 
         # determine whether to expand the command into subcommands
         # if any of the following are true, continue expansion:
-        #   1. depth has not reached 0
-        #   2. collapse threshold has not been reached
-        #   3. only one subcommand to expand
-        # note that depth = 1 is useful here because we always want to expand at least one level of subcommands
-        if (depth > 0) or (population < self.state.collapse_threshold) or (len(children) < 2):
+        #   1. collapse threshold has not been reached
+        #   2. only one subcommand to expand
+        if (population < self.state.collapse_threshold) or (len(children) < 2):
             for child in children.values():
-                yield from self.command_lines_from_data(child, depth - 1)
+                yield from self.command_lines_from_data(child)
 
         # otherwise render a collapsed form
         else:
-            yield ' '.join((command, '...'))
+            yield collapsed
 
     def command_lines(self, version: str, command: str):
-        data = self.data[version]
+        tokens = command.split()
+
+        # at least get past the root node
+        data = self.data[version]['children'][tokens[0]]
 
         # recursively position ourselves at the deepest subcommand that matches the given input
-        for t in command.split():
+        for token in command.split():
             try:
-                data = data['children'][t]
+                data = data['children'][token]
             except:
                 break
 
@@ -129,24 +131,28 @@ class MinecraftCommands:
                 else:
                     raise ValueError()
             except:
-                message = 'Unable to get version {} info for command: {}'.format(version, command)
-                log.info(message)
+                log.exception('Unable to get version {} info for command: {}'.format(version, command))
                 continue
 
-        # if all versions rendered just 1 command, don't put newlines between them
-        # otherwise, if at least one version render multiple commands, make some space between versions
-        compact = not tuple(len(para) > 1 for para in paras).count(True)
-        para_sep = '\n' if compact else '\n\n'
-        code_section = '```python\n{}\n```'.format(para_sep.join('\n'.join(line for line in para) for para in paras))
+        if paras:
+            # if all versions rendered just 1 command, don't put newlines between them
+            # otherwise, if at least one version render multiple commands, make some space between versions
+            compact = not tuple(len(para) > 1 for para in paras).count(True)
+            para_sep = '\n' if compact else '\n\n'
+            code_section = '```python\n{}\n```'.format(para_sep.join('\n'.join(line for line in para) for para in paras))
 
-        # render the help url, if enabled
-        help_url = self.state.help_url
-        help_section = '<{}{}>'.format(help_url, command.split(maxsplit=1)[0]) if help_url else None
+            # render the help url, if enabled
+            help_url = self.state.help_url
+            help_section = '<{}{}>'.format(help_url, command.split(maxsplit=1)[0]) if help_url else None
 
-        # leave out blank sections
-        message = '\n'.join(section for section in (code_section, help_section) if section is not None)
+            # leave out blank sections
+            message = '\n'.join(section for section in (code_section, help_section) if section is not None)
 
-        await self.bot.send_message(ctx.message.channel, message)
+            await self.bot.send_message(ctx.message.channel, message)
+
+        # otherwise, let the user know the command couldn't be processed
+        else:
+            await self.bot.add_reaction(ctx.message, u'🤷')
 
     async def reload(self, ctx: Context = None):
         self.data = {}
