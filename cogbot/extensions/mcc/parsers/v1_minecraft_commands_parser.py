@@ -52,10 +52,12 @@ class V1MinecraftCommandsParser(MinecraftCommandsParser):
         # build collapsed form
         collapsed = collapsed_t = None
         if my_children:
-            collapsed = ' '.join((
-                my_command, '|'.join((child['argument'] for child in my_children.values())), '...'))
-            collapsed_t = ' '.join((
-                my_command_t, '|'.join((child['argument_t'] for child in my_children.values())), '...'))
+            collapsed = ' '.join((my_command, '|'.join((child['argument'] for child in my_children.values()))))
+            collapsed_t = ' '.join((my_command_t, '|'.join((child['argument_t'] for child in my_children.values()))))
+            # look for at least one grandchild before appending `...`
+            if next((True for child in my_children.values() if child.get('children')), False):
+                collapsed += ' ...'
+                collapsed_t += ' ...'
 
         # compile and return result
         result = {
