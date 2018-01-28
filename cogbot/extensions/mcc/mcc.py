@@ -6,13 +6,20 @@ import re
 import shlex
 
 from discord.ext import commands
-from discord.ext.commands import Context
+from discord.ext.commands import CommandError, Context
 
 from cogbot import checks
 from cogbot.cog_bot import CogBot
 from cogbot.extensions.mcc.parsers.v1_minecraft_commands_parser import V1MinecraftCommandsParser
 
 log = logging.getLogger(__name__)
+
+argparser = argparse.ArgumentParser('mcc', add_help=False)
+argparser.add_argument('-e', '--explode', action='store_true', help='whether to render all subcommands')
+argparser.add_argument('-v', '--version', action='append', help='use a particular version for the command')
+argparser.add_argument('command', nargs='+', help='the command to query')
+
+mcc_help = ''.join(('>', argparser.format_usage().split(maxsplit=1)[1]))
 
 
 class MinecraftCommandsState:
@@ -74,13 +81,6 @@ class MinecraftCommands:
             # v1: for all 1.13 snapshots so far (18w01a to 18w03b)
             'v1': V1MinecraftCommandsParser()
         }
-
-        # setup an argument parser for optional arguments
-        # TODO show argparser help on command help
-        self.argparser = argparse.ArgumentParser()
-        self.argparser.add_argument('-e', '--explode', action='store_true', help='whether to render all subcommands')
-        self.argparser.add_argument('-v', '--version', action='append', help='use a particular version for the command')
-        self.argparser.add_argument('command', nargs=argparse.REMAINDER, help='the command to query')
 
     async def on_ready(self):
         await self.reload()
@@ -238,7 +238,7 @@ class MinecraftCommands:
         except:
             await self.bot.react_failure(ctx)
 
-    @commands.command(pass_context=True, name='mcc')
+    @commands.command(pass_context=True, name='mcc', help=mcc_help)
     async def cmd_mcc(self, ctx: Context, *, command: str):
         await self.mcc(ctx, command)
 
