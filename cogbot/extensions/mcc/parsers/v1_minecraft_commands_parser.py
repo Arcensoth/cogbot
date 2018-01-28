@@ -27,12 +27,12 @@ class V1MinecraftCommandsParser(MinecraftCommandsParser):
 
         if redirect:
             # redirect is a list and there may be multiple
-            args = (*args, '->', '|'.join(redirect), '...')
+            args = (*args, '->', '|'.join(redirect))
             relevant = True
 
         # special case for `execute run`
         if not (executable or redirect or children):
-            args = (*args, '->', '...')
+            args = (*args, '...')
             relevant = True
 
         # build command
