@@ -100,13 +100,15 @@ class MinecraftCommands:
             yield collapsed
 
     def command_lines(self, version: str, command: str):
+        data = self.data[version]
+
         tokens = command.split()
 
-        # at least get past the root node
-        data = self.data[version]['children'][tokens[0]]
+        # make sure we can at least get past the root node
+        dummy = data['children'][tokens[0]]
 
         # recursively position ourselves at the deepest subcommand that matches the given input
-        for token in command.split():
+        for token in tokens:
             try:
                 data = data['children'][token]
             except:
