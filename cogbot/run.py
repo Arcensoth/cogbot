@@ -82,12 +82,7 @@ arg_parser.add_argument('--log', help='Log level', default='WARNING')
 arg_parser.add_argument('--state', help='Bot state file', default='bot.json')
 args = arg_parser.parse_args()
 
-try:
-    import loggy
-
-    loggy.install(level=args.log)
-except:
-    logging.basicConfig(level=args.log)
+logging.basicConfig(level=args.log)
 
 log.info('Hello!')
 run()

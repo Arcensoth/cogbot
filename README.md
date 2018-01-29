@@ -9,9 +9,6 @@ You can [run a bot](#running-a-bot) without writing any code. All you need are t
 * [Python](https://www.python.org/) 3.6+
 * [discord.py](https://github.com/Rapptz/discord.py) and [its dependencies](https://github.com/Rapptz/discord.py#requirements)
 
-### Optional
-* [loggy](https://github.com/Arcensoth/loggy) for pretty logs
-
 ## Running a bot
 This is an example script that runs a bot using the state file `bot.json`. You can copy and run it, replacing arguments as necessary, but you will need to replace `token` with **your own bot token**.
 
