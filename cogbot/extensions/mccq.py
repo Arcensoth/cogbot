@@ -13,7 +13,7 @@ from mccq.mccq import MCCQ
 log = logging.getLogger(__name__)
 
 
-class MinecraftCommandsState:
+class MCCQExtensionState:
     DEFAULT_VERSIONS_STORAGE = './versions'
 
     def __init__(self, **options):
@@ -41,10 +41,10 @@ class MinecraftCommandsState:
             log.warning('Overriding versions to show: {}'.format(', '.join(self.show_versions)))
 
 
-class MinecraftCommands:
+class MCCQExtension:
     def __init__(self, bot: CogBot, ext: str):
         self.bot = bot
-        self.state = MinecraftCommandsState(**bot.state.get_extension_state(ext))
+        self.state = MCCQExtensionState(**bot.state.get_extension_state(ext))
         self.mccq = MCCQ(
             versions_storage=self.state.versions_storage,
             versions_definition=self.state.versions,
@@ -119,15 +119,15 @@ class MinecraftCommands:
 
         await self.bot.react_success(ctx)
 
-    @commands.command(pass_context=True, name='mcc', help=mccq_argparser.ARGPARSER.format_help())
+    @commands.command(pass_context=True, name='mccq', aliases=['mcc'], help=mccq_argparser.ARGPARSER.format_help())
     async def cmd_mcc(self, ctx: Context, *, command: str):
         await self.mcc(ctx, command)
 
     @checks.is_manager()
-    @commands.command(pass_context=True, name='mccreload', hidden=True)
+    @commands.command(pass_context=True, name='mccqreload', aliases=['mccreload'], hidden=True)
     async def cmd_mccreload(self, ctx):
         await self.mccreload(ctx)
 
 
 def setup(bot):
-    bot.add_cog(MinecraftCommands(bot, __name__))
+    bot.add_cog(MCCQExtension(bot, __name__))
