@@ -13,7 +13,7 @@
     "cogbot.extensions.mccq"
   ],
   "extension_state": {
-    "cogbot.extensions.mcc": {
+    "cogbot.extensions.mccq": {
       "help_url": "https://minecraft.gamepedia.com/Commands/",
       "versions": {
         "18w01a": {
