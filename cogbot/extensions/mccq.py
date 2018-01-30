@@ -21,7 +21,7 @@ class MCCQExtensionState:
         # generated data root for <version> looks something like `./versions/<version>/generated/`
         # invoke this command on the server jar to generate data:
         # java -cp minecraft_server.<version>.jar net.minecraft.data.Main --all
-        self.versions_storage = options.pop('version_storage', self.DEFAULT_VERSIONS_STORAGE)
+        self.versions_storage = options.pop('versions_storage', self.DEFAULT_VERSIONS_STORAGE)
 
         # versions definitions, such as which data parser to use
         self.versions = options.pop('versions', {})
