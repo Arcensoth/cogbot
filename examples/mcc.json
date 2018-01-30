@@ -27,11 +27,6 @@
           "parser": "v1"
         }
       },
-      "load_versions": [
-        "18w03b",
-        "18w02a",
-        "18w01a"
-      ],
       "show_versions": [
         "18w03b"
       ]
