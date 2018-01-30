@@ -39,7 +39,7 @@ class CogBot(commands.Bot):
             try:
                 self.load_extension(ext)
             except Exception as e:
-                log.warning(f'Failed to load extension {ext} because: {e.__class__.__name__}: {e}')
+                log.exception(f'Failed to load extension {ext}')
         log.info(f'Finished loading extensions')
 
     def unload_extensions(self, *extensions):
@@ -49,7 +49,7 @@ class CogBot(commands.Bot):
             try:
                 self.unload_extension(ext)
             except Exception as e:
-                log.warning(f'Failed to unload extension {ext} because: {e.__class__.__name__}: {e}')
+                log.exception(f'Failed to unload extension {ext}')
         log.info(f'Finished unloading extensions')
 
     def force_logout(self):
