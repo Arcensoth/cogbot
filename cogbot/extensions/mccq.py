@@ -116,7 +116,14 @@ class MCCQExtension:
         # leave out blank sections
         message = '\n'.join(section for section in (code_section, help_section) if section is not None)
 
-        await self.bot.send_message(ctx.message.channel, message)
+        # sometimes the message is too big to send
+        try:
+            await self.bot.send_message(ctx.message.channel, message)
+        except:
+            num_results = sum(len(lines) for lines in results.values())
+            log.exception('Something went wrong while trying to respond with {} results ({} characters)'.format(
+                num_results, len(message)))
+            await self.bot.add_reaction(ctx.message, u'😬')
 
     async def reload(self):
         self.mccq.reload(self.state.versions)
