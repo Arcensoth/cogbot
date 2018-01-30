@@ -1,13 +1,14 @@
 import logging
 
+import os
 from discord.ext import commands
 from discord.ext.commands import Context
 
 from cogbot import checks
 from cogbot.cog_bot import CogBot
+from mccq import argparser as mccq_argparser
 from mccq import errors as mccq_errors
-from mccq.cli import argparser as mccq_argparser
-from mccq.cli import utils as mccq_cli_utils
+from mccq import utils as mccq_utils
 from mccq.mccq import MCCQ
 
 log = logging.getLogger(__name__)
@@ -23,11 +24,19 @@ class MCCQExtensionState:
         # java -cp minecraft_server.<version>.jar net.minecraft.data.Main --all
         self.versions_storage = options.pop('versions_storage', self.DEFAULT_VERSIONS_STORAGE)
 
+        # make sure the storage folder exists
+        if not os.path.isdir(self.versions_storage):
+            raise ValueError('Missing or invalid versions storage folder: {}'.format(
+                os.path.abspath(self.versions_storage)))
+
         # versions definitions, such as which data parser to use
         self.versions = options.pop('versions', {})
 
         # versions to render in the output; should all be defined
         self.show_versions = set(options.pop('show_versions', ()))
+
+        if not self.versions:
+            raise ValueError('At least one version must be defined')
 
         # base http url to append root commands and provide a help link
         # compiled as `<help_url><command>` so make sure to include a trailing slash if necessary
@@ -39,6 +48,10 @@ class MCCQExtensionState:
             log.warning('Cannot show versions that have not been defined: {}'.format(', '.join(show_not_defined)))
             self.show_versions -= show_not_defined
             log.warning('Overriding versions to show: {}'.format(', '.join(self.show_versions)))
+
+        # warn if there are no versions to show
+        if not self.show_versions:
+            log.warning('None of the configured versions can be shown: {}'.format(', '.join(show_not_defined)))
 
 
 class MCCQExtension:
@@ -54,7 +67,7 @@ class MCCQExtension:
     async def mcc(self, ctx: Context, command: str):
         try:
             # get a copy of the parsed arguments so we can tell the user about them
-            arguments = mccq_cli_utils.parse_mccq_arguments(command)
+            arguments = mccq_utils.parse_mccq_arguments(command)
             results = self.mccq.results_from_arguments(arguments)
 
         except mccq_errors.ArgumentParserFailedMCCQError:
