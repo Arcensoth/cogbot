@@ -10,8 +10,7 @@
     "cogbot.extensions.react",
     "cogbot.extensions.about",
     "cogbot.extensions.vote",
-    "cogbot.extensions.mcc",
-    "cogbot.extensions.mcc12"
+    "cogbot.extensions.mccq"
   ],
   "extension_state": {
     "cogbot.extensions.mcc": {
