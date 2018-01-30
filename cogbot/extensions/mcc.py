@@ -91,7 +91,7 @@ class MinecraftCommands:
         # otherwise, if all versions rendered just 1 command, render one line per version (compact)
         else:
             command_text = '\n'.join(
-                '{}  # {}'.format(lines[0], version) for version, lines in results.items())
+                '{}  # {}'.format(lines[0], version) for version, lines in results.items() if lines)
 
         # render the full code section
         code_section = '```python\n{}\n```'.format(command_text)
