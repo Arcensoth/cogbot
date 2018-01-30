@@ -41,6 +41,23 @@
           "minecraft": "https://minecraft.net/en-us/feeds/community-content/rss"
         }
       }
+    },
+    "cogbot.extensions.mccq": {
+      "help_url": "https://minecraft.gamepedia.com/Commands/",
+      "versions": {
+        "18w01a": {
+          "parser": "v1"
+        },
+        "18w02a": {
+          "parser": "v1"
+        },
+        "18w03b": {
+          "parser": "v1"
+        }
+      },
+      "show_versions": [
+        "18w03b"
+      ]
     }
   }
 }
