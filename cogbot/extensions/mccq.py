@@ -80,11 +80,6 @@ class MCCQExtension:
             await self.bot.add_reaction(ctx.message, u'🤐')
             return
 
-        except mccq_errors.NoSuchCommandMCCQError:
-            log.info('No such command: {}'.format(command))
-            await self.bot.add_reaction(ctx.message, u'🤔')
-            return
-
         except:
             log.exception('An unexpected error occurred while processing the command: {}'.format(command))
             await self.bot.add_reaction(ctx.message, u'🤯')
