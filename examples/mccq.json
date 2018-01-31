@@ -1,15 +1,9 @@
 {
-  "description": "A bot with extensions for MinecraftCommands.",
+  "description": "A bot with nothing but the mccq extension.",
   "managers": [
     "135616361157099520"
   ],
   "extensions": [
-    "cogbot.extensions.ext",
-    "cogbot.extensions.ping",
-    "cogbot.extensions.say",
-    "cogbot.extensions.react",
-    "cogbot.extensions.about",
-    "cogbot.extensions.vote",
     "cogbot.extensions.mccq"
   ],
   "extension_state": {
