@@ -11,6 +11,12 @@
       "help_url": "https://minecraft.gamepedia.com/Commands/{command}",
       "database": "https://raw.githubusercontent.com/Arcensoth/mcdata",
       "versions": {
+        "18w01a": {
+          "parser": "v1"
+        },
+        "18w02a": {
+          "parser": "v1"
+        },
         "18w03b": {
           "parser": "v1"
         },
