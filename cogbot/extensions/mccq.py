@@ -1,6 +1,5 @@
 import logging
 
-import os
 from discord.ext import commands
 from discord.ext.commands import Context
 
@@ -15,38 +14,37 @@ log = logging.getLogger(__name__)
 
 
 class MCCQExtensionState:
-    DEFAULT_VERSIONS_STORAGE = './versions'
-
     def __init__(self, **options):
-        # system path where server-generated data is located
-        # generated data root for <version> looks something like `./versions/<version>/generated/`
-        # invoke this command on the server jar to generate data:
-        # java -cp minecraft_server.<version>.jar net.minecraft.data.Main --all
-        self.versions_storage = options.pop('versions_storage', self.DEFAULT_VERSIONS_STORAGE)
+        # REQUIRED
+        # path to server-generated data, structured like:
+        # `<database>/<version>/generated/reports/commands.json`
+        # can be a local filesystem folder or an internet url
+        self.database = options['database']
 
-        # make sure the storage folder exists
-        if not os.path.isdir(self.versions_storage):
-            raise ValueError('Missing or invalid versions storage folder: {}'.format(
-                os.path.abspath(self.versions_storage)))
+        # make sure a database is defined
+        if not self.database:
+            raise ValueError('A versions database location must be defined')
 
+        # REQUIRED
         # versions definitions, such as which data parser to use
-        self.versions = options.pop('versions', {})
+        self.versions = options['versions']
 
-        # versions to render in the output; should all be defined
-        self.show_versions = set(options.pop('show_versions', ()))
-
+        # make sure at least one version is defined
         if not self.versions:
             raise ValueError('At least one version must be defined')
 
-        # base http url to append root commands and provide a help link
-        # compiled as `<help_url><command>` so make sure to include a trailing slash if necessary
+        # versions to render in the output; should all be defined
+        self.show_versions = options.get('show_versions', [])
+
+        # url format to provide a help link, if any
+        # the placeholder `{command}` will be replaced by the base command
         self.help_url = options.pop('help_url', None)
 
         # can't show versions that haven't been defined
-        show_not_defined = self.show_versions - set(self.versions)
+        show_not_defined = set(self.show_versions) - set(self.versions)
         if show_not_defined:
             log.warning('Cannot show versions that have not been defined: {}'.format(', '.join(show_not_defined)))
-            self.show_versions -= show_not_defined
+            self.show_versions = [v for v in self.show_versions if (v not in show_not_defined)]
             log.warning('Overriding versions to show: {}'.format(', '.join(self.show_versions)))
 
         # warn if there are no versions to show
@@ -59,8 +57,8 @@ class MCCQExtension:
         self.bot = bot
         self.state = MCCQExtensionState(**bot.state.get_extension_state(ext))
         self.mccq = MCCQ(
-            versions_storage=self.state.versions_storage,
-            versions_definition=self.state.versions,
+            database=self.state.database,
+            versions=self.state.versions,
             show_versions=self.state.show_versions,
         )
 
@@ -125,7 +123,7 @@ class MCCQExtension:
 
     async def mccreload(self, ctx: Context):
         try:
-            self.reload()
+            await self.reload()
 
         except:
             log.exception('An unexpected error occurred while reloading commands')
