@@ -180,17 +180,17 @@ class Groups:
         if ctx.invoked_subcommand is None:
             await self.list_groups(ctx)
 
-    @checks.is_moderator()
+    @checks.is_manager()
     @cmd_groups.command(pass_context=True, name='add', hidden=True)
     async def cmd_groups_add(self, ctx: Context, *groups):
         await self.add_groups(ctx, *groups)
 
-    @checks.is_moderator()
+    @checks.is_manager()
     @cmd_groups.command(pass_context=True, name='remove', hidden=True)
     async def cmd_groups_remove(self, ctx: Context, *groups):
         await self.remove_groups(ctx, *groups)
 
-    @checks.is_moderator()
+    @checks.is_manager()
     @cmd_groups.command(pass_context=True, name='members', hidden=True)
     async def cmd_groups_members(self, ctx: Context, group: str):
         await self.list_group_members(ctx, group)
