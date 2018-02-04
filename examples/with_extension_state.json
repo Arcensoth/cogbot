@@ -1,6 +1,6 @@
 {
   "description": "A bot with extension-specific configuration.",
-  "manager_ids": [
+  "managers": [
     "135616361157099520"
   ],
   "staff_roles": [

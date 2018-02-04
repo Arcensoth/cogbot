@@ -31,10 +31,10 @@ class About:
     async def make_about_message(self):
         parts = [self.config.description]
 
-        if self.bot.state.manager_ids:
+        if self.bot.state.managers:
             managers = []
 
-            for manager in self.bot.state.manager_ids:
+            for manager in self.bot.state.managers:
                 try:
                     manager_user = await self.bot.get_user_info(manager)
                     manager_mention = manager_user.mention

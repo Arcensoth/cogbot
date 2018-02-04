@@ -1,6 +1,6 @@
 {
   "description": "A bot with nothing but the mccq extension.",
-  "manager_ids": [
+  "managers": [
     "135616361157099520"
   ],
   "staff_roles": [

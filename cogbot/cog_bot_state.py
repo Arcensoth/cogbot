@@ -19,7 +19,7 @@ class CogBotState:
         # Optional
         self.command_prefix = raw_state.pop('command_prefix', '>')
         self.description = raw_state.pop('description', '')
-        self.manager_ids = set(raw_state.pop('manager_ids', ()))
+        self.managers = set(raw_state.pop('managers', ()))
         self.staff_roles = set(raw_state.pop('staff_roles', ()))
         self.restart_delay = raw_state.pop('restart_delay', 10)
         self.hide_help = raw_state.pop('hide_help', False)

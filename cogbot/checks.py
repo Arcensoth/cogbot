@@ -3,7 +3,7 @@ from discord.ext.commands import Context
 
 
 def is_manager_check(ctx: Context):
-    return ctx.message.author.id in ctx.bot.state.manager_ids
+    return ctx.message.author.id in ctx.bot.state.managers
 
 
 def is_manager():

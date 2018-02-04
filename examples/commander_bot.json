@@ -1,6 +1,6 @@
 {
   "description": "The /r/MinecraftCommands personal assistant.",
-  "manager_ids": [
+  "managers": [
     "135616361157099520"
   ],
   "staff_roles": [
