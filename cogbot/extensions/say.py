@@ -1,17 +1,20 @@
-from cogbot import checks
 from discord.ext import commands
-from discord.ext.commands import Context, Bot
+from discord.ext.commands import Context
+
+from cogbot import checks
+from cogbot.cog_bot import CogBot
 
 
 class Say:
     def __init__(self, bot):
-        self.bot: Bot = bot
+        self.bot: CogBot = bot
 
     @checks.is_manager()
     @commands.command(pass_context=True)
-    async def say(self, ctx: Context, *, message: str):
-        await self.bot.delete_message(ctx.message)
-        await self.bot.say(message)
+    async def say(self, ctx: Context, channel_id, *, message: str):
+        channel = self.bot.get_channel(channel_id)
+        await self.bot.send_message(channel, message)
+        await self.bot.react_success(ctx)
 
 
 def setup(bot):
