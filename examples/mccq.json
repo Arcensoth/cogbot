@@ -1,7 +1,10 @@
 {
   "description": "A bot with nothing but the mccq extension.",
-  "managers": [
+  "manager_ids": [
     "135616361157099520"
+  ],
+  "staff_roles": [
+    "409808531865337866"
   ],
   "extensions": [
     "cogbot.extensions.mccq"
