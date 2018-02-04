@@ -9,7 +9,7 @@ class Say:
     def __init__(self, bot):
         self.bot: CogBot = bot
 
-    @checks.is_manager()
+    @checks.is_staff()
     @commands.command(pass_context=True)
     async def say(self, ctx: Context, channel_id, *, message: str):
         channel = self.bot.get_channel(channel_id)

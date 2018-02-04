@@ -9,7 +9,7 @@ class React:
     def __init__(self, bot):
         self.bot: CogBot = bot
 
-    @checks.is_manager()
+    @checks.is_staff()
     @commands.command(pass_context=True)
     async def react(self, ctx: Context, channel_id, message_id, *emojis):
         channel = self.bot.get_channel(channel_id)
