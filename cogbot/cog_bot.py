@@ -70,11 +70,16 @@ class CogBot(commands.Bot):
                 await self.send_message(dest, content)
 
     async def on_message(self, message):
-        if (message.author != self.user) \
-                and message.server is not None \
-                and message.content.startswith(self.command_prefix):
-            log.info(f'[{message.server}/{message.author}] {message.content}')
-            await super().on_message(message)
+        if (message.author != self.user) and message.content.startswith(self.command_prefix):
+            # listen to anyone on public channels
+            if message.server:
+                log.info(f'[{message.server}/{message.author}] {message.content}')
+                await super().on_message(message)
+
+            # listen only to managers on private (dm) channels
+            elif message.author.id in self.state.managers:
+                log.info(f'[{message.author}] {message.content}')
+                await super().on_message(message)
 
     async def on_command_error(self, e: CommandError, ctx: Context):
         log.warning(f'[{ctx.message.server}/{ctx.message.author}] {e.__class__.__name__}: {e.args[0]}')
