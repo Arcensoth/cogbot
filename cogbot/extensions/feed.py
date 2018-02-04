@@ -151,7 +151,7 @@ class Feed:
             for name, sub in subs.items():
                 await self._update_feed(channel, name)
 
-    @checks.is_moderator()
+    @checks.is_manager()
     @commands.group(pass_context=True, name='feed')
     async def cmd_feed(self, ctx: Context):
         if ctx.invoked_subcommand is None:
