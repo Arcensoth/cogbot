@@ -61,8 +61,7 @@ def run():
         except Exception as ex:
             last_death = ex
 
-            log.critical(f'Encountered a fatal exception: {ex}')
-            traceback.print_tb(ex.__traceback__)
+            log.exception('Encountered a fatal exception')
 
             log.warning('Attempting clean logout...')
             _attempt_logout(loop, bot)
