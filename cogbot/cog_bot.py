@@ -77,7 +77,7 @@ class CogBot(commands.Bot):
                 await super().on_message(message)
 
             # listen only to managers on private (dm) channels
-            elif message.author.id in self.state.managers:
+            elif message.author.id in self.state.manager_ids:
                 log.info(f'[{message.author}] {message.content}')
                 await super().on_message(message)
 

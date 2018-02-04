@@ -47,7 +47,7 @@ def run():
         bot = CogBot(state=state, loop=loop)
 
         if last_death:
-            for manager in state.managers:
+            for manager in state.manager_ids:
                 message = f'Hello! I\'ve just recovered from a fatal crash caused by: `{last_death}`'
                 bot.queue_message(bot.get_user_info, manager, message)
 
