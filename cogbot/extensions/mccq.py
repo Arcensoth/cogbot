@@ -104,7 +104,7 @@ class MCCQExtension:
 
         # render the help url, if enabled
         help_url = self.state.help_url
-        help_section = '<{}{}>'.format(help_url, arguments.command[0]) if help_url else None
+        help_section = ''.join(('<', help_url.format(command=arguments.command[0]), '>')) if help_url else None
 
         # leave out blank sections
         message = '\n'.join(section for section in (code_section, help_section) if section is not None)
