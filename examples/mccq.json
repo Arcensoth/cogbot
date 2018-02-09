@@ -25,10 +25,13 @@
         },
         "18w05a": {
           "parser": "v1"
+        },
+        "18w06a": {
+          "parser": "v1"
         }
       },
       "show_versions": [
-        "18w05a"
+        "18w06a"
       ]
     }
   }
