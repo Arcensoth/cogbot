@@ -23,15 +23,16 @@
       "cooldown_per": 60,
       "server_groups": {
         "154777837382008833": [
-          "NBT",
-          "Text-components",
-          "Structures",
-          "Loot-tables",
           "Add-ons",
-          "Resource-packs",
-          "Models",
+          "Advancements",
           "Game-code",
-          "Advancements"
+          "Loot-tables",
+          "Models",
+          "NBT",
+          "Resource-packs",
+          "Structures",
+          "Text-components",
+          "Recipes"
         ]
       }
     },
@@ -56,10 +57,16 @@
         },
         "18w03b": {
           "parser": "v1"
+        },
+        "18w05a": {
+          "parser": "v1"
+        },
+        "18w06a": {
+          "parser": "v1"
         }
       },
       "show_versions": [
-        "18w03b"
+        "18w06a"
       ]
     }
   }
