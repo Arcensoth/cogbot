@@ -62,7 +62,10 @@ class Feed:
         for channel_id, v in raw_subscriptions.items():
             channel = self.bot.get_channel(channel_id)
             for name, url in v.items():
-                self._add_feed(channel, name, url)
+                try:
+                    self._add_feed(channel, name, url)
+                except:
+                    log.exception(f'Failed to add initial feed "{name}" at: {url}')
 
         # Start the polling task.
         self.polling_task = self.bot.loop.create_task(self._loop_poll())
@@ -107,9 +110,12 @@ class Feed:
         subs = self.subscriptions.get(channel.id)
 
         if name not in subs:
-            self._add_feed(channel, name, url)
-            await self.bot.react_success(ctx)
-
+            try:
+                self._add_feed(channel, name, url)
+                await self.bot.react_success(ctx)
+            except:
+                log.exception(f'Failed to add new feed "{name}" at: {url}')
+                await self.bot.react_failure(ctx)
         else:
             await self.bot.react_neutral(ctx)
 
