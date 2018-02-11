@@ -12,8 +12,9 @@ log = logging.getLogger(__name__)
 
 
 class GroupsConfig:
-    DEFAULT_COOLDOWN_RATE = 5
-    DEFAULT_COOLDOWN_PER = 60
+    # default to effectively no limit
+    DEFAULT_COOLDOWN_RATE = 100
+    DEFAULT_COOLDOWN_PER = 1
 
     def __init__(self, **options):
         self.cooldown_rate = options.pop('cooldown_rate', self.DEFAULT_COOLDOWN_RATE)

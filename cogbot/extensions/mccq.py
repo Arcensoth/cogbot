@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 
 class MCCQExtensionState:
     # default to effectively no limit
-    DEFAULT_COOLDOWN_RATE = 1000
+    DEFAULT_COOLDOWN_RATE = 100
     DEFAULT_COOLDOWN_PER = 1
 
     def __init__(self, **options):
