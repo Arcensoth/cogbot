@@ -23,7 +23,7 @@
   "extension_state": {
     "cogbot.extensions.groups": {
       "cooldown_rate": 10,
-      "cooldown_per": 60,
+      "cooldown_per": 600,
       "server_groups": {
         "154777837382008833": [
           "Add-ons",
@@ -50,6 +50,8 @@
       }
     },
     "cogbot.extensions.mccq": {
+      "cooldown_rate": 10,
+      "cooldown_per": 600,
       "help_url": "https://minecraft.gamepedia.com/Commands/",
       "versions": {
         "18w01a": {
