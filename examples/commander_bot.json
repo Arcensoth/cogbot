@@ -17,6 +17,7 @@
     "cogbot.extensions.react",
     "cogbot.extensions.say",
     "cogbot.extensions.vote",
+    "cogbot.extensions.mcc12",
     "cogbot.extensions.mccq"
   ],
   "extension_state": {
