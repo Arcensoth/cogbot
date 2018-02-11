@@ -14,6 +14,10 @@ log = logging.getLogger(__name__)
 
 
 class MCCQExtensionState:
+    # default to effectively no limit
+    DEFAULT_COOLDOWN_RATE = 1000
+    DEFAULT_COOLDOWN_PER = 1
+
     def __init__(self, **options):
         # REQUIRED
         # path to server-generated data, structured like:
@@ -38,7 +42,7 @@ class MCCQExtensionState:
 
         # url format to provide a help link, if any
         # the placeholder `{command}` will be replaced by the base command
-        self.help_url = options.pop('help_url', None)
+        self.help_url = options.get('help_url', None)
 
         # can't show versions that haven't been defined
         show_not_defined = set(self.show_versions) - set(self.versions)
@@ -51,6 +55,10 @@ class MCCQExtensionState:
         if not self.show_versions:
             log.warning('None of the configured versions can be shown: {}'.format(', '.join(show_not_defined)))
 
+        # rate limiting
+        self.cooldown_rate = options.get('cooldown_rate', self.DEFAULT_COOLDOWN_RATE)
+        self.cooldown_per = options.get('cooldown_per', self.DEFAULT_COOLDOWN_PER)
+
 
 class MCCQExtension:
     def __init__(self, bot: CogBot, ext: str):
@@ -61,6 +69,10 @@ class MCCQExtension:
             versions=self.state.versions,
             show_versions=self.state.show_versions,
         )
+
+        # TODO fix hack
+        self.cmd_mcc._buckets._cooldown.rate = self.state.cooldown_rate
+        self.cmd_mcc._buckets._cooldown.per = self.state.cooldown_per
 
     async def mcc(self, ctx: Context, command: str):
         try:
@@ -132,6 +144,8 @@ class MCCQExtension:
 
         await self.bot.react_success(ctx)
 
+    @commands.cooldown(
+        MCCQExtensionState.DEFAULT_COOLDOWN_RATE, MCCQExtensionState.DEFAULT_COOLDOWN_PER, commands.BucketType.user)
     @commands.command(pass_context=True, name='mccq', aliases=['mcc'], help=mccq_argparser.ARGPARSER.format_help())
     async def cmd_mcc(self, ctx: Context, *, command: str):
         await self.mcc(ctx, command)
