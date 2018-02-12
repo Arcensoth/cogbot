@@ -12,10 +12,20 @@
   "extension_state": {
     "cogbot.extensions.feed": {
       "polling_interval": 300,
-      "feed_recency": 86400,
       "subscriptions": {
         "406542594823290892": {
-          "subreddit": "https://www.reddit.com/r/MinecraftCommands/new/.rss"
+          "subreddit": {
+            "url": "https://www.reddit.com/r/MinecraftCommands/new/.rss",
+            "recency": 86400
+          },
+          "arqade": {
+            "url": "https://gaming.stackexchange.com/feeds/tag/minecraft-commands",
+            "recency": 86400
+          },
+          "minecraft": {
+            "url": "https://minecraft.net/en-us/feeds/community-content/rss",
+            "recency": 604800
+          }
         }
       }
     }

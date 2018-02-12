@@ -41,12 +41,20 @@
     },
     "cogbot.extensions.feed": {
       "polling_interval": 300,
-      "feed_recency": 86400,
       "subscriptions": {
         "247818621005332480": {
-          "subreddit": "https://www.reddit.com/r/MinecraftCommands/new/.rss",
-          "arqade": "https://gaming.stackexchange.com/feeds/tag/minecraft-commands",
-          "minecraft": "https://minecraft.net/en-us/feeds/community-content/rss"
+          "subreddit": {
+            "url": "https://www.reddit.com/r/MinecraftCommands/new/.rss",
+            "recency": 3600
+          },
+          "arqade": {
+            "url": "https://gaming.stackexchange.com/feeds/tag/minecraft-commands",
+            "recency": 3600
+          },
+          "minecraft": {
+            "url": "https://minecraft.net/en-us/feeds/community-content/rss",
+            "recency": 86400
+          }
         }
       }
     },

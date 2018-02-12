@@ -20,11 +20,12 @@ def struct_time_to_datetime(ts: time.struct_time) -> datetime.datetime:
 
 
 class FeedSubscription:
-    DEFAULT_LAST_TIMESTAMP = datetime.datetime.now()
-
-    def __init__(self, url: str, last_datetime: datetime.datetime = DEFAULT_LAST_TIMESTAMP):
+    def __init__(self, name: str, url: str, recency: int = 0):
+        self.name = name
         self.url = url
-        self.last_datetime = last_datetime
+        self.recency = recency
+
+        self.last_datetime = datetime.datetime.now() - datetime.timedelta(seconds=self.recency)
 
     def update(self):
         try:
@@ -52,7 +53,6 @@ class FeedSubscription:
 
 class Feed:
     DEFAULT_POLLING_INTERVAL = 60
-    DEFAULT_FEED_RECENCY = 0
 
     def __init__(self, bot: CogBot, ext: str):
         self.bot = bot
@@ -60,7 +60,6 @@ class Feed:
         self.options = bot.state.get_extension_state(ext)
 
         self.polling_interval: int = self.options.get('polling_interval', self.DEFAULT_POLLING_INTERVAL)
-        self.feed_recency: int = self.options.get('feed_recency', self.DEFAULT_FEED_RECENCY)
 
         # Access like so: self.subscriptions[channel_id][name]
         self.subscriptions: Dict[str, Dict[str, FeedSubscription]] = {}
@@ -70,15 +69,17 @@ class Feed:
     async def on_ready(self):
         # Initialize subscriptions.
 
-        raw_subscriptions: Dict[str, Dict[str, str]] = self.options.get('subscriptions', {})
+        raw_subscriptions = self.options.get('subscriptions', {})
 
         log.info(f'Initializing subscriptions for {len(raw_subscriptions)} channels...')
 
         for channel_id, v in raw_subscriptions.items():
             channel = self.bot.get_channel(channel_id)
-            for name, url in v.items():
+            for name, data in v.items():
+                url = data['url']
+                recency = data.get('recency')
                 try:
-                    self._add_feed(channel, name, url)
+                    self._add_feed(channel, name, url, recency)
                 except:
                     log.exception(f'Failed to add initial feed {name} at: {url}')
 
@@ -91,12 +92,8 @@ class Feed:
             await asyncio.sleep(self.polling_interval)
         log.info('Bot logged out, polling loop terminated')
 
-    def _add_feed(self, channel: Channel, name: str, url: str):
-        last_datetime = None
-        if self.feed_recency:
-            last_datetime = datetime.datetime.now() - datetime.timedelta(seconds=self.feed_recency)
-
-        sub = FeedSubscription(url, last_datetime)
+    def _add_feed(self, channel: Channel, name: str, url: str, recency: int = None):
+        sub = FeedSubscription(name, url, recency)
 
         if channel.id not in self.subscriptions:
             self.subscriptions[channel.id] = {}
@@ -124,13 +121,13 @@ class Feed:
             message = f'**{entry.title}**\n{entry.link}'
             await self.bot.send_message(channel, message)
 
-    async def add_feed(self, ctx: Context, name: str, url: str):
+    async def add_feed(self, ctx: Context, name: str, url: str, recency: int = None):
         channel = ctx.message.channel
         subs = self.subscriptions.get(channel.id)
 
         if name not in subs:
             try:
-                self._add_feed(channel, name, url)
+                self._add_feed(channel, name, url, recency)
                 await self.bot.react_success(ctx)
             except:
                 log.exception(f'Failed to add new feed {name} at: {url}')
@@ -183,8 +180,8 @@ class Feed:
             await self.list_feeds(ctx)
 
     @cmd_feed.command(pass_context=True, name='add')
-    async def cmd_feed_add(self, ctx: Context, name: str, url: str):
-        await self.add_feed(ctx, name, url)
+    async def cmd_feed_add(self, ctx: Context, name: str, url: str, recency: int = None):
+        await self.add_feed(ctx, name, url, recency)
 
     @cmd_feed.command(pass_context=True, name='remove')
     async def cmd_feed_remove(self, ctx: Context, name: str):
