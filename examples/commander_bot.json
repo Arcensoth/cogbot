@@ -40,7 +40,8 @@
       }
     },
     "cogbot.extensions.feed": {
-      "polling_interval": 30,
+      "polling_interval": 300,
+      "feed_recency": 86400,
       "subscriptions": {
         "247818621005332480": {
           "subreddit": "https://www.reddit.com/r/MinecraftCommands/new/.rss",
