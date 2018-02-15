@@ -77,10 +77,13 @@
         },
         "18w06a": {
           "parser": "v1"
+        },
+        "18w07a": {
+          "parser": "v1"
         }
       },
       "show_versions": [
-        "18w06a"
+        "18w07a"
       ]
     }
   }
