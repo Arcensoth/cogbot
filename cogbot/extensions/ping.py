@@ -9,6 +9,7 @@ class Ping:
     @commands.command(pass_context=True)
     async def ping(self, ctx: Context):
         await self.bot.say(f'{ctx.message.author.mention} Pong!')
+        await self.bot.add_reaction(ctx.message, u'🏓')
 
 
 def setup(bot):
