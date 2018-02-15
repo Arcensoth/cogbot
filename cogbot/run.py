@@ -26,13 +26,15 @@ def _attempt_logout(loop, bot):
 
         log.info('Cancelling leftover tasks...')
         gathered.cancel()
+
+        log.info('Allowing cancelled tasks to finish...')
         loop.run_until_complete(gathered)
         gathered.exception()
 
     except Exception as ex:
-        log.critical(f'Encountered an error while attempting to logout: {ex}')
-        traceback.print_tb(ex.__traceback__)
-        bot.force_logout()
+        log.exception('Encountered an error while attempting to logout')
+        log.critical('Terminating')
+        exit()
 
 
 def run():
@@ -42,7 +44,9 @@ def run():
 
     last_death = None
 
-    while True:
+    done = False
+
+    while not done:
         log.info('Starting bot...')
         bot = CogBot(state=state, loop=loop)
 
@@ -55,8 +59,9 @@ def run():
             loop.run_until_complete(bot.start(args.token))
 
         except KeyboardInterrupt:
+            log.info('Keyboard interrupt detected')
+            done = True
             _attempt_logout(loop, bot)
-            break
 
         except Exception as ex:
             last_death = ex
@@ -69,8 +74,9 @@ def run():
             log.warning(f'Restarting bot in {state.restart_delay} seconds...')
             time.sleep(state.restart_delay)
 
-    log.info('Closing loop...')
-    loop.close()
+        finally:
+            log.info('Closing loop...')
+            loop.close()
 
     log.info('Bot terminated')
 
