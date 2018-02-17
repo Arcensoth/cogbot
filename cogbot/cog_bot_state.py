@@ -17,14 +17,16 @@ class CogBotState:
                 raw_state = {}
 
         # Optional
-        self.command_prefix = raw_state.pop('command_prefix', '>')
-        self.description = raw_state.pop('description', '')
-        self.managers = set(raw_state.pop('managers', ()))
-        self.staff_roles = set(raw_state.pop('staff_roles', ()))
-        self.restart_delay = raw_state.pop('restart_delay', 10)
-        self.hide_help = raw_state.pop('hide_help', False)
-        self.extensions = raw_state.pop('extensions', [])
-        self.extension_state = raw_state.pop('extension_state', {})
+        self.command_prefix = raw_state.get('command_prefix', '>')
+        self.description = raw_state.get('description', '')
+        self.managers = set(raw_state.get('managers', ()))
+        self.staff_roles = set(raw_state.get('staff_roles', ()))
+        self.restart_delay = raw_state.get('restart_delay', 10)
+        self.hide_help = raw_state.get('hide_help', False)
+        self.react_to_command_cooldowns = raw_state.get('react_to_command_cooldowns', False)
+        self.react_to_unknown_commands = raw_state.get('react_to_unknown_commands', False)
+        self.extensions = raw_state.get('extensions', [])
+        self.extension_state = raw_state.get('extension_state', {})
 
         # Derived
         self.help_attrs = dict(name='_help', hidden=True) if self.hide_help else {}

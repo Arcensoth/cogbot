@@ -87,13 +87,15 @@ class CogBot(commands.Bot):
         error = e.original if isinstance(e, CommandInvokeError) else e
 
         if isinstance(error, CommandNotFound):
-            await self.react_question(ctx)
+            if self.state.react_to_unknown_commands:
+                await self.react_question(ctx)
 
         elif isinstance(error, CheckFailure):
             await self.react_denied(ctx)
 
         elif isinstance(error, CommandOnCooldown):
-            await self.react_cooldown(ctx)
+            if self.state.react_to_command_cooldowns:
+                await self.react_cooldown(ctx)
 
         # Keep this one last because some others subclass it.
         elif isinstance(error, CommandError):
