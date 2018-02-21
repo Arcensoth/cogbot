@@ -1,0 +1,71 @@
+{
+  "description": "beep boop",
+  "managers": [
+    "135616361157099520"
+  ],
+  "staff_roles": [
+    "409808531865337866"
+  ],
+  "extensions": [
+    "cogbot.extensions.ping",
+    "cogbot.extensions.mcc12",
+    "cogbot.extensions.mccq",
+    "cogbot.extensions.feed"
+  ],
+  "extension_state": {
+    "cogbot.extensions.feed": {
+      "polling_interval": 300,
+      "subscriptions": {
+        "247818621005332480": {
+          "subreddit": {
+            "url": "https://www.reddit.com/r/MinecraftCommands/new/.rss",
+            "recency": 3600
+          },
+          "arqade": {
+            "url": "https://gaming.stackexchange.com/feeds/tag/minecraft-commands",
+            "recency": 3600
+          },
+          "minecraft": {
+            "url": "https://minecraft.net/en-us/feeds/community-content/rss",
+            "recency": 86400
+          }
+        }
+      }
+    },
+    "cogbot.extensions.mccq": {
+      "cooldown_rate": 5,
+      "cooldown_per": 10,
+      "help_url": "https://minecraft.gamepedia.com/Commands/{command}",
+      "database": "https://raw.githubusercontent.com/Arcensoth/mcdata",
+      "versions": {
+        "18w01a": {
+          "parser": "v1"
+        },
+        "18w02a": {
+          "parser": "v1"
+        },
+        "18w03b": {
+          "parser": "v1"
+        },
+        "18w05a": {
+          "parser": "v1"
+        },
+        "18w06a": {
+          "parser": "v1"
+        },
+        "18w07b": {
+          "parser": "v1"
+        },
+        "18w07c": {
+          "parser": "v1"
+        },
+        "18w08a": {
+          "parser": "v1"
+        }
+      },
+      "show_versions": [
+        "18w08a"
+      ]
+    }
+  }
+}
