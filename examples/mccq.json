@@ -34,10 +34,16 @@
         },
         "18w07b": {
           "parser": "v1"
+        },
+        "18w07c": {
+          "parser": "v1"
+        },
+        "18w08a": {
+          "parser": "v1"
         }
       },
       "show_versions": [
-        "18w07b"
+        "18w08a"
       ]
     }
   }
