@@ -63,6 +63,8 @@ class MCCQExtension:
         try:
             # get a copy of the parsed arguments so we can tell the user about them
             arguments = QueryManager.parse_query_arguments(command)
+
+            # get the command results to render
             results = self.query_manager.results_from_arguments(arguments)
 
         except mccq.errors.ArgumentParserFailed:
@@ -99,9 +101,19 @@ class MCCQExtension:
         # render the full code section
         code_section = '```python\n{}\n```'.format(command_text)
 
-        # render the help url, if enabled
-        help_url = self.state.help_url
-        help_section = ''.join(('<', help_url.format(command=arguments.command[0]), '>')) if help_url else None
+        help_section = None
+
+        # don't bother with the help link unless it's been configured
+        if self.state.help_url:
+            base_commands = set()
+            for lines in results.values():
+                for line in lines:
+                    base_commands.add(line.split(maxsplit=1)[0])
+
+            # only post the help link if we can unambiguously determine the base command
+            base_command = tuple(base_commands)[0] if (len(base_commands) == 1) else None
+            if base_command:
+                help_section = ''.join(('<', self.state.help_url.format(command=base_command), '>'))
 
         # leave out blank sections
         message = '\n'.join(section for section in (code_section, help_section) if section is not None)
