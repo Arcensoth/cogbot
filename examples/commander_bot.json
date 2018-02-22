@@ -53,42 +53,24 @@
           },
           "minecraft": {
             "url": "https://minecraft.net/en-us/feeds/community-content/rss",
-            "recency": 86400
+            "recency": 3600
           }
         }
       }
     },
     "cogbot.extensions.mccq": {
-      "cooldown_rate": 10,
-      "cooldown_per": 600,
-      "help_url": "https://minecraft.gamepedia.com/Commands/",
-      "versions": {
-        "18w01a": {
-          "parser": "v1"
-        },
-        "18w02a": {
-          "parser": "v1"
-        },
-        "18w03b": {
-          "parser": "v1"
-        },
-        "18w05a": {
-          "parser": "v1"
-        },
-        "18w06a": {
-          "parser": "v1"
-        },
-        "18w07b": {
-          "parser": "v1"
-        },
-        "18w07c": {
-          "parser": "v1"
-        },
-        "18w08a": {
-          "parser": "v1"
-        }
-      },
-      "show_versions": [
+      "cooldown_rate": 5,
+      "cooldown_per": 10,
+      "help_url": "https://minecraft.gamepedia.com/Commands/{command}",
+      "database": "https://raw.githubusercontent.com/Arcensoth/mcdata",
+      "version_whitelist": [
+        "18w01a",
+        "18w02a",
+        "18w03b",
+        "18w05a",
+        "18w06a",
+        "18w07b",
+        "18w07c",
         "18w08a"
       ]
     }

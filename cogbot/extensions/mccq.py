@@ -1,14 +1,12 @@
 import logging
-
+import mccq.errors
 from discord.ext import commands
 from discord.ext.commands import Context
+from mccq.query_manager import QueryManager
+from mccq.version_database import VersionDatabase
 
 from cogbot import checks
 from cogbot.cog_bot import CogBot
-from mccq import argparser as mccq_argparser
-from mccq import errors as mccq_errors
-from mccq import utils as mccq_utils
-from mccq.mccq import MCCQ
 
 log = logging.getLogger(__name__)
 
@@ -29,31 +27,18 @@ class MCCQExtensionState:
         if not self.database:
             raise ValueError('A versions database location must be defined')
 
-        # REQUIRED
-        # versions definitions, such as which data parser to use
-        self.versions = options['versions']
+        # version whitelist, disabled if empty
+        self.version_whitelist = tuple(options.get('version_whitelist', []))
 
-        # make sure at least one version is defined
-        if not self.versions:
-            raise ValueError('At least one version must be defined')
+        last_version = self.version_whitelist[-1] if self.version_whitelist else None
 
-        # versions to render in the output; should all be defined
-        self.show_versions = options.get('show_versions', [])
+        # versions to render in the output by default
+        # if not specified, defaults to the last whitelist entry
+        self.show_versions = tuple(options.get('show_versions', [last_version] if last_version else ()))
 
         # url format to provide a help link, if any
         # the placeholder `{command}` will be replaced by the base command
         self.help_url = options.get('help_url', None)
-
-        # can't show versions that haven't been defined
-        show_not_defined = set(self.show_versions) - set(self.versions)
-        if show_not_defined:
-            log.warning('Cannot show versions that have not been defined: {}'.format(', '.join(show_not_defined)))
-            self.show_versions = [v for v in self.show_versions if (v not in show_not_defined)]
-            log.warning('Overriding versions to show: {}'.format(', '.join(self.show_versions)))
-
-        # warn if there are no versions to show
-        if not self.show_versions:
-            log.warning('None of the configured versions can be shown: {}'.format(', '.join(show_not_defined)))
 
         # rate limiting
         self.cooldown_rate = options.get('cooldown_rate', self.DEFAULT_COOLDOWN_RATE)
@@ -64,11 +49,11 @@ class MCCQExtension:
     def __init__(self, bot: CogBot, ext: str):
         self.bot = bot
         self.state = MCCQExtensionState(**bot.state.get_extension_state(ext))
-        self.mccq = MCCQ(
-            database=self.state.database,
-            versions=self.state.versions,
-            show_versions=self.state.show_versions,
-        )
+        self.query_manager = QueryManager(
+            database=VersionDatabase(
+                uri=self.state.database,
+                whitelist=self.state.version_whitelist),
+            show_versions=self.state.show_versions)
 
         # TODO fix hack
         self.cmd_mcc._buckets._cooldown.rate = self.state.cooldown_rate
@@ -77,15 +62,15 @@ class MCCQExtension:
     async def mcc(self, ctx: Context, command: str):
         try:
             # get a copy of the parsed arguments so we can tell the user about them
-            arguments = mccq_utils.parse_mccq_arguments(command)
-            results = self.mccq.results_from_arguments(arguments)
+            arguments = QueryManager.parse_query_arguments(command)
+            results = self.query_manager.results_from_arguments(arguments)
 
-        except mccq_errors.ArgumentParserFailedMCCQError:
+        except mccq.errors.ArgumentParserFailed:
             log.info('Failed to parse arguments for the command: {}'.format(command))
             await self.bot.add_reaction(ctx.message, u'🤢')
             return
 
-        except mccq_errors.NoVersionsAvailableMCCQError:
+        except mccq.errors.NoVersionsAvailable:
             log.info('No versions available for the command: {}'.format(command))
             await self.bot.add_reaction(ctx.message, u'🤐')
             return
@@ -131,7 +116,7 @@ class MCCQExtension:
             await self.bot.add_reaction(ctx.message, u'😬')
 
     async def reload(self):
-        self.mccq.reload(self.state.versions)
+        self.query_manager.reload(self.state.version_whitelist)
 
     async def mccreload(self, ctx: Context):
         try:
@@ -146,7 +131,7 @@ class MCCQExtension:
 
     @commands.cooldown(
         MCCQExtensionState.DEFAULT_COOLDOWN_RATE, MCCQExtensionState.DEFAULT_COOLDOWN_PER, commands.BucketType.user)
-    @commands.command(pass_context=True, name='mccq', aliases=['mcc'], help=mccq_argparser.ARGPARSER.format_help())
+    @commands.command(pass_context=True, name='mccq', aliases=['mcc'], help=QueryManager.ARGUMENT_PARSER.format_help())
     async def cmd_mcc(self, ctx: Context, *, command: str):
         await self.mcc(ctx, command)
 

@@ -16,32 +16,6 @@
       "cooldown_per": 10,
       "help_url": "https://minecraft.gamepedia.com/Commands/{command}",
       "database": "https://raw.githubusercontent.com/Arcensoth/mcdata",
-      "versions": {
-        "18w01a": {
-          "parser": "v1"
-        },
-        "18w02a": {
-          "parser": "v1"
-        },
-        "18w03b": {
-          "parser": "v1"
-        },
-        "18w05a": {
-          "parser": "v1"
-        },
-        "18w06a": {
-          "parser": "v1"
-        },
-        "18w07b": {
-          "parser": "v1"
-        },
-        "18w07c": {
-          "parser": "v1"
-        },
-        "18w08a": {
-          "parser": "v1"
-        }
-      },
       "show_versions": [
         "18w08a"
       ]
