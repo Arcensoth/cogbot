@@ -1,12 +1,48 @@
 import argparse
+import logging.config
+
+# parse args and setup logging before anything else
+
+arg_parser = argparse.ArgumentParser()
+arg_parser.add_argument('token')
+arg_parser.add_argument('--log', help='Log level', default='WARNING')
+arg_parser.add_argument('--state', help='Bot state file', default='bot.json')
+args = arg_parser.parse_args()
+
+# attempt to use colorlog, if available
+try:
+    import colorlog
+    import sys
+
+    formatter = colorlog.ColoredFormatter(
+        fmt='%(log_color)s%(asctime)s [%(name)s/%(levelname)s] %(message)s%(reset)s',
+        log_colors={
+            'DEBUG': 'blue',
+            'INFO': 'green',
+            'WARNING': 'yellow',
+            'ERROR': 'red',
+            'CRITICAL': 'white,bg_red',
+        }
+    )
+
+    handler = colorlog.StreamHandler(sys.stdout)
+    handler.setFormatter(formatter)
+    logging.root.addHandler(handler)
+    logging.root.setLevel(args.log)
+
+# otherwise just stick with basic logging
+except:
+    logging.basicConfig(
+        level=args.log,
+        format='%(asctime)s [%(name)s/%(levelname)s] %(message)s')
+
+log = logging.getLogger(__name__)
+
 import asyncio
-import logging
 import time
 
 from cogbot.cog_bot import CogBot
 from cogbot.cog_bot_state import CogBotState
-
-log = logging.getLogger(__name__)
 
 
 # TODO Consider switching to the library rewrite: https://github.com/Rapptz/discord.py/tree/rewrite
@@ -16,7 +52,7 @@ log = logging.getLogger(__name__)
 
 def _attempt_logout(loop, bot):
     try:
-        log.info('Logging out...')
+        log.warning('Attempting clean logout...')
         loop.run_until_complete(bot.logout())
 
         log.info('Gathering leftover tasks...')
@@ -73,10 +109,7 @@ def run():
 
         except Exception as ex:
             last_death = ex
-
             log.exception('Encountered a fatal exception')
-
-            log.warning('Attempting clean logout...')
             _attempt_logout(loop, bot)
 
         log.info('Closing event loop...')
@@ -91,16 +124,8 @@ def run():
     log.info('Closing event loop for good...')
     loop.close()
 
-    log.info('Bot terminated')
+    log.warning('Bot successfully terminated')
 
-
-arg_parser = argparse.ArgumentParser()
-arg_parser.add_argument('token')
-arg_parser.add_argument('--log', help='Log level', default='WARNING')
-arg_parser.add_argument('--state', help='Bot state file', default='bot.json')
-args = arg_parser.parse_args()
-
-logging.basicConfig(level=args.log)
 
 log.info('Hello!')
 run()
