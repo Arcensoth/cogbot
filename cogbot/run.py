@@ -2,7 +2,6 @@ import argparse
 import asyncio
 import logging
 import time
-import traceback
 
 from cogbot.cog_bot import CogBot
 from cogbot.cog_bot_state import CogBotState
@@ -33,7 +32,7 @@ def _attempt_logout(loop, bot):
 
     except Exception as ex:
         log.exception('Encountered an error while attempting to logout')
-        log.critical('Terminating')
+        log.critical('Forcibly terminating with system exit')
         exit()
 
 
@@ -44,9 +43,7 @@ def run():
 
     last_death = None
 
-    done = False
-
-    while not done:
+    while True:
         log.info('Starting bot...')
         bot = CogBot(state=state, loop=loop)
 
@@ -60,8 +57,8 @@ def run():
 
         except KeyboardInterrupt:
             log.info('Keyboard interrupt detected')
-            done = True
             _attempt_logout(loop, bot)
+            break
 
         except Exception as ex:
             last_death = ex
@@ -74,9 +71,14 @@ def run():
             log.warning(f'Restarting bot in {state.restart_delay} seconds...')
             time.sleep(state.restart_delay)
 
-        finally:
-            log.info('Closing loop...')
-            loop.close()
+        log.info('Closing event loop...')
+        loop.close()
+
+        log.info('Opening a new event loop...')
+        loop = asyncio.new_event_loop()
+
+    log.info('Closing event loop for good...')
+    loop.close()
 
     log.info('Bot terminated')
 
