@@ -51,9 +51,15 @@ def run():
 
         if last_death and state.managers:
             log.warning(f'Notifying {len(state.managers)} managers of crash recovery...')
-            reason = last_death.__name__
+
+            try:
+                reason = last_death.__name__
+            except:
+                reason = None
+
             message = 'Hello! I\'ve just recovered from a fatal crash caused by'
             message += f': `{reason}`' if reason else ' an unknown error.'
+
             for manager in state.managers:
                 bot.queue_message(bot.get_user_info, manager, message)
 
