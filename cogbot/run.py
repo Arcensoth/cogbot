@@ -27,8 +27,10 @@ def _attempt_logout(loop, bot):
         gathered.cancel()
 
         log.info('Allowing cancelled tasks to finish...')
-        loop.run_until_complete(gathered)
-        gathered.exception()
+        try:
+            loop.run_until_complete(gathered)
+        except:
+            pass
 
     except Exception as ex:
         log.exception('Encountered an error while attempting to logout')
@@ -41,15 +43,18 @@ def run():
 
     loop = asyncio.get_event_loop()
 
-    last_death = None
+    last_death: type = None
 
     while True:
         log.info('Starting bot...')
         bot = CogBot(state=state, loop=loop)
 
-        if last_death:
+        if last_death and state.managers:
+            log.warning(f'Notifying {len(state.managers)} managers of crash recovery...')
+            reason = last_death.__name__
+            message = 'Hello! I\'ve just recovered from a fatal crash caused by'
+            message += f': `{reason}`' if reason else ' an unknown error.'
             for manager in state.managers:
-                message = f'Hello! I\'ve just recovered from a fatal crash caused by: `{last_death}`'
                 bot.queue_message(bot.get_user_info, manager, message)
 
         try:
@@ -68,11 +73,11 @@ def run():
             log.warning('Attempting clean logout...')
             _attempt_logout(loop, bot)
 
-            log.warning(f'Restarting bot in {state.restart_delay} seconds...')
-            time.sleep(state.restart_delay)
-
         log.info('Closing event loop...')
         loop.close()
+
+        log.warning(f'Restarting bot in {state.restart_delay} seconds...')
+        time.sleep(state.restart_delay)
 
         log.info('Opening a new event loop...')
         loop = asyncio.new_event_loop()
