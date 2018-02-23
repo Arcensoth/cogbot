@@ -40,6 +40,9 @@ class MCCQExtensionState:
         # the placeholder `{command}` will be replaced by the base command
         self.help_url = options.get('help_url', None)
 
+        # max lines of results, useful to prevent potential chat spam
+        self.max_results = options.get('max_results', None)
+
         # rate limiting
         self.cooldown_rate = options.get('cooldown_rate', self.DEFAULT_COOLDOWN_RATE)
         self.cooldown_per = options.get('cooldown_per', self.DEFAULT_COOLDOWN_PER)
@@ -65,7 +68,23 @@ class MCCQExtension:
             arguments = QueryManager.parse_query_arguments(command)
 
             # get the command results to render
-            results = self.query_manager.results_from_arguments(arguments)
+            full_results = self.query_manager.results_from_arguments(arguments)
+            num_full_results = sum(len(lines) for lines in full_results.values())
+
+            # trim results, if enabled
+            results = full_results
+            num_trimmed_results = 0
+            if self.state.max_results and (num_full_results > self.state.max_results):
+                num_trimmed_results = num_full_results - self.state.max_results
+                results = {}
+                num_results = 0
+                for version, lines in full_results.items():
+                    results[version] = []
+                    for line in lines:
+                        results[version].append(line)
+                        num_results += 1
+                        if num_results == self.state.max_results:
+                            break
 
         except mccq.errors.ArgumentParserFailed:
             log.info('Failed to parse arguments for the command: {}'.format(command))
@@ -91,12 +110,16 @@ class MCCQExtension:
         # if any version produced more than one command, render one paragraph per version
         if next((True for lines in results.values() if len(lines) > 1), False):
             paragraphs = ('\n'.join(('# {}'.format(version), *lines)) for version, lines in results.items())
-            command_text = '\n\n'.join(paragraphs)
+            command_text = '\n'.join(paragraphs)
 
         # otherwise, if all versions rendered just 1 command, render one line per version (compact)
         else:
             command_text = '\n'.join(
                 '{}  # {}'.format(lines[0], version) for version, lines in results.items() if lines)
+
+        # if results were trimmed, make note of them
+        if num_trimmed_results:
+            command_text += '\n# ... trimmed {} results'.format(num_trimmed_results)
 
         # render the full code section
         code_section = '```python\n{}\n```'.format(command_text)
@@ -122,9 +145,9 @@ class MCCQExtension:
         try:
             await self.bot.send_message(ctx.message.channel, message)
         except:
-            num_results = sum(len(lines) for lines in results.values())
+            num_full_results = sum(len(lines) for lines in results.values())
             log.exception('Something went wrong while trying to respond with {} results ({} characters)'.format(
-                num_results, len(message)))
+                num_full_results, len(message)))
             await self.bot.add_reaction(ctx.message, u'😬')
 
     async def reload(self):

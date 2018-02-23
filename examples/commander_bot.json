@@ -61,6 +61,7 @@
     "cogbot.extensions.mccq": {
       "cooldown_rate": 5,
       "cooldown_per": 10,
+      "max_results": 10,
       "help_url": "https://minecraft.gamepedia.com/Commands/{command}",
       "database": "https://raw.githubusercontent.com/Arcensoth/mcdata",
       "version_whitelist": [
