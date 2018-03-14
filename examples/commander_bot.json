@@ -44,16 +44,13 @@
       "subscriptions": {
         "247818621005332480": {
           "subreddit": {
-            "url": "https://www.reddit.com/r/MinecraftCommands/new/.rss",
-            "recency": 3600
+            "url": "https://www.reddit.com/r/MinecraftCommands/new/.rss"
           },
           "arqade": {
-            "url": "https://gaming.stackexchange.com/feeds/tag/minecraft-commands",
-            "recency": 3600
+            "url": "https://gaming.stackexchange.com/feeds/tag/minecraft-commands"
           },
           "minecraft": {
-            "url": "https://minecraft.net/en-us/feeds/community-content/rss",
-            "recency": 3600
+            "url": "https://minecraft.net/en-us/feeds/community-content/rss"
           }
         }
       }
