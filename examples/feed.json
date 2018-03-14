@@ -11,12 +11,12 @@
   ],
   "extension_state": {
     "cogbot.extensions.feed": {
-      "polling_interval": 300,
+      "polling_interval": 10,
       "subscriptions": {
         "406542594823290892": {
           "lorem": {
-            "url": "http://lorem-rss.herokuapp.com/feed?unit=second&interval=300",
-            "recency": 60
+            "url": "http://lorem-rss.herokuapp.com/feed?unit=second&interval=10",
+            "recency": 30
           }
         }
       }
