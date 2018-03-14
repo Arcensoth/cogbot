@@ -8,6 +8,8 @@
   ],
   "extensions": [
     "cogbot.extensions.ping",
+    "cogbot.extensions.say",
+    "cogbot.extensions.react",
     "cogbot.extensions.mcc12",
     "cogbot.extensions.mccq",
     "cogbot.extensions.feed"
@@ -46,7 +48,13 @@
         "18w06a",
         "18w07b",
         "18w07c",
-        "18w08a"
+        "18w08a",
+        "18w08b",
+    	"18w09a",
+   	    "18w10a",
+	    "18w10b",
+	    "18w10d",
+	    "18w11a"
       ]
     }
   }
