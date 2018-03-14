@@ -1,22 +1,17 @@
 import asyncio
-import logging
-import datetime
-import time
-from typing import Dict
-
 import feedparser
+import logging
+from datetime import datetime, timedelta, timezone
+from dateutil.parser import parse as dateutil_parse
 from discord import Channel
 from discord.ext import commands
 from discord.ext.commands import Context
+from typing import Dict
 
 from cogbot import checks
 from cogbot.cog_bot import CogBot
 
 log = logging.getLogger(__name__)
-
-
-def struct_time_to_datetime(ts: time.struct_time) -> datetime.datetime:
-    return datetime.datetime.fromtimestamp(time.mktime(ts))
 
 
 class FeedSubscription:
@@ -25,19 +20,22 @@ class FeedSubscription:
         self.url = url
         self.recency = recency
 
-        self.last_datetime = datetime.datetime.now() - datetime.timedelta(seconds=self.recency)
+        self.last_datetime = datetime.now(timezone.utc)
+
+        if self.recency:
+            self.last_datetime -= timedelta(seconds=self.recency)
 
     def update(self):
         try:
             data = feedparser.parse(self.url)
-            channel_datetime = struct_time_to_datetime(data.feed.updated_parsed)
+            channel_datetime = dateutil_parse(data.feed.updated).astimezone(timezone.utc)
             num_updates = 0
 
             # Only bother checking entries if the feed has been updated.
             if channel_datetime > self.last_datetime:
                 for entry in data.entries:
-                    # Try first for the published timestamp, then for the updated timestamp.
-                    entry_datetime = struct_time_to_datetime(entry.get('published_parsed', entry.updated_parsed))
+                    # Try first for the published datetime, then for the updated datetime.
+                    entry_datetime = dateutil_parse(entry.get('published', entry.updated))
                     # Yield the entry only if it has been updated since our last update.
                     if entry_datetime > self.last_datetime:
                         num_updates += 1
