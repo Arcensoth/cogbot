@@ -9,13 +9,15 @@ arg_parser.add_argument('--log', help='Log level', default='WARNING')
 arg_parser.add_argument('--state', help='Bot state file', default='bot.json')
 args = arg_parser.parse_args()
 
+LOG_FMT = '%(asctime)s P#%(process)d T#%(thread)d [%(name)s/%(levelname)s] %(message)s'
+
 # attempt to use colorlog, if available
 try:
     import colorlog
     import sys
 
     formatter = colorlog.ColoredFormatter(
-        fmt='%(log_color)s%(asctime)s [%(name)s/%(levelname)s] %(message)s%(reset)s',
+        fmt='%(log_color)s' + LOG_FMT + '%(reset)s',
         log_colors={
             'DEBUG': 'blue',
             'INFO': 'green',
@@ -34,7 +36,7 @@ try:
 except:
     logging.basicConfig(
         level=args.log,
-        format='%(asctime)s [%(name)s/%(levelname)s] %(message)s')
+        format=LOG_FMT)
 
 log = logging.getLogger(__name__)
 
