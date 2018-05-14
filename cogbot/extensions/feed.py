@@ -67,6 +67,9 @@ class Feed:
     async def on_ready(self):
         # Initialize subscriptions.
 
+        # Clear any existing subscriptions.
+        self.subscriptions = {}
+
         raw_subscriptions = self.options.get('subscriptions', {})
 
         log.info(f'Initializing subscriptions for {len(raw_subscriptions)} channels...')
@@ -91,6 +94,12 @@ class Feed:
         log.info('Bot logged out, polling loop terminated')
 
     def _add_feed(self, channel: Channel, name: str, url: str, recency: int = None):
+        # Don't add the same subscription more than once.
+        for sub in self.subscriptions.get(channel.id, ()):
+            if url == sub.url:
+                log.warning(f'[{channel.server.name}#{channel.name}] Tried to subscribe to feed {name} more than once at: {sub.url}')
+                return
+
         sub = FeedSubscription(name, url, recency)
 
         if channel.id not in self.subscriptions:
