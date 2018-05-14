@@ -19,7 +19,8 @@ These are the generic configuration options available for bots. They may be defi
 | description                   | str   | `''`      | A description of the bot, displayed by the help command.
 | managers                      | list  | `[]`      | A list of user ids who are allowed to manage the bot.
 | staff_roles                   | list  | `[]`      | A list of role ids that should be given elevated access (admins, moderators, etc).
-| restart_delay                 | float | `10`      | The number of seconds until the bot will restart after crashing.
+| recovery_delay                | float | `10`      | The number of seconds until the bot will attempt to recover after crashing.
+| notify_on_recovery            | bool  | `True`    | Whether to notify managers after the bot recovers from a crash.
 | hide_help                     | bool  | `False`   | Whether the built-in help command should be hidden.
 | react_to_command_cooldowns    | bool  | `False`   | Whether to send a reaction to the user when they are being rate limited.
 | react_to_unknown_commands     | bool  | `False`   | Whether to send a reaction to the user when they enter an unknown command.

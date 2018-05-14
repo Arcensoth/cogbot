@@ -87,7 +87,7 @@ def run():
         log.info('Starting bot...')
         bot = CogBot(state=state, loop=loop)
 
-        if last_death and state.managers:
+        if last_death and state.notify_on_recovery and state.managers:
             log.warning(f'Notifying {len(state.managers)} managers of crash recovery...')
 
             try:
@@ -117,8 +117,8 @@ def run():
         log.info('Closing event loop...')
         loop.close()
 
-        log.warning(f'Restarting bot in {state.restart_delay} seconds...')
-        time.sleep(state.restart_delay)
+        log.warning(f'Restarting bot in {state.recovery_delay} seconds...')
+        time.sleep(state.recovery_delay)
 
         log.info('Opening a new event loop...')
         loop = asyncio.new_event_loop()
