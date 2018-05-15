@@ -95,10 +95,12 @@ class Feed:
 
     def _add_feed(self, channel: Channel, name: str, url: str, recency: int = None):
         # Don't add the same subscription more than once.
-        for sub in self.subscriptions.get(channel.id, ()):
-            if url == sub.url:
+        try:
+            if name in self.subscriptions[channel.id]:
                 log.warning(f'[{channel.server.name}#{channel.name}] Tried to subscribe to feed {name} more than once at: {sub.url}')
                 return
+        except:
+            pass
 
         sub = FeedSubscription(name, url, recency)
 
