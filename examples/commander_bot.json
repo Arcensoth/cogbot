@@ -1,5 +1,6 @@
 {
   "description": "The /r/MinecraftCommands personal assistant.",
+  "notify_on_recovery": false,
   "managers": [
     "135616361157099520",
     "127163300348821504",
@@ -61,15 +62,8 @@
       "max_results": 10,
       "help_url": "https://minecraft.gamepedia.com/Commands/{command}",
       "database": "https://raw.githubusercontent.com/Arcensoth/mcdata",
-      "version_whitelist": [
-        "18w01a",
-        "18w02a",
-        "18w03b",
-        "18w05a",
-        "18w06a",
-        "18w07b",
-        "18w07c",
-        "18w08a"
+      "show_versions": [
+        "18w19b"
       ]
     }
   }
