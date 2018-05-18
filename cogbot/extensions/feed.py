@@ -84,8 +84,9 @@ class Feed:
                 except:
                     log.exception(f'Failed to add initial feed {name} at: {url}')
 
-        # Start the polling task.
-        self.polling_task = self.bot.loop.create_task(self._loop_poll())
+        # Start the polling task, if not already started.
+        if not self.polling_task:
+            self.polling_task = self.bot.loop.create_task(self._loop_poll())
 
     async def _loop_poll(self):
         while self.bot.is_logged_in:
