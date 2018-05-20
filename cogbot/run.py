@@ -9,7 +9,7 @@ arg_parser.add_argument('--log', help='Log level', default='WARNING')
 arg_parser.add_argument('--state', help='Bot state file', default='bot.json')
 args = arg_parser.parse_args()
 
-LOG_FMT = '%(asctime)s P#%(process)d T#%(thread)d [%(name)s/%(levelname)s] %(message)s'
+LOG_FMT = '%(asctime)s [%(name)s/%(levelname)s] %(message)s'
 
 # attempt to use colorlog, if available
 try:
