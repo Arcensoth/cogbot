@@ -70,7 +70,7 @@ def _attempt_logout(loop, bot):
         except:
             pass
 
-    except Exception as ex:
+    except:
         log.exception('Encountered an error while attempting to logout')
         log.critical('Forcibly terminating with system exit')
         exit()
@@ -112,6 +112,11 @@ def run():
         except Exception as ex:
             last_death = ex
             log.exception('Encountered a fatal exception')
+            _attempt_logout(loop, bot)
+
+        except:
+            last_death = None
+            log.exception('Encountered an unknown error')
             _attempt_logout(loop, bot)
 
         log.info('Closing event loop...')
