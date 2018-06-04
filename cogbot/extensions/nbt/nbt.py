@@ -21,19 +21,16 @@ class NBT:
     def __init__(self, bot):
         self.bot = bot
         self.available_schemas_message = \
-            'Available schemas (use `*` to skip):\n' + '```' + ', '.join(SCHEMAS.keys()) + '```'
+            'Available schemas:\n' + '```' + ', '.join(SCHEMAS.keys()) + '```'
         self.schema_messages = {
             schemastr: '```' + '\n'.join((f'{k}: {v.__name__}' for k, v in schema.schema.items())) + '```'
             for schemastr, schema in SCHEMAS.items()}
 
-    async def nbt(self, ctx: Context, schemastr: str, nbtstring: str):
+    async def nbt(self, ctx: Context, nbtstring: str, schemastr: str = None):
         try:
             nbtobj = nbtlib.parse_nbt(nbtstring)
 
-            if schemastr == '*':
-                pass
-
-            elif schemastr in SCHEMAS:
+            if schemastr in SCHEMAS:
                 schema = SCHEMAS[schemastr]
 
                 try:
@@ -44,7 +41,7 @@ class NBT:
                     await self.bot.send_message(ctx.message.channel, f'Invalid schema: {str(e)}')
                     return
 
-            else:
+            elif schemastr:
                 await self.bot.add_reaction(ctx.message, u'❓')
                 await self.bot.send_message(ctx.message.channel, f'Unknown schema `{schemastr}`')
                 return
@@ -61,8 +58,12 @@ class NBT:
 
     @commands.command(pass_context=True, name='nbt')
     async def cmd_nbt(self, ctx: Context, schema: str = None, *, nbtstring: str = None):
+        if schema.startswith('{'):
+            nbtstring = ' '.join((schema, nbtstring)) if nbtstring else schema
+            schema = None
+
         if nbtstring:
-            await self.nbt(ctx, schema, nbtstring)
+            await self.nbt(ctx, nbtstring, schema)
         elif schema:
             schema_message = self.schema_messages.get(schema)
             if not schema_message:
