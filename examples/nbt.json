@@ -1,0 +1,12 @@
+{
+  "description": "A bot with nothing but the NBT extension.",
+  "managers": [
+    "135616361157099520"
+  ],
+  "staff_roles": [
+    "409808531865337866"
+  ],
+  "extensions": [
+    "cogbot.extensions.nbt"
+  ]
+}
