@@ -1,3 +1,4 @@
+import difflib
 import logging
 
 import nbtlib
@@ -20,6 +21,10 @@ class ValidationCompoundSchema(nbtlib.CompoundSchema):
         schema_type = self.schema.get(key, None)
 
         if schema_type is None:
+            siblings = self.schema.keys()
+            match = difflib.get_close_matches(key, siblings, n=1, cutoff=0.5)
+            if match:
+                raise SchemaValidationError(f'Tag `{key}` does not exist on `{self.__class__.__name__}`, maybe you meant `{match[0]}`')
             raise SchemaValidationError(f'Tag `{key}` does not exist on `{self.__class__.__name__}`')
 
         try:
