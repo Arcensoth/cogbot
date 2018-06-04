@@ -27,7 +27,6 @@ class ValidationCompoundSchema(nbtlib.CompoundSchema):
         except SchemaValidationError as e:
             raise e
         except:
-            log.exception('')
             expected_value = None
 
         if value != expected_value:
@@ -38,11 +37,11 @@ class ValidationCompoundSchema(nbtlib.CompoundSchema):
             pass
 
         elif issubclass(schema_type, nbtlib.List):
-            for item in value:
-                if not isinstance(item, schema_type.subtype):
+            for subvalue in value:
+                if not (isinstance(subvalue, (nbtlib.Compound, nbtlib.List)) or isinstance(subvalue, schema_type.subtype)):
                     raise SchemaValidationError(
                         f'Tag `{key}` should contain only `{schema_type.subtype.__name__}`, '
-                        f'not `{item.__class__.__name__}`')
+                        f'not `{subvalue.__class__.__name__}`')
 
         elif not isinstance(value, schema_type):
             raise SchemaValidationError(
