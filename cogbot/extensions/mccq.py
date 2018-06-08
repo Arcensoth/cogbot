@@ -23,6 +23,12 @@ class MCCQExtensionState:
         # can be a local filesystem folder or an internet url
         self.database = options['database']
 
+        # path to the file containing nothing but the version of the generated files
+        self.version_file = options.get('version_file', 'VERSION.txt')
+
+        # labels to print instead of database keys
+        self.version_labels = options.get('version_labels', {})
+
         # make sure a database is defined
         if not self.database:
             raise ValueError('A versions database location must be defined')
@@ -55,12 +61,17 @@ class MCCQExtension:
         self.query_manager = QueryManager(
             database=VersionDatabase(
                 uri=self.state.database,
+                version_file=self.state.version_file,
                 whitelist=self.state.version_whitelist),
             show_versions=self.state.show_versions)
 
         # TODO fix hack
         self.cmd_mcc._buckets._cooldown.rate = self.state.cooldown_rate
         self.cmd_mcc._buckets._cooldown.per = self.state.cooldown_per
+
+    def get_version_label(self, version: str) -> str:
+        actual_version = self.query_manager.database.get_actual_version(version) or version
+        return self.state.version_labels.get(version, version).format(version=version, actual=actual_version)
 
     async def mcc(self, ctx: Context, command: str):
         try:
@@ -109,13 +120,13 @@ class MCCQExtension:
 
         # if any version produced more than one command, render one paragraph per version
         if next((True for lines in results.values() if len(lines) > 1), False):
-            paragraphs = ('\n'.join(('# {}'.format(version), *lines)) for version, lines in results.items())
+            paragraphs = ('\n'.join(('# {}'.format(self.get_version_label(version)), *lines)) for version, lines in results.items())
             command_text = '\n'.join(paragraphs)
 
         # otherwise, if all versions rendered just 1 command, render one line per version (compact)
         else:
             command_text = '\n'.join(
-                '{}  # {}'.format(lines[0], version) for version, lines in results.items() if lines)
+                '{}  # {}'.format(lines[0], self.get_version_label(version)) for version, lines in results.items() if lines)
 
         # if results were trimmed, make note of them
         if num_trimmed_results:
