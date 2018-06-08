@@ -63,8 +63,11 @@
       "help_url": "https://minecraft.gamepedia.com/Commands/{command}",
       "database": "https://raw.githubusercontent.com/Arcensoth/mcdata",
       "show_versions": [
-        "18w19b"
-      ]
+        "master"
+      ],
+      "version_labels": {
+        "master": "Latest ({actual})"
+      }
     }
   }
 }
