@@ -107,6 +107,11 @@ class MCCQExtension:
             await self.bot.add_reaction(ctx.message, u'🤐')
             return
 
+        except (mccq.errors.LoaderFailure, mccq.errors.ParserFailure):
+            log.info('Failed to load data for the command: {}'.format(command))
+            await self.bot.add_reaction(ctx.message, u'😔')
+            return
+
         except:
             log.exception('An unexpected error occurred while processing the command: {}'.format(command))
             await self.bot.add_reaction(ctx.message, u'🤯')
