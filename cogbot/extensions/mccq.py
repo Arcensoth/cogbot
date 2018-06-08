@@ -151,7 +151,7 @@ class MCCQExtension:
             await self.bot.add_reaction(ctx.message, u'😬')
 
     async def reload(self):
-        self.query_manager.reload(self.state.version_whitelist)
+        self.query_manager.reload()
 
     async def mccreload(self, ctx: Context):
         try:
