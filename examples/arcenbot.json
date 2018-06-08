@@ -12,27 +12,10 @@
     "cogbot.extensions.say",
     "cogbot.extensions.react",
     "cogbot.extensions.vote",
-    "cogbot.extensions.feed",
     "cogbot.extensions.mccq",
     "cogbot.extensions.nbt"
   ],
   "extension_state": {
-    "cogbot.extensions.feed": {
-      "polling_interval": 300,
-      "subscriptions": {
-        "247818621005332480": {
-          "subreddit": {
-            "url": "https://www.reddit.com/r/MinecraftCommands/new/.rss"
-          },
-          "arqade": {
-            "url": "https://gaming.stackexchange.com/feeds/tag/minecraft-commands"
-          },
-          "minecraft": {
-            "url": "https://minecraft.net/en-us/feeds/community-content/rss"
-          }
-        }
-      }
-    },
     "cogbot.extensions.mccq": {
       "cooldown_rate": 5,
       "cooldown_per": 10,
