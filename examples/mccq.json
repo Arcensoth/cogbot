@@ -7,7 +7,6 @@
     "409808531865337866"
   ],
   "extensions": [
-    "cogbot.extensions.mcc12",
     "cogbot.extensions.mccq"
   ],
   "extension_state": {
