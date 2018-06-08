@@ -19,6 +19,5 @@ area_effect_cloud = schema('entity.area_effect_cloud', {
     'RadiusOnUse': nbtlib.Float,
     'RadiusPerTick': nbtlib.Float,
     'ReapplicationDelay': nbtlib.Int,
-    'WaitTime': nbtlib.Int,
-    **entity.entity.schema
-})
+    'WaitTime': nbtlib.Int
+}, inherit=[entity.entity])

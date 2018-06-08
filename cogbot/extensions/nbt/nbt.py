@@ -23,7 +23,10 @@ class NBT:
         self.available_schemas_message = \
             'Available schemas:\n' + '```' + ', '.join(SCHEMAS.keys()) + '```'
         self.schema_messages = {
-            schemastr: '```' + '\n'.join((f'{k}: {v.__name__}' for k, v in schema.schema.items())) + '```'
+            schemastr: '```' + '\n'.join(
+                tuple(f'*Everything from: {p.__name__}' for p in schema.inherit)
+                + tuple(f'{k}: {v.__name__}' for k, v in schema.schema.items())
+            ) + '```'
             for schemastr, schema in SCHEMAS.items()}
 
     async def nbt(self, ctx: Context, nbtstring: str, schemastr: str = None):
@@ -57,10 +60,13 @@ class NBT:
             await self.bot.add_reaction(ctx.message, u'💩')
 
     @commands.command(pass_context=True, name='nbt')
-    async def cmd_nbt(self, ctx: Context, schema: str = None, *, nbtstring: str = None):
-        if schema.startswith('{'):
-            nbtstring = ' '.join((schema, nbtstring)) if nbtstring else schema
-            schema = None
+    async def cmd_nbt(self, ctx: Context, *, nbtstring: str = ''):
+        schema = None
+
+        if not nbtstring.startswith('{'):
+            tokens = nbtstring.split()
+            schema = tokens[0] if len(tokens) > 0 else None
+            nbtstring = tokens[1] if len(tokens) > 1 else None
 
         if nbtstring:
             await self.nbt(ctx, nbtstring, schema)

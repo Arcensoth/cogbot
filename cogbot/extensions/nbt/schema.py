@@ -10,22 +10,33 @@ class SchemaValidationError(TypeError):
     pass
 
 
-def schema(name, dct):
-    return type(name, (ValidationCompoundSchema,), {'__slots__': (), 'schema': dct})
+def schema(name, dct, inherit=()):
+    return type(name, (ValidationCompoundSchema,), {'__slots__': (), 'schema': dct, 'inherit': inherit})
 
 
 class ValidationCompoundSchema(nbtlib.CompoundSchema):
+    __slots__ = ()
+    inherit = {}
     strict = True
 
     def _cast(self, key, value):
         schema_type = self.schema.get(key, None)
 
+        if schema_type is None and self.inherit:
+            # check parents
+            for parent in self.inherit:
+                if key in parent.schema:
+                    schema_type = parent.schema.get(key)
+
         if schema_type is None:
+            # check siblings
             siblings = self.schema.keys()
             match = difflib.get_close_matches(key, siblings, n=1, cutoff=0.6)
             if match:
-                raise SchemaValidationError(f'Tag `{key}` does not exist on `{self.__class__.__name__}`, maybe you meant `{match[0]}`')
-            raise SchemaValidationError(f'Tag `{key}` does not exist on `{self.__class__.__name__}`')
+                raise SchemaValidationError(
+                    f'Tag `{key}` does not exist on `{self.__class__.__name__}`, maybe you meant `{match[0]}`')
+            raise SchemaValidationError(
+                f'Tag `{key}` does not exist on `{self.__class__.__name__}`')
 
         try:
             expected_value = schema_type(value)
@@ -43,7 +54,10 @@ class ValidationCompoundSchema(nbtlib.CompoundSchema):
 
         elif issubclass(schema_type, nbtlib.List):
             for subvalue in value:
-                if not (isinstance(subvalue, (nbtlib.Compound, nbtlib.List)) or isinstance(subvalue, schema_type.subtype)):
+                if not (
+                        isinstance(subvalue, (nbtlib.Compound, nbtlib.List))
+                        or isinstance(subvalue, schema_type.subtype)
+                ):
                     raise SchemaValidationError(
                         f'Tag `{key}` should contain only `{schema_type.subtype.__name__}`, '
                         f'not `{subvalue.__class__.__name__}`')
