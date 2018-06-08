@@ -13,7 +13,6 @@
     "cogbot.extensions.groups",
     "cogbot.extensions.about",
     "cogbot.extensions.ext",
-    "cogbot.extensions.feed",
     "cogbot.extensions.ping",
     "cogbot.extensions.react",
     "cogbot.extensions.say",
@@ -38,22 +37,6 @@
           "Text-components",
           "Recipes"
         ]
-      }
-    },
-    "cogbot.extensions.feed": {
-      "polling_interval": 300,
-      "subscriptions": {
-        "247818621005332480": {
-          "subreddit": {
-            "url": "https://www.reddit.com/r/MinecraftCommands/new/.rss"
-          },
-          "arqade": {
-            "url": "https://gaming.stackexchange.com/feeds/tag/minecraft-commands"
-          },
-          "minecraft": {
-            "url": "https://minecraft.net/en-us/feeds/community-content/rss"
-          }
-        }
       }
     },
     "cogbot.extensions.mccq": {
