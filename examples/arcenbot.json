@@ -1,5 +1,5 @@
 {
-  "description": "beep boop",
+  "description": "Arcensoth's personal assistant. beep",
   "managers": [
     "135616361157099520"
   ],
@@ -10,9 +10,9 @@
     "cogbot.extensions.ping",
     "cogbot.extensions.say",
     "cogbot.extensions.react",
-    "cogbot.extensions.mcc12",
+    "cogbot.extensions.feed",
     "cogbot.extensions.mccq",
-    "cogbot.extensions.feed"
+    "cogbot.extensions.nbt"
   ],
   "extension_state": {
     "cogbot.extensions.feed": {
