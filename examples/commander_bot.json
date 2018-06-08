@@ -49,7 +49,7 @@
         "master"
       ],
       "version_labels": {
-        "master": "Latest ({actual})"
+        "master": "{actual} (latest)"
       }
     }
   }
