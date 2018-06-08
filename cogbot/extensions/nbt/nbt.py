@@ -1,45 +1,38 @@
 import logging
 
-import nbtlib
 from discord.ext import commands
 from discord.ext.commands import Context
 
-from cogbot.extensions.nbt.schema import SchemaValidationError
-from . import schemas
+import nbtlib
+import nbtq.errors
+from nbtq import schemas
 
 log = logging.getLogger(__name__)
-
-SCHEMAS = {
-    'entity': schemas.entity.entity,
-    'entity.area_effect_cloud': schemas.entity.area_effect_cloud,
-    'aec': schemas.entity.area_effect_cloud,
-    'common.effect': schemas.common.effect,
-}
 
 
 class NBT:
     def __init__(self, bot):
         self.bot = bot
         self.available_schemas_message = \
-            'Available schemas:\n' + '```' + ', '.join(SCHEMAS.keys()) + '```'
+            'Available schemas:\n' + '```' + ', '.join(schemas.entities.MAP.keys()) + '```'
         self.schema_messages = {
             schemastr: '```' + '\n'.join(
                 tuple(f'*Everything from: {p.__name__}' for p in schema.inherit)
                 + tuple(f'{k}: {v.__name__}' for k, v in schema.schema.items())
             ) + '```'
-            for schemastr, schema in SCHEMAS.items()}
+            for schemastr, schema in schemas.entities.MAP.items()}
 
     async def nbt(self, ctx: Context, nbtstring: str, schemastr: str = None):
         try:
             nbtobj = nbtlib.parse_nbt(nbtstring)
 
-            if schemastr in SCHEMAS:
-                schema = SCHEMAS[schemastr]
+            if schemastr in schemas.entities.MAP:
+                schema = schemas.entities.MAP[schemastr]
 
                 try:
                     schema(nbtobj)
 
-                except SchemaValidationError as e:
+                except nbtq.errors.SchemaValidationError as e:
                     await self.bot.add_reaction(ctx.message, u'❌')
                     await self.bot.send_message(ctx.message.channel, f'Invalid schema: {str(e)}')
                     return

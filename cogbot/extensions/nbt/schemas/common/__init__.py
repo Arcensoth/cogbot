@@ -1,1 +1,0 @@
-from .effect import effect
