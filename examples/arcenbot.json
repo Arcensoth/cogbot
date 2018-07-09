@@ -9,6 +9,7 @@
   ],
   "extensions": [
     "cogbot.extensions.ping",
+    "cogbot.extensions.kick",
     "cogbot.extensions.say",
     "cogbot.extensions.react",
     "cogbot.extensions.vote",

@@ -10,6 +10,7 @@
     "409808531865337866"
   ],
   "extensions": [
+    "cogbot.extensions.kick",
     "cogbot.extensions.groups",
     "cogbot.extensions.about",
     "cogbot.extensions.ext",
