@@ -1,0 +1,13 @@
+{
+  "command_prefix": ">",
+  "description": "A bot that can't do anything but kick people.",
+  "managers": [
+    "135616361157099520"
+  ],
+  "staff_roles": [
+    "409808531865337866"
+  ],
+  "extensions": [
+    "cogbot.extensions.kick"
+  ]
+}
