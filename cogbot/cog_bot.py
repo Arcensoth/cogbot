@@ -91,7 +91,8 @@ class CogBot(commands.Bot):
                 await self.react_question(ctx)
 
         elif isinstance(error, CheckFailure):
-            await self.react_denied(ctx)
+            if self.state.react_to_check_failures:
+                await self.react_denied(ctx)
 
         elif isinstance(error, CommandOnCooldown):
             if self.state.react_to_command_cooldowns:

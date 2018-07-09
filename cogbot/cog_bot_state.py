@@ -25,6 +25,7 @@ class CogBotState:
         self.notify_on_recovery = raw_state.get('notify_on_recovery', True)
         self.hide_help = raw_state.get('hide_help', False)
         self.react_to_command_cooldowns = raw_state.get('react_to_command_cooldowns', False)
+        self.react_to_check_failures = raw_state.get('react_to_check_failures', False)
         self.react_to_unknown_commands = raw_state.get('react_to_unknown_commands', False)
         self.extensions = raw_state.get('extensions', [])
         self.extension_state = raw_state.get('extension_state', {})
