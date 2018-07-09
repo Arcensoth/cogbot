@@ -4,8 +4,7 @@ from discord.ext import commands
 from discord.ext.commands import Context
 
 import nbtlib
-import nbtq.errors
-from nbtq import schemas
+import cogbot.extensions.nbt.errors
 
 log = logging.getLogger(__name__)
 
@@ -32,7 +31,7 @@ class NBT:
                 try:
                     schema(nbtobj)
 
-                except nbtq.errors.SchemaValidationError as e:
+                except cogbot.extensions.nbt.errors.SchemaValidationError as e:
                     await self.bot.add_reaction(ctx.message, u'❌')
                     await self.bot.send_message(ctx.message.channel, f'Invalid schema: {str(e)}')
                     return

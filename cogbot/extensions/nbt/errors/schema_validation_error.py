@@ -1,0 +1,2 @@
+class SchemaValidationError(TypeError):
+    pass
