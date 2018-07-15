@@ -1,5 +1,6 @@
 import logging
 
+from discord import Channel
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands.errors import *
@@ -18,6 +19,9 @@ class CogBot(commands.Bot):
             **options)
 
         self.state = state
+
+        # Channel to log mod messages to.
+        self.mod_log_channel = None
 
         # A queue of messages to send after login.
         self.queued_messages = []
@@ -60,8 +64,21 @@ class CogBot(commands.Bot):
         reply = f'There was a problem with your command{place}: *{error.args[0]}*'
         await self.send_message(destination, reply)
 
+    async def mod_log(self, ctx: Context, content: str, destination: Channel = None):
+        await self.send_message(
+            destination or self.mod_log_channel or ctx.message.author,
+            f'[{ctx.message.author}] {content}')
+
     async def on_ready(self):
         log.info(f'Logged in as {self.user.name} (id {self.user.id})')
+
+        # Resolve mod log channel.
+        self.mod_log_channel = self.get_channel(self.state.mod_log) if self.state.mod_log else None
+        if self.mod_log_channel:
+            log.info(f'Resolved mod log channel: #{self.mod_log_channel}')
+        else:
+            log.warning(f'No mod log configured!')
+
         # Send any queued messages.
         if self.queued_messages:
             log.info(f'Sending {len(self.queued_messages)} queued messages...')

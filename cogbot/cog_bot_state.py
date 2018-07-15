@@ -19,6 +19,7 @@ class CogBotState:
         # Optional
         self.command_prefix = raw_state.get('command_prefix', '>')
         self.description = raw_state.get('description', '')
+        self.mod_log = raw_state.get('mod_log', '')
         self.managers = set(raw_state.get('managers', ()))
         self.staff_roles = set(raw_state.get('staff_roles', ()))
         self.recovery_delay = raw_state.get('recovery_delay', 10)
