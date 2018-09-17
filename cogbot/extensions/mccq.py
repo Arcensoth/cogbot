@@ -55,6 +55,8 @@ class MCCQExtensionState:
 
 
 class MCCQExtension:
+    LEGACY_VERSION_STRINGS = ('1.12', '1.11', '1.10', '1.9', '1.8', '1.7')
+
     def __init__(self, bot: CogBot, ext: str):
         self.bot = bot
         self.state = MCCQExtensionState(**bot.state.get_extension_state(ext))
@@ -68,6 +70,11 @@ class MCCQExtension:
         # TODO fix hack
         self.cmd_mcc._buckets._cooldown.rate = self.state.cooldown_rate
         self.cmd_mcc._buckets._cooldown.per = self.state.cooldown_per
+
+    def should_warn_legacy(self, ctx: Context, command: str):
+        for version in self.LEGACY_VERSION_STRINGS:
+            if version in command:
+                return True
 
     def get_version_label(self, version: str) -> str:
         actual_version = self.query_manager.database.get_actual_version(version) or version
@@ -110,6 +117,15 @@ class MCCQExtension:
         except (mccq.errors.LoaderFailure, mccq.errors.ParserFailure):
             log.info('Failed to load data for the command: {}'.format(command))
             await self.bot.add_reaction(ctx.message, u'😔')
+
+            # just because how many people think 1.12 and prior are supported
+            if self.should_warn_legacy(ctx, command):
+                await self.bot.send_message(
+                    ctx.message.channel,
+                    '{} Versions below 1.13 snapshot 18w01a are not supported due to the lack of server-generated '
+                    'command data. Try `mcc12` for manually-written legacy versions.'.format(ctx.message.author.mention)
+                )
+
             return
 
         except:
