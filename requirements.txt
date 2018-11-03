@@ -1,3 +1,4 @@
 discord.py==0.16.12
 feedparser==5.2.1
 python-dateutil==2.7.0
+mccq==1.0.1
