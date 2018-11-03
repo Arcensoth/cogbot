@@ -18,6 +18,7 @@
     "cogbot.extensions.react",
     "cogbot.extensions.say",
     "cogbot.extensions.vote",
+    "cogbot.extensions.invite",
     "cogbot.extensions.mcc12",
     "cogbot.extensions.mccq"
   ],
@@ -52,6 +53,56 @@
       "version_labels": {
         "master": "{actual} (latest)"
       }
+    },
+    "cogbot.extensions.invite": {
+      "entries": [
+        {
+          "server_id": "154777837382008833",
+          "invite": "https://discord.gg/QAFXFtZ",
+          "keys": [
+            "commands",
+            "mcc",
+            "/r/mcc",
+            "/r/minecraftcommands"
+          ]
+        },
+        {
+          "server_id": "212263499601018880",
+          "invite": "https://discord.gg/QRE99eS",
+          "keys": [
+            "maptesting",
+            "playtesting",
+            "plag",
+            "plagiatus"
+          ]
+        },
+        {
+          "server_id": "186539083810471936",
+          "invite": "https://discord.gg/Xqxbczm",
+          "keys": [
+            "burps",
+            "vanillaburp"
+          ]
+        },
+        {
+          "server_id": "314078526104141834",
+          "invite": "https://discord.gg/fZQbxbg",
+          "keys": [
+            "x11",
+            "blockbench",
+            "jannis"
+          ]
+        },
+        {
+          "server_id": "507646576521510932",
+          "invite": "https://discord.gg/Tk9A6b7",
+          "keys": [
+            "commands",
+            "enconser",
+            "buttlib"
+          ]
+        }
+      ]
     }
   }
 }
