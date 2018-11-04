@@ -1,8 +1,11 @@
+import json
 import logging
+import urllib.request
 
 from discord.ext import commands
-from discord.ext.commands import Context
+from discord.ext.commands import CommandError, Context
 
+from cogbot import checks
 from cogbot.cog_bot import CogBot
 
 log = logging.getLogger(__name__)
@@ -10,7 +13,7 @@ log = logging.getLogger(__name__)
 
 class InviteConfig:
     def __init__(self, **options):
-        self.entries = options.pop('entries', {})
+        self.database = options['database']
 
 
 class Invite:
@@ -18,8 +21,9 @@ class Invite:
         self.bot = bot
         options = bot.state.get_extension_state(ext)
         self.config = InviteConfig(**options)
-        self.entries_by_server_id = self._make_entries_by_server_id(self.config.entries)
-        self.entries_by_name = self._make_entries_by_name(self.config.entries)
+        self.data = {}
+        self.entries_by_server_id = {}
+        self.entries_by_name = {}
 
     @staticmethod
     def _make_entries_by_server_id(raw_entries):
@@ -44,6 +48,26 @@ class Invite:
     def get_entries_by_name(self, name: str):
         return self.entries_by_name.get(name.lower())
 
+    def reload_data(self):
+        log.info('Reloading invites from: {}'.format(self.config.database))
+
+        response = urllib.request.urlopen(self.config.database)
+        content = response.read().decode('utf8')
+
+        try:
+            data = json.loads(content)
+        except Exception as e:
+            raise CommandError('Failed to reload invites: {}'.format(e))
+
+        self.data = data
+        self.entries_by_server_id = self._make_entries_by_server_id(data)
+        self.entries_by_name = self._make_entries_by_name(data)
+
+        log.info('Successfully reloaded {} invites'.format(len(data)))
+
+    async def on_ready(self):
+        self.reload_data()
+
     @commands.group(pass_context=True, name='invite')
     async def cmd_invite(self, ctx: Context, *, name: str = ''):
         # given name, use it as a key to lookup another server
@@ -64,6 +88,15 @@ class Invite:
             # otherwise can't do anything
             else:
                 await self.bot.add_reaction(ctx.message, u'😭')
+
+    @checks.is_manager()
+    @commands.command(pass_context=True, name='invitereload', hidden=True)
+    async def cmd_invitereload(self, ctx: Context):
+        try:
+            self.reload_data()
+            await self.bot.react_success(ctx)
+        except:
+            await self.bot.react_failure(ctx)
 
 
 def setup(bot):
