@@ -57,7 +57,7 @@ class Faq:
                 await self.bot.add_reaction(ctx.message, u'🤷')
 
         else:
-            await self.bot.say(', '.join(self.get_all_keys()))
+            await self.bot.say('Available FAQs: ' + ', '.join(self.get_all_keys()))
 
     @checks.is_manager()
     @commands.command(pass_context=True, name='faqreload', hidden=True)
