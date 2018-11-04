@@ -19,10 +19,14 @@
     "cogbot.extensions.say",
     "cogbot.extensions.vote",
     "cogbot.extensions.invite",
+    "cogbot.extensions.faq",
     "cogbot.extensions.mcc12",
     "cogbot.extensions.mccq"
   ],
   "extension_state": {
+    "cogbot.extensions.faq": {
+      "database": "https://raw.githubusercontent.com/MinecraftCommands/commanderbot/master/config/faq.json"
+    },
     "cogbot.extensions.groups": {
       "cooldown_rate": 10,
       "cooldown_per": 600,
