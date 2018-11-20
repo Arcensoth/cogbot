@@ -212,12 +212,13 @@ class MCCQExtension:
 
     @commands.cooldown(
         MCCQExtensionState.DEFAULT_COOLDOWN_RATE, MCCQExtensionState.DEFAULT_COOLDOWN_PER, commands.BucketType.user)
-    @commands.command(pass_context=True, name='mccq', aliases=['mcc'], help=QueryManager.ARGUMENT_PARSER.format_help())
+    @commands.command(
+        pass_context=True, name='mccq', aliases=['mcc', 'command'], help=QueryManager.ARGUMENT_PARSER.format_help())
     async def cmd_mcc(self, ctx: Context, *, command: str):
         await self.mcc(ctx, command)
 
     @checks.is_manager()
-    @commands.command(pass_context=True, name='mccqreload', aliases=['mccreload'], hidden=True)
+    @commands.command(pass_context=True, name='mccqreload', aliases=['mccreload', 'commandreload'], hidden=True)
     async def cmd_mccreload(self, ctx):
         await self.mccreload(ctx)
 
