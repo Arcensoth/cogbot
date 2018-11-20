@@ -54,7 +54,8 @@ class McNbtPaths:
                or self.data.get(query + '.json') \
                or self.data.get('ref/' + query + '.json') \
                or self.data.get('entity/' + query + '.json') \
-               or self.data.get('block/' + query + '.json')
+               or self.data.get('block/' + query + '.json') \
+               or self.data.get('item/' + query + '.json')
 
     def key_to_query(self, key: str) -> str:
         return key.split('/')[-1][:-5]
