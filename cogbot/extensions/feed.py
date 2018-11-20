@@ -1,12 +1,13 @@
 import asyncio
-import feedparser
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Dict
+
+import feedparser
 from dateutil.parser import parse as dateutil_parse
 from discord import Channel
 from discord.ext import commands
 from discord.ext.commands import Context
-from typing import Dict
 
 from cogbot import checks
 from cogbot.cog_bot import CogBot
@@ -21,29 +22,46 @@ class FeedSubscription:
         self.recency = recency
 
         self.last_datetime = datetime.now(timezone.utc)
+        self.last_titles = {}
+        self.last_ids = {}
 
         if self.recency:
             self.last_datetime -= timedelta(seconds=self.recency)
 
     def update(self):
         try:
+            # parse feed and datetime
             data = feedparser.parse(self.url)
             channel_datetime = dateutil_parse(data.feed.updated).astimezone(timezone.utc)
-            num_updates = 0
 
-            # Only bother checking entries if the feed has been updated.
+            # keep a record of last-updated articles to help eliminate duplication
+            next_last_titles = set()
+            next_last_ids = set()
+
+            # don't bother checking entries unless the entire feed has been updated since our last check
             if channel_datetime > self.last_datetime:
-                for entry in data.entries:
-                    # Try first for the published datetime, then for the updated datetime.
-                    entry_datetime = dateutil_parse(entry.get('published', entry.updated))
-                    # Yield the entry only if it has been updated since our last update.
-                    if entry_datetime > self.last_datetime:
-                        num_updates += 1
-                        yield entry
-                self.last_datetime = channel_datetime
 
-            if num_updates > 0:
-                log.info(f'Updated {num_updates} entries for feed at: {self.url}')
+                for entry in data.entries:
+                    # try first the published datetime, then updated datetime
+                    entry_datetime = dateutil_parse(entry.get('published', entry.updated))
+                    entry_id = entry.id or entry.get('id', entry.get('guid'))
+                    entry_title = entry.title or entry.get('title')
+
+                    # calculate whether the entry is fresh/new
+                    is_fresh = (entry_datetime > self.last_datetime) \
+                               and (entry_title not in self.last_titles) \
+                               and (entry_id not in self.last_ids)
+
+                    # if it is fresh, add it to the records for the next iteration... and yield
+                    if is_fresh:
+                        next_last_titles.add(entry_title)
+                        next_last_ids.add(entry_id)
+                        yield entry
+
+            # update timestamp and records for future iterations
+            self.last_datetime = channel_datetime
+            self.last_titles = next_last_titles
+            self.last_ids = next_last_ids
 
         except:
             log.exception(f'Failed to parse feed at: {self.url}')
@@ -98,7 +116,8 @@ class Feed:
         # Don't add the same subscription more than once.
         try:
             if name in self.subscriptions[channel.id]:
-                log.warning(f'[{channel.server.name}#{channel.name}] Tried to subscribe to feed {name} more than once at: {sub.url}')
+                log.warning(
+                    f'[{channel.server.name}#{channel.name}] Tried to subscribe to feed {name} more than once at: {sub.url}')
                 return
         except:
             pass
@@ -125,11 +144,13 @@ class Feed:
     async def _update_feed(self, channel: Channel, name: str):
         subs = self.subscriptions[channel.id]
         sub = subs[name]
-
-        for entry in sub.update():
-            log.info(f'Found an update for feed {name}: {entry.title}')
-            message = f'**{entry.title}**\n{entry.link}'
-            await self.bot.send_message(channel, message)
+        fresh_entries = tuple(sub.update())
+        if fresh_entries:
+            log.info(f'Found {len(fresh_entries)} new posts for feed at: {sub.url}')
+            for entry in fresh_entries:
+                log.info(f'Found an update for feed {name}: {entry.title}')
+                message = f'**{entry.title}**\n{entry.link}'
+                await self.bot.send_message(channel, message)
 
     async def add_feed(self, ctx: Context, name: str, url: str, recency: int = None):
         channel = ctx.message.channel
