@@ -75,6 +75,9 @@ class MCCQExtension:
         self.cmd_mcc._buckets._cooldown.rate = self.state.cooldown_rate
         self.cmd_mcc._buckets._cooldown.per = self.state.cooldown_per
 
+    async def on_ready(self):
+        await self.reload()
+
     def should_warn_legacy(self, ctx: Context, command: str):
         for version in self.LEGACY_VERSION_STRINGS:
             if version in command:
