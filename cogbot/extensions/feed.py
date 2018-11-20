@@ -49,7 +49,9 @@ class FeedSubscription:
 
                     # calculate whether the entry is fresh/new
                     is_fresh = (entry_datetime > self.last_datetime) \
+                               and (entry_title not in next_last_titles) \
                                and (entry_title not in self.last_titles) \
+                               and (entry_id not in next_last_ids) \
                                and (entry_id not in self.last_ids)
 
                     # if it is fresh, add it to the records for the next iteration... and yield
