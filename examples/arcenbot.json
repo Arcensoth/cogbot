@@ -8,15 +8,19 @@
     "409808531865337866"
   ],
   "extensions": [
-    "cogbot.extensions.ping",
-    "cogbot.extensions.kick",
+    "cogbot.extensions.about",
     "cogbot.extensions.say",
     "cogbot.extensions.react",
     "cogbot.extensions.vote",
-    "cogbot.extensions.faq",
+    "cogbot.extensions.kick",
+    "cogbot.extensions.groups",
     "cogbot.extensions.invite",
+    "cogbot.extensions.faq",
     "cogbot.extensions.mccq",
-    "cogbot.extensions.playing"
+    "cogbot.extensions.mcc12",
+    "cogbot.extensions.mcnbtpaths",
+    "cogbot.extensions.playing",
+    "cogbot.extensions.ping"
   ],
   "extension_state": {
     "cogbot.extensions.faq": {
@@ -24,6 +28,9 @@
     },
     "cogbot.extensions.invite": {
       "database": "https://raw.githubusercontent.com/MinecraftCommands/commanderbot/master/config/invite.json"
+    },
+    "cogbot.extensions.mcnbtpaths": {
+      "database": "https://raw.githubusercontent.com/MrYurihi/mc-nbt-paths/master/output.json"
     },
     "cogbot.extensions.mccq": {
       "cooldown_rate": 5,
