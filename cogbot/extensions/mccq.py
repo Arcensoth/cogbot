@@ -1,5 +1,6 @@
 import logging
 import mccq.errors
+from discord import Game
 from discord.ext import commands
 from discord.ext.commands import Context
 from mccq.query_manager import QueryManager
@@ -45,6 +46,9 @@ class MCCQExtensionState:
         # url format to provide a help link, if any
         # the placeholder `{command}` will be replaced by the base command
         self.help_url = options.get('help_url', None)
+
+        # version to set as the "playing" status, if any
+        self.presence_version = options.get('presence_version', None)
 
         # max lines of results, useful to prevent potential chat spam
         self.max_results = options.get('max_results', None)
@@ -184,6 +188,13 @@ class MCCQExtension:
 
     async def reload(self):
         self.query_manager.reload()
+        if self.state.presence_version:
+            # pre-emptively load latest version into the cache
+            self.query_manager.database.get(self.state.presence_version)
+            # and set it as the bot presence ("playing")
+            actual_presence_version = self.query_manager.database.get_actual_version(self.state.presence_version)
+            log.warning('Setting presence to latest version: {}'.format(actual_presence_version))
+            await self.bot.change_presence(game=Game(name=actual_presence_version))
 
     async def mccreload(self, ctx: Context):
         try:

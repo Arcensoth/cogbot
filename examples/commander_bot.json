@@ -54,6 +54,7 @@
       "max_results": 10,
       "help_url": "https://minecraft.gamepedia.com/Commands/{command}",
       "database": "https://raw.githubusercontent.com/Arcensoth/mcdata",
+      "presence_version": "master",
       "show_versions": [
         "master"
       ],
@@ -62,5 +63,4 @@
       }
     }
   }
-}
 }
