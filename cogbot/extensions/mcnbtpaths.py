@@ -56,36 +56,31 @@ class McNbtPaths:
                or self.data.get('entity/' + query + '.json') \
                or self.data.get('block/' + query + '.json')
 
-    def get_child_ref(self, refkey: str) -> NbtNode:
-        # skip the leading "../"
-        return self.data.get(refkey[3:])
-
-    def combine_refs(self, refkeys: typing.Iterable[str]) -> typing.Iterable[typing.Tuple[str, NbtNode]]:
-        for refkey in refkeys:
-            # TODO generalize
-            if refkey not in ('../ref/entity.json', '../ref/mob.json'):
-                refnode = self.get_child_ref(refkey)
-                if refnode:
-                    yield from refnode.get('children', {}).items()
-
-    def iter_children(self, query: str) -> typing.Iterable[typing.Tuple[str, NbtNode]]:
-        node = self.get_node(query)
-        if node:
-            yield from node.get('children', {}).items()
-            yield from self.combine_refs(node.get('child_ref', ()))
+    def key_to_query(self, key: str) -> str:
+        return key.split('/')[-1][:-5]
 
     def make_response_lines(self, query: str) -> typing.Iterable[str]:
-        children = tuple(self.iter_children(query))
-        keyjust = max(len(key) for key, child in children)
+        node = self.get_node(query)
+
+        children = node.get('children', {}).items()
+        keyjust = 1 + max(len(key) for key, child in children)
         kindjust = 2 + max(len(child.get('type', '')) for key, child in children)
+
+        yield 'NBT for {}:'.format(query)
         for key, child in children:
             kind = child.get('type')
             description = child.get('description')
             # TODO recurse compounds and lists
             if kind and description:
-                yield '  '.join((key.ljust(keyjust), '[{}]'.format(kind).ljust(kindjust), description))
+                yield '  ' + ' '.join(('({})'.format(kind).ljust(kindjust), '{}:'.format(key).ljust(keyjust), description))
             elif kind:
-                yield '  '.join((key.ljust(keyjust), '[{}]'.format(kind)))
+                yield '  ' + ' '.join(('({})'.format(kind).ljust(kindjust), '{}:'.format(key)))
+
+        refkeys = node.get('child_ref', ())
+        if refkeys:
+            yield '\nPlus everything from:'
+            for refkey in refkeys:
+                yield '  -> ' + self.key_to_query(refkey)
 
     def make_response(self, query: str) -> str:
         return '```{}```'.format('\n'.join(self.make_response_lines(query)))
