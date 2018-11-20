@@ -172,6 +172,23 @@ class Feed:
                 else:
                     log.info(f'Skipping stale update for feed {name}: {entry.title}')
 
+        # and this is where we get really serious
+        # forcibly delete any dupes... in case they still manage to slip through
+        # do this even if we don't post anything, because dupes are a mystery
+        # go through the last several messages *again* and make sure we didn't post any dupes
+        # go in reverse and delete any dupes from the oldest message onward
+        content_hash = set()
+        messages = []
+        async for message in self.bot.logs_from(channel, limit=10):
+            messages.append(message)
+        for message in reversed(messages):
+            if message.content in content_hash:
+                message_title = message.split('\n')[0]
+                log.warning(f'Deleting duped message for feed {name}: {message_title}')
+                await self.bot.delete_message(message)
+            else:
+                content_hash.add(message.content)
+
     async def add_feed(self, ctx: Context, name: str, url: str, recency: int = None):
         channel = ctx.message.channel
         subs = self.subscriptions.get(channel.id)
