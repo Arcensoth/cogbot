@@ -10,7 +10,7 @@ class React:
         self.bot: CogBot = bot
 
     @checks.is_staff()
-    @commands.command(pass_context=True)
+    @commands.command(pass_context=True, hidden=True)
     async def react(self, ctx: Context, channel_id, message_id, *emojis):
         channel = self.bot.get_channel(channel_id)
         message = await self.bot.get_message(channel, message_id)

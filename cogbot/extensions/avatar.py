@@ -11,7 +11,7 @@ class Avatar:
         self.bot: CogBot = bot
 
     @checks.is_manager()
-    @commands.command(pass_context=True)
+    @commands.command(pass_context=True, hidden=True)
     async def avatar(self, ctx: Context, *, url: str):
         image_response = requests.get(url)
         image_data = image_response.content

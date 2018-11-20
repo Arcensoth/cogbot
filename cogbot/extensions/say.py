@@ -10,7 +10,7 @@ class Say:
         self.bot: CogBot = bot
 
     @checks.is_staff()
-    @commands.command(pass_context=True)
+    @commands.command(pass_context=True, hidden=True)
     async def say(self, ctx: Context, channel_id, *, message: str):
         channel = self.bot.get_channel(channel_id)
         await self.bot.send_message(channel, message)

@@ -20,7 +20,7 @@ class Kick:
 
     @checks.is_staff()
     @commands.has_permissions(kick_members=True)
-    @commands.command(pass_context=True)
+    @commands.command(pass_context=True, hidden=True)
     async def kick(self, ctx: Context, user: str, *, reason: str):
         cmd: Message = ctx.message
         server: Server = cmd.server

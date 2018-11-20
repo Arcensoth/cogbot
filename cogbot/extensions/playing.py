@@ -11,7 +11,7 @@ class Playing:
         self.bot: CogBot = bot
 
     @checks.is_manager()
-    @commands.command(pass_context=True)
+    @commands.command(pass_context=True, hidden=True)
     async def playing(self, ctx: Context, *, game: str):
         await self.bot.change_presence(game=Game(name=game))
         await self.bot.react_success(ctx)
