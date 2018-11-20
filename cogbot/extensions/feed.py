@@ -146,13 +146,31 @@ class Feed:
     async def _update_feed(self, channel: Channel, name: str):
         subs = self.subscriptions[channel.id]
         sub = subs[name]
+
+        # this is where we get serious
+        # grab the last couple messages in the channel to make sure we aren't posting a dupe
+        recent_contents = []
+        async for message in self.bot.logs_from(channel, limit=2):
+            recent_contents.append(message.content)
+
         fresh_entries = tuple(sub.update())
         if fresh_entries:
             log.info(f'Found {len(fresh_entries)} new posts for feed at: {sub.url}')
             for entry in fresh_entries:
-                log.info(f'Found an update for feed {name}: {entry.title}')
-                message = f'**{entry.title}**\n{entry.link}'
-                await self.bot.send_message(channel, message)
+                # but is it really fresh?
+                # scan content of recent messages and match title to make sure
+                really_fresh = True
+                for recent_content in recent_contents:
+                    if entry.title in recent_content:
+                        really_fresh = False
+                        break
+
+                if really_fresh:
+                    log.info(f'Posting fresh update for feed {name}: {entry.title}')
+                    message = f'**{entry.title}**\n{entry.link}'
+                    await self.bot.send_message(channel, message)
+                else:
+                    log.info(f'Skipping stale update for feed {name}: {entry.title}')
 
     async def add_feed(self, ctx: Context, name: str, url: str, recency: int = None):
         channel = ctx.message.channel
