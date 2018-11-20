@@ -66,21 +66,20 @@ class McNbtPaths:
         keyjust = 1 + max(len(key) for key, child in children)
         kindjust = 2 + max(len(child.get('type', '')) for key, child in children)
 
-        yield 'NBT for {}:'.format(query)
         for key, child in children:
             kind = child.get('type')
             description = child.get('description')
             # TODO recurse compounds and lists
             if kind and description:
-                yield '  ' + ' '.join(('({})'.format(kind).ljust(kindjust), '{}:'.format(key).ljust(keyjust), description))
+                yield ' '.join(('({})'.format(kind).ljust(kindjust), '{}:'.format(key).ljust(keyjust), description))
             elif kind:
-                yield '  ' + ' '.join(('({})'.format(kind).ljust(kindjust), '{}:'.format(key)))
+                yield ' '.join(('({})'.format(kind).ljust(kindjust), '{}:'.format(key)))
 
         refkeys = node.get('child_ref', ())
         if refkeys:
-            yield '\nPlus everything from:'
+            yield ''
             for refkey in refkeys:
-                yield '  -> ' + self.key_to_query(refkey)
+                yield '+ ' + self.key_to_query(refkey)
 
     def make_response(self, query: str) -> str:
         return '```{}```'.format('\n'.join(self.make_response_lines(query)))
