@@ -40,6 +40,9 @@
     "cogbot.extensions.mcblock": {
       "database": "https://raw.githubusercontent.com/Arcensoth/mcdata/master/generated/reports/blocks.json"
     },
+    "cogbot.extensions.jira": {
+      "base_url": "https://bugs.mojang.com"
+    },
     "cogbot.extensions.groups": {
       "cooldown_rate": 10,
       "cooldown_per": 600,
