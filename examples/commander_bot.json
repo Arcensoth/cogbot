@@ -10,6 +10,7 @@
     "409808531865337866"
   ],
   "extensions": [
+    "cogbot.extensions.proto",
     "cogbot.extensions.about",
     "cogbot.extensions.say",
     "cogbot.extensions.react",
@@ -21,6 +22,9 @@
     "cogbot.extensions.mccq",
     "cogbot.extensions.mcc12",
     "cogbot.extensions.mcnbtpaths",
+    "cogbot.extensions.mcblock",
+    "cogbot.extensions.feed",
+    "cogbot.extensions.jira",
     "cogbot.extensions.ping"
   ],
   "extension_state": {
@@ -32,6 +36,9 @@
     },
     "cogbot.extensions.mcnbtpaths": {
       "database": "https://raw.githubusercontent.com/MrYurihi/mc-nbt-paths/master/output.json"
+    },
+    "cogbot.extensions.mcblock": {
+      "database": "https://raw.githubusercontent.com/Arcensoth/mcdata/master/generated/reports/blocks.json"
     },
     "cogbot.extensions.groups": {
       "cooldown_rate": 10,
@@ -63,6 +70,22 @@
       ],
       "version_labels": {
         "master": "{actual} (latest)"
+      }
+    },
+    "cogbot.extensions.feed": {
+      "polling_interval": 30,
+      "subscriptions": {
+        "247818621005332480": {
+          "subreddit": {
+            "url": "https://www.reddit.com/r/MinecraftCommands/new/.rss"
+          },
+          "arqade": {
+            "url": "https://gaming.stackexchange.com/feeds/tag/minecraft-commands"
+          },
+          "minecraft": {
+            "url": "https://minecraft.net/en-us/feeds/community-content/rss"
+          }
+        }
       }
     }
   }
