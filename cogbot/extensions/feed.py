@@ -182,8 +182,8 @@ class Feed:
         async for message in self.bot.logs_from(channel, limit=10):
             messages.append(message)
         for message in reversed(messages):
-            if message.content in content_hash:
-                message_title = message.split('\n')[0]
+            if (message.author == self.bot) and (message.content in content_hash):
+                message_title = message.content.split('\n')[0]
                 log.warning(f'Deleting duped message for feed {name}: {message_title}')
                 await self.bot.delete_message(message)
             else:
