@@ -56,12 +56,23 @@ class Faq:
     def get_entries_cascading(self, key: str) -> typing.List[FAQEntry]:
         # see if there's an exact match
         # if not, split the key into tags and search by those
-        return [self.get_entry_by_key(key)] or self.get_entries_by_tags(key.split())
+        entry = self.get_entry_by_key(key)
+        if entry:
+            return [entry]
+        else:
+            return self.get_entries_by_tags(key.split())
 
     def get_entries_strict(self, key: str) -> typing.List[FAQEntry]:
         # only check tags if the key starts with a hashtag
         # otherwise look for the exact key
-        return self.get_entries_by_tags(key.split()) if key.startswith('#') else [self.get_entry_by_key(key)]
+        if key.startswith('#'):
+            return self.get_entries_by_tags(key.split())
+        else:
+            entry = self.get_entry_by_key(key)
+            if entry:
+                return [entry]
+            else:
+                return []
 
     def reload_data(self):
         log.info('Reloading FAQs from: {}'.format(self.config.database))
