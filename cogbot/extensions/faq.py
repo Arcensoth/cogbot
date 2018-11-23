@@ -33,6 +33,12 @@ class Faq:
         self.entries_by_tag: typing.Dict[str, typing.List[FAQEntry]] = {}
         self.available_faqs_text = ''
 
+    def extract_tags(self, key: str) -> typing.List[str]:
+        return [k[1:] if k.startswith('#') else k for k in key.split()]
+
+    def format_keys(self, keys: typing.Iterable[str]) -> str:
+        return ''.join(('`', '`, `'.join(keys), '`'))
+
     def get_all_keys(self):
         return self.entries_by_key.keys()
 
@@ -69,16 +75,13 @@ class Faq:
         # only check tags if the key starts with a hashtag
         # otherwise look for the exact key
         if key.startswith('#'):
-            return self.get_entries_by_tags(key.split())
+            return self.get_entries_by_tags(self.extract_tags(key))
         else:
             entry = self.get_entry_by_key(key)
             if entry:
                 return [entry]
             else:
                 return []
-
-    def format_keys(self, keys: typing.Iterable[str]) -> str:
-        return ''.join(('`', '`, `'.join(keys), '`'))
 
     def reload_data(self):
         log.info('Reloading FAQs from: {}'.format(self.config.database))
