@@ -47,11 +47,14 @@ class Faq:
 
     def get_entries_by_tags(self, tags: typing.Iterable[str]) -> typing.List[FAQEntry]:
         tags_tuple = tuple(tags)
-        initial_entries = self.get_entries_by_tag(tags_tuple[0])
         tags_set = set(tags_tuple)
+        initial_entries = self.get_entries_by_tag(tags_tuple[0])
         # start with all results for the first tag
         # take the intersection of remaining queries
-        return [entry for entry in initial_entries if tags_set.issubset(entry.tags)]
+        if initial_entries:
+            return [entry for entry in initial_entries if tags_set.issubset(entry.tags)]
+        else:
+            return []
 
     def get_entries_cascading(self, key: str) -> typing.List[FAQEntry]:
         # see if there's an exact match
@@ -73,6 +76,9 @@ class Faq:
                 return [entry]
             else:
                 return []
+
+    def format_keys(self, keys: typing.Iterable[str]) -> str:
+        return ''.join(('`', '`, `'.join(keys), '`'))
 
     def reload_data(self):
         log.info('Reloading FAQs from: {}'.format(self.config.database))
@@ -109,7 +115,7 @@ class Faq:
         self.entries_by_key = entries_by_key
         self.entries_by_tag = entries_by_tag
 
-        self.available_faqs_text = 'Available FAQs: ' + ', '.join(sorted(self.get_visible_keys()))
+        self.available_faqs_text = 'Available FAQs: ' + self.format_keys(sorted(self.get_visible_keys()))
 
         log.info('Successfully reloaded {} FAQs'.format(len(data)))
 
@@ -124,7 +130,13 @@ class Faq:
                 for entry in entries:
                     await self.bot.say(entry.message)
             else:
-                await self.bot.add_reaction(ctx.message, u'🤷')
+                suggest_entries = self.get_entries_by_tags(key.split())
+                if suggest_entries:
+                    await self.bot.add_reaction(ctx.message, u'🤔')
+                    suggest_text = 'Maybe you meant: ' + self.format_keys(entry.key for entry in suggest_entries)
+                    await self.bot.say(suggest_text)
+                else:
+                    await self.bot.add_reaction(ctx.message, u'🤷')
 
         else:
             await self.bot.say(self.available_faqs_text)
