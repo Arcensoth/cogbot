@@ -13,10 +13,11 @@ log = logging.getLogger(__name__)
 
 
 class FAQEntry:
-    def __init__(self, key: str, tags: typing.Iterable[str], message: str):
+    def __init__(self, key: str, tags: typing.Iterable[str], message: str, hidden: bool = False):
         self.key: str = str(key)
         self.tags: typing.Set[str] = set(tags)
         self.message: str = str(message)
+        self.hidden: bool = hidden
 
 
 class FaqConfig:
@@ -27,13 +28,16 @@ class FaqConfig:
 class Faq:
     def __init__(self, bot: CogBot, ext: str):
         self.bot = bot
-        options = bot.state.get_extension_state(ext)
-        self.config = FaqConfig(**options)
-        self.entries_by_key = {}
-        self.entries_by_tag = {}
+        self.config = FaqConfig(**bot.state.get_extension_state(ext))
+        self.entries_by_key: typing.Dict[str, FAQEntry] = {}
+        self.entries_by_tag: typing.Dict[str, typing.List[FAQEntry]] = {}
+        self.available_faqs_text = ''
 
     def get_all_keys(self):
         return self.entries_by_key.keys()
+
+    def get_visible_keys(self):
+        return (key for key, entry in self.entries_by_key.items() if not entry.hidden)
 
     def get_entry_by_key(self, key: str) -> FAQEntry:
         return self.entries_by_key.get(key)
@@ -52,11 +56,12 @@ class Faq:
     def get_entries_cascading(self, key: str) -> typing.List[FAQEntry]:
         # see if there's an exact match
         # if not, split the key into tags and search by those
-        entry = self.get_entry_by_key(key)
-        if entry:
-            return [entry]
-        else:
-            return self.get_entries_by_tags(key.split())
+        return [self.get_entry_by_key(key)] or self.get_entries_by_tags(key.split())
+
+    def get_entries_strict(self, key: str) -> typing.List[FAQEntry]:
+        # only check tags if the key starts with a hashtag
+        # otherwise look for the exact key
+        return self.get_entries_by_tags(key.split()) if key.startswith('#') else [self.get_entry_by_key(key)]
 
     def reload_data(self):
         log.info('Reloading FAQs from: {}'.format(self.config.database))
@@ -82,7 +87,8 @@ class Faq:
             message = '\n'.join(raw_message) if isinstance(raw_message, list) else str(raw_message)
             # tags are split by whitespace
             tags = raw_entry.get('tags', '').split()
-            entry = FAQEntry(key=key, tags=tags, message=message)
+            hidden = raw_entry.get('hidden')
+            entry = FAQEntry(key=key, tags=tags, message=message, hidden=hidden)
             entries_by_key[key] = entry
             for tag in tags:
                 if tag not in entries_by_tag:
@@ -92,6 +98,8 @@ class Faq:
         self.entries_by_key = entries_by_key
         self.entries_by_tag = entries_by_tag
 
+        self.available_faqs_text = 'Available FAQs: ' + ', '.join(sorted(self.get_visible_keys()))
+
         log.info('Successfully reloaded {} FAQs'.format(len(data)))
 
     async def on_ready(self):
@@ -100,7 +108,7 @@ class Faq:
     @commands.command(pass_context=True, name='faq')
     async def cmd_faq(self, ctx: Context, *, key: str = ''):
         if key:
-            entries = self.get_entries_cascading(key)
+            entries = self.get_entries_strict(key)
             if entries:
                 for entry in entries:
                     await self.bot.say(entry.message)
@@ -108,7 +116,7 @@ class Faq:
                 await self.bot.add_reaction(ctx.message, u'🤷')
 
         else:
-            await self.bot.say('Available FAQs: ' + ', '.join(self.get_all_keys()))
+            await self.bot.say(self.available_faqs_text)
 
     @checks.is_manager()
     @commands.command(pass_context=True, name='faqreload', hidden=True)
