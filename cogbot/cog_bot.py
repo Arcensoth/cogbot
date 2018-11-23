@@ -98,25 +98,28 @@ class CogBot(commands.Bot):
                 log.info(f'[{message.author}] {message.content}')
                 await super().on_message(message)
 
-    async def on_command_error(self, e: CommandError, ctx: Context):
-        log.warning(f'[{ctx.message.server}/{ctx.message.author}] {e.__class__.__name__}: {e.args[0]}')
+    async def on_command_error(self, error: CommandError, ctx: Context):
+        log.exception(
+            f'[{ctx.message.server}/{ctx.message.author}] {error.__class__.__name__}: {error.args[0]}',
+            exc_info=error
+        )
 
-        error = e.original if isinstance(e, CommandInvokeError) else e
+        inner_error = error.original if isinstance(error, CommandInvokeError) else error
 
-        if isinstance(error, CommandNotFound):
+        if isinstance(inner_error, CommandNotFound):
             if self.state.react_to_unknown_commands:
                 await self.react_question(ctx)
 
-        elif isinstance(error, CheckFailure):
+        elif isinstance(inner_error, CheckFailure):
             if self.state.react_to_check_failures:
                 await self.react_denied(ctx)
 
-        elif isinstance(error, CommandOnCooldown):
+        elif isinstance(inner_error, CommandOnCooldown):
             if self.state.react_to_command_cooldowns:
                 await self.react_cooldown(ctx)
 
         # Keep this one last because some others subclass it.
-        elif isinstance(error, CommandError):
+        elif isinstance(inner_error, CommandError):
             await self.react_failure(ctx)
 
         else:
