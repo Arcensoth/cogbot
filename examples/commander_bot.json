@@ -43,6 +43,13 @@
     "cogbot.extensions.jira": {
       "base_url": "https://bugs.mojang.com"
     },
+    "cogbot.extensions.about": {
+      "repos": [
+        "https://github.com/MinecraftCommands/commanderbot",
+        "https://github.com/Arcensoth/mcdata",
+        "https://github.com/MrYurihi/mc-nbt-paths"
+      ]
+    },
     "cogbot.extensions.groups": {
       "cooldown_rate": 10,
       "cooldown_per": 600,
