@@ -22,8 +22,8 @@ class FeedSubscription:
         self.recency = recency
 
         self.last_datetime = datetime.now(timezone.utc)
-        self.last_titles = {}
-        self.last_ids = {}
+        self.last_titles = set()
+        self.last_ids = set()
 
         if self.recency:
             self.last_datetime -= timedelta(seconds=self.recency)
@@ -49,10 +49,10 @@ class FeedSubscription:
 
                     # calculate whether the entry is fresh/new
                     is_fresh = (entry_datetime > self.last_datetime) \
-                               and (entry_title not in next_last_titles) \
-                               and (entry_title not in self.last_titles) \
-                               and (entry_id not in next_last_ids) \
-                               and (entry_id not in self.last_ids)
+                        and (entry_title not in next_last_titles) \
+                        and (entry_title not in self.last_titles) \
+                        and (entry_id not in next_last_ids) \
+                        and (entry_id not in self.last_ids)
 
                     # if it is fresh, add it to the records for the next iteration... and yield
                     if is_fresh:
