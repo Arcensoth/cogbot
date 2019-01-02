@@ -56,8 +56,10 @@ class FeedSubscription:
 
                     # if it is fresh, add it to the records for the next iteration... and yield
                     if is_fresh:
-                        next_last_titles.add(entry_title)
-                        next_last_ids.add(entry_id)
+                        if entry_title:
+                            next_last_titles.add(entry_title)
+                        if entry_id:
+                            next_last_ids.add(entry_id)
                         yield entry
 
             # update timestamp and records for future iterations
