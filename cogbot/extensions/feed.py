@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Dict
+from typing import Dict, Optional
 
 import feedparser
 from dateutil.parser import parse as dateutil_parse
@@ -49,10 +49,10 @@ class FeedSubscription:
 
                     # calculate whether the entry is fresh/new
                     is_fresh = (entry_datetime > self.last_datetime) \
-                        and (entry_title not in next_last_titles) \
-                        and (entry_title not in self.last_titles) \
-                        and (entry_id not in next_last_ids) \
-                        and (entry_id not in self.last_ids)
+                               and (entry_title not in next_last_titles) \
+                               and (entry_title not in self.last_titles) \
+                               and (entry_id not in next_last_ids) \
+                               and (entry_id not in self.last_ids)
 
                     # if it is fresh, add it to the records for the next iteration... and yield
                     if is_fresh:
@@ -74,6 +74,8 @@ class FeedSubscription:
 class Feed:
     DEFAULT_POLLING_INTERVAL = 60
 
+    SubscriptionType = Dict[str, Dict[str, FeedSubscription]]
+
     def __init__(self, bot: CogBot, ext: str):
         self.bot = bot
 
@@ -81,16 +83,22 @@ class Feed:
 
         self.polling_interval: int = self.options.get('polling_interval', self.DEFAULT_POLLING_INTERVAL)
 
-        # Access like so: self.subscriptions[channel_id][name]
-        self.subscriptions: Dict[str, Dict[str, FeedSubscription]] = {}
+        # Access like so: self._subscriptions[channel_id][name]
+        self._subscriptions: Feed.SubscriptionType = {}
 
-        self.polling_task = None
+        self.polling_task: Optional[asyncio.Task] = None
 
     async def on_ready(self):
+        log.info('Ready event received; proceeding to initial reset...')
+        self._reset()
+
+    def _reset(self, intentional=False):
+        log.info('Resetting subscriptions and polling task...')
+
         # Initialize subscriptions.
 
         # Clear any existing subscriptions.
-        self.subscriptions = {}
+        self._subscriptions = {}
 
         raw_subscriptions = self.options.get('subscriptions', {})
 
@@ -106,9 +114,29 @@ class Feed:
                 except:
                     log.exception(f'Failed to add initial feed {name} at: {url}')
 
-        # Start the polling task, if not already started.
-        if not self.polling_task:
-            self.polling_task = self.bot.loop.create_task(self._loop_poll())
+        # If a polling task does not yet exist, create a new one.
+        if self.polling_task is None:
+            polling_task = self._create_polling_task()
+            log.info(f'Created a new polling task (hash: {hash(polling_task)}) for the first time')
+            self.polling_task = polling_task
+
+        # If one does already exist, but it has cancelled and/or completed, then create a new one.
+        elif self._should_create_polling_task():
+            polling_task = self._create_polling_task()
+            log.info(
+                f'Created a new polling task (hash: {hash(polling_task)}) because the previous one was '
+                f'cancelled and/or completed')
+            self.polling_task = polling_task
+
+        # If the reset was intentional, we can safely keep the existing polling task running.
+        elif intentional:
+            log.info(f'Keeping existing polling task running (hash: {hash(self.polling_task)}) after intentional reset')
+
+        # Otherwise, warn about the existing polling task that's still running and could pose a problem.
+        else:
+            log.warning(
+                f'Not creating a new polling task because the previous one is still running '
+                f'(hash: {hash(self.polling_task)})')
 
     async def _loop_poll(self):
         while self.bot.is_logged_in:
@@ -116,10 +144,17 @@ class Feed:
             await asyncio.sleep(self.polling_interval)
         log.info('Bot logged out, polling loop terminated')
 
+    def _should_create_polling_task(self) -> bool:
+        return isinstance(self.polling_task, asyncio.Task) and (
+                self.polling_task.done() or self.polling_task.cancelled())
+
+    def _create_polling_task(self) -> asyncio.Task:
+        return self.bot.loop.create_task(self._loop_poll())
+
     def _add_feed(self, channel: Channel, name: str, url: str, recency: int = None):
         # Don't add the same subscription more than once.
         try:
-            if name in self.subscriptions[channel.id]:
+            if name in self._subscriptions[channel.id]:
                 log.warning(
                     f'[{channel.server.name}#{channel.name}] Tried to subscribe to feed {name} more than once at: {sub.url}')
                 return
@@ -128,17 +163,17 @@ class Feed:
 
         sub = FeedSubscription(name, url, recency)
 
-        if channel.id not in self.subscriptions:
-            self.subscriptions[channel.id] = {}
+        if channel.id not in self._subscriptions:
+            self._subscriptions[channel.id] = {}
 
-        subs = self.subscriptions[channel.id]
+        subs = self._subscriptions[channel.id]
 
         log.info(f'[{channel.server.name}#{channel.name}] Subscribing to feed {name} at: {sub.url}')
 
         subs[name] = sub
 
     def _remove_feed(self, channel: Channel, name: str):
-        subs = self.subscriptions[channel.id]
+        subs = self._subscriptions[channel.id]
         sub = subs[name]
 
         log.info(f'[{channel.server.name}#{channel.name}] Unsubscribing from feed {name} at: {sub.url}')
@@ -243,6 +278,10 @@ class Feed:
             for name, sub in subs.items():
                 await self._update_feed(channel, name)
 
+    @property
+    def subscriptions(self) -> 'Feed.SubscriptionType':
+        return self._subscriptions
+
     @checks.is_manager()
     @commands.group(pass_context=True, name='feed', hidden=True)
     async def cmd_feed(self, ctx: Context):
@@ -268,6 +307,11 @@ class Feed:
             subs = self.subscriptions[channel.id]
             names = subs.keys()
         await self.update_feeds(ctx, *names)
+
+    @cmd_feed.command(pass_context=True, name='reset')
+    async def cmd_feed_reset(self, ctx: Context):
+        self._reset(intentional=True)
+        await self.bot.react_success(ctx)
 
 
 def setup(bot):
