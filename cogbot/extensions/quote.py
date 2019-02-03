@@ -61,12 +61,7 @@ class Quote:
 
         content = ((author.mention + ' ') if mention else '') + quote_link
 
-        sent_message: discord.Message = await self.bot.send_message(destination, content, embed=em)
-
-        # edit-mention the quoter for tracking purposes
-        new_content = quoter.mention + ' ' + sent_message.content
-
-        await self.bot.edit_message(sent_message, new_content=new_content)
+        await self.bot.reply(content, embed=em, destination=destination, author=quoter)
 
     async def quote(self, ctx: Context, message: str, channel: str = None, mention: bool = False):
         channel = channel or ctx.message.channel.id
