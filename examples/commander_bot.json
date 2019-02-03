@@ -25,6 +25,8 @@
     "cogbot.extensions.mcblock",
     "cogbot.extensions.feed",
     "cogbot.extensions.jira",
+    "cogbot.extensions.quote",
+    "cogbot.extensions.status",
     "cogbot.extensions.ping"
   ],
   "extension_state": {
