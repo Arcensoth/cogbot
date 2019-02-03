@@ -1,1 +1,1 @@
-__version__ = '0.1.1-dev'
+from cogbot.__version__ import __version__
