@@ -3,6 +3,7 @@ import logging
 from discord import Channel
 from discord.ext import commands
 from discord.ext.commands import Context
+from discord.ext.commands.bot import _get_variable
 from discord.ext.commands.errors import *
 
 from cogbot.cog_bot_state import CogBotState
@@ -32,6 +33,23 @@ class CogBot(commands.Bot):
             log.info('No extensions to load')
 
         log.info('Initialization successful')
+
+    async def reply(self, content, *args, **kwargs):
+        author = kwargs.pop('author', _get_variable('_internal_author'))
+        destination = kwargs.pop('destination', _get_variable('_internal_channel'))
+        fmt = f'@{author.display_name} {content}'
+
+        extensions = ('delete_after',)
+        params = {
+            k: kwargs.pop(k, None) for k in extensions
+        }
+
+        coro = self.send_message(destination, fmt, *args, **kwargs)
+        sent_message = await self._augmented_msg(coro, **params)
+
+        fmt2 = f'{author.mention} {content}'
+
+        return await self.edit_message(sent_message, new_content=fmt2)
 
     def queue_message(self, dest_getter, dest_id, content):
         self.queued_messages.append((dest_getter, dest_id, content))
