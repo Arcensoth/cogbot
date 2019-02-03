@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from discord.ext.commands import Context
+from discord.ext.commands import CommandError, Context
 
 from cogbot.cog_bot import CogBot
 
@@ -14,9 +14,9 @@ class Quote:
     async def on_reaction_add(self, reaction: discord.Reaction, user: discord.Member):
         if (user != self.bot) and (reaction.emoji in self.emojis):
             await self.bot.remove_reaction(reaction.message, reaction.emoji, user)
-            await self.quote_message(reaction.message.channel, reaction.message)
+            await self.quote_message(destination=reaction.message.channel, message=reaction.message, quoter=user)
 
-    async def get_message_from_args(self, message: str, channel: str) -> discord.Message:
+    async def get_message_from_args(self, ctx: Context, message: str, channel: str) -> discord.Message:
         # message is a link
         if message.startswith(('http://', 'https://')):
             tokens = message.split('/')
@@ -34,38 +34,52 @@ class Quote:
             channel_id = channel
 
         channel: discord.Channel = self.bot.get_channel(channel_id)
+
+        # assert quoter has read permissions in channel
+        quoter: discord.Member = ctx.message.author
+        quoter_permissions: discord.Permissions = quoter.permissions_in(channel)
+        can_quote = quoter_permissions.read_messages and quoter_permissions.read_message_history
+        if not can_quote:
+            raise CommandError('Cannot quote inaccessible message')
+
         message: discord.Message = await self.bot.get_message(channel, message_id)
 
         return message
 
-    async def quote_message(self, destination: discord.channel, message: discord.Message, mention: bool = False):
+    async def quote_message(
+            self, destination: discord.channel, message: discord.Message, quoter: discord.Member,
+            mention: bool = False):
         author: discord.Member = message.author
         server: discord.Server = message.server
         channel: discord.Channel = message.channel
 
-        quote_name = f'{author.display_name} ({author.name}#{author.discriminator})'
-        quote_date = message.timestamp.strftime('%d/%m/%Y')
-        quote_title = f'In #{channel} on {quote_date}:'
+        quote_name = f'{author.display_name} ({author.name}#{author.discriminator}) in #{channel}:'
         quote_link = f'https://discordapp.com/channels/{server.id}/{channel.id}/{message.id}'
 
-        em = discord.Embed(title=quote_title, url=quote_link, description=message.clean_content)
+        em = discord.Embed(description=message.clean_content)
         em.set_author(name=quote_name, icon_url=author.avatar_url)
 
         content = ((author.mention + ' ') if mention else '') + quote_link
 
-        await self.bot.send_message(destination, content, embed=em)
+        sent_message: discord.Message = await self.bot.send_message(destination, content, embed=em)
+
+        # edit-mention the quoter for tracking purposes
+        new_content = quoter.mention + ' ' + sent_message.content
+
+        await self.bot.edit_message(sent_message, new_content=new_content)
 
     async def quote(self, ctx: Context, message: str, channel: str = None, mention: bool = False):
         channel = channel or ctx.message.channel.id
 
         try:
-            message_to_quote = await self.get_message_from_args(message, channel)
+            message_to_quote = await self.get_message_from_args(ctx, message, channel)
         except:
             await self.bot.react_question(ctx)
             return
 
         try:
-            await self.quote_message(ctx.message.channel, message_to_quote, mention)
+            await self.quote_message(
+                destination=ctx.message.channel, message=message_to_quote, quoter=ctx.message.author, mention=mention)
         except:
             await self.bot.react_failure(ctx)
 
