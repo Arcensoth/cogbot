@@ -39,7 +39,7 @@ class JiraReport:
 
     @property
     def since_version(self) -> str:
-        return self.versions[0] if (len(self.versions) > 1) else 'Unknown'
+        return self.versions[0] if (len(self.versions) > 0) else 'Unknown'
 
 
 class JiraConfig:
