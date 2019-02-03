@@ -1,6 +1,7 @@
 import sys
 
 import discord
+from datetime import datetime
 from discord.ext import commands
 from discord.ext.commands import Context
 
@@ -18,10 +19,14 @@ class Status:
     async def cmd_status(self, ctx: Context):
         pyv = sys.version_info
 
+        uptime = datetime.now() - self.bot.started_at
+
         rows = (
             ('python version', f'{pyv[0]}.{pyv[1]}.{pyv[2]}'),
             ('discord.py version', discord.__version__),
             ('cogbot version', cogbot.__version__),
+            ('started at', str(self.bot.started_at)),
+            ('uptime', str(uptime)),
         )
 
         pad = 1 + max(len(row[0]) for row in rows)

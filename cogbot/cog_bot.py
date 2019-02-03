@@ -1,5 +1,6 @@
 import logging
 
+from datetime import datetime
 from discord import Channel
 from discord.ext import commands
 from discord.ext.commands import Context
@@ -20,6 +21,9 @@ class CogBot(commands.Bot):
             **options)
 
         self.state = state
+
+        # Remember when we started.
+        self.started_at = datetime.now()
 
         # Channel to log mod messages to.
         self.mod_log_channel = None
