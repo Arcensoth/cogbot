@@ -149,14 +149,14 @@ class Jira:
             em.set_author(name=report.key, url=report.url, icon_url=favicon_url)
             em.add_field(name='Assigned to', value=report.assignee)
             em.add_field(name='Reported by', value=report.reporter)
-            em.add_field(name='Created on', value=report.created_on.strftime('%b %d, %Y'))
+            em.add_field(name='Created on', value=report.created_on.strftime('%d/%m/%Y'))
             if report.resolution == 'Unresolved':
                 em.add_field(name='Status', value=report.status)
                 em.add_field(name='Since version', value=report.since_version)
                 em.add_field(name='Votes', value=str(report.votes))
             else:
                 em.add_field(name='Resolution', value=report.resolution)
-                em.add_field(name='Resolved on', value=report.resolved_on.strftime('%b %d, %Y'))
+                em.add_field(name='Resolved on', value=report.resolved_on.strftime('%d/%m/%Y'))
                 em.add_field(name='Since version', value=report.since_version)
                 if report.fix_version:
                     em.add_field(name='Fix version', value=report.fix_version)
