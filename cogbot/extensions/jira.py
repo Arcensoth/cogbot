@@ -1,9 +1,9 @@
 import logging
 import urllib.parse
-from xml.etree import ElementTree as ET
+import urllib.request
+from xml.etree import ElementTree
 
 import re
-import requests
 from datetime import datetime
 from discord import Embed
 from discord.ext import commands
@@ -79,12 +79,13 @@ class Jira:
 
         log.info(f'Requesting JIRA report XML from: {url}')
 
-        request = requests.get(url)
+        response = urllib.request.urlopen(url)
+        content = response.read().decode('utf8')
 
         # access child 'channel' at index 0
         # and then access child 'item' at index 5
         # this is disguesting
-        root = ET.fromstring(request.content)[0][5]
+        root = ElementTree.fromstring(content)[0][5]
 
         # let's make our own thing to clean this up
         raw = {}
