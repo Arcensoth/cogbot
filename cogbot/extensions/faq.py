@@ -131,18 +131,18 @@ class Faq:
             entries = self.get_entries_strict(key)
             if entries:
                 for entry in entries:
-                    await self.bot.reply(entry.message)
+                    await self.bot.say(entry.message)
             else:
                 suggest_entries = self.get_entries_by_tags(key.split())
                 if suggest_entries:
                     await self.bot.add_reaction(ctx.message, u'🤔')
                     suggest_text = 'Maybe you meant: ' + self.format_keys(entry.key for entry in suggest_entries)
-                    await self.bot.reply(suggest_text)
+                    await self.bot.say(suggest_text)
                 else:
                     await self.bot.add_reaction(ctx.message, u'🤷')
 
         else:
-            await self.bot.reply(self.available_faqs_text)
+            await self.bot.say(self.available_faqs_text)
 
     @checks.is_manager()
     @commands.command(pass_context=True, name='faqreload', hidden=True)
