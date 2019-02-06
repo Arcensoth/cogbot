@@ -30,7 +30,6 @@ class About:
 
     async def make_about_message(self):
         parts = [
-            f'About {self.bot.user.mention}:',
             self.config.description
         ]
 
@@ -68,8 +67,8 @@ class About:
     @commands.group(pass_context=True, name='about')
     async def cmd_about(self, ctx: Context):
         if ctx.invoked_subcommand is None:
-            message = await self.bot.say('_')
-            await self.bot.edit_message(message, f'{ctx.message.author.mention} {self.about_message}')
+            message = await self.bot.say('🤖')
+            await self.bot.edit_message(message, f'{self.about_message}')
 
     @checks.is_manager()
     @cmd_about.command(pass_context=True, name='reload', hidden=True)
