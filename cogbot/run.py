@@ -4,7 +4,8 @@ import logging.config
 # parse args and setup logging before anything else
 
 arg_parser = argparse.ArgumentParser()
-arg_parser.add_argument('token')
+arg_parser.add_argument('--token', help='Bot token')
+arg_parser.add_argument('--tokenfile', help='Bot token file')
 arg_parser.add_argument('--log', help='Log level', default='WARNING')
 arg_parser.add_argument('--state', help='Bot state file', default='bot.json')
 args = arg_parser.parse_args()
@@ -50,6 +51,15 @@ from cogbot.cog_bot_state import CogBotState
 # TODO Consider switching to the library rewrite: https://github.com/Rapptz/discord.py/tree/rewrite
 # The rewrite has auto-reconnect behaviour: https://github.com/Rapptz/discord.py/blob/rewrite/discord/client.py#L405
 # This would make our hacky crash workarounds trivial.
+
+
+if args.token:
+    TOKEN = args.token
+elif args.tokenfile:
+    with open(args.tokenfile) as fp:
+        TOKEN = fp.read()
+else:
+    TOKEN = input('Enter bot token: ')
 
 
 def _attempt_logout(loop, bot):
@@ -102,7 +112,7 @@ def run():
                 bot.queue_message(bot.get_user_info, manager, message)
 
         try:
-            loop.run_until_complete(bot.start(args.token))
+            loop.run_until_complete(bot.start(TOKEN))
 
         except KeyboardInterrupt:
             log.info('Keyboard interrupt detected')
