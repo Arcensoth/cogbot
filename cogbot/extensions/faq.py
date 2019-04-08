@@ -134,10 +134,18 @@ class Faq:
                     await self.bot.say(entry.message)
             else:
                 suggest_entries = self.get_entries_by_tags(key.split())
-                if suggest_entries:
+
+                # if there's exactly one suggestion, just go with it
+                if len(suggest_entries) == 1:
+                    await self.bot.say(suggest_entries[0].message)
+
+                # or if there are more than one, suggest them
+                elif suggest_entries:
                     await self.bot.add_reaction(ctx.message, u'🤔')
                     suggest_text = 'Maybe you meant: ' + self.format_keys(entry.key for entry in suggest_entries)
                     await self.bot.say(suggest_text)
+
+                # otherwise shrug
                 else:
                     await self.bot.add_reaction(ctx.message, u'🤷')
 
