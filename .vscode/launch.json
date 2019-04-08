@@ -1,0 +1,23 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: cogbot",
+      "type": "python",
+      "request": "launch",
+      "module": "cogbot",
+      "console": "integratedTerminal",
+      "args": [
+        "--log",
+        "INFO",
+        "--state",
+        "./examples/commander_bot.json",
+        "--tokenfile",
+        "bot.token"
+      ]
+    }
+  ]
+}
