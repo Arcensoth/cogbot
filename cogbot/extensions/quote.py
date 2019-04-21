@@ -53,11 +53,17 @@ class Quote:
         server: discord.Server = message.server
         channel: discord.Channel = message.channel
 
-        quote_name = f'{author.display_name} ({author.name}#{author.discriminator}) in #{channel}:'
+        quote_name = f'{author.display_name} ({author.name}#{author.discriminator})'
         quote_link = f'https://discordapp.com/channels/{server.id}/{channel.id}/{message.id}'
 
-        em = discord.Embed(description=message.clean_content)
+        # include the server name if the source and destination are not the same server
+        footer_text = f'{server} #{channel}' if server.id != destination.server.id else f'#{channel}'
+
+        server_icon_url = f'https://cdn.discordapp.com/icons/{server.id}/{server.icon}'
+
+        em = discord.Embed(description=message.clean_content, timestamp=message.timestamp)
         em.set_author(name=quote_name, icon_url=author.avatar_url)
+        em.set_footer(text=footer_text, icon_url=server_icon_url)
 
         content = ((author.mention + ' ') if mention else '') + quote_link
 
