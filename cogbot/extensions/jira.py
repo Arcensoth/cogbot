@@ -171,7 +171,7 @@ class Jira:
             report_id = url_match.groups()[2]
             return self.fetch_report(base_url, report_project, report_id)
 
-    @commands.command(pass_context=True)
+    @commands.command(pass_context=True, aliases=['mojira', 'bug'])
     async def jira(self, ctx: Context, *, query: str):
         report = self.get_report(query)
         
