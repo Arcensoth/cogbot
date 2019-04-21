@@ -1,7 +1,10 @@
+import itertools
 import json
 import logging
+import typing
 import urllib.request
 
+import discord
 from discord.ext import commands
 from discord.ext.commands import CommandError, Context
 
@@ -21,34 +24,10 @@ class Invite:
         self.bot = bot
         options = bot.state.get_extension_state(ext)
         self.config = InviteConfig(**options)
-        self.data = {}
-        self.entries_by_server_id = {}
-        self.entries_by_name = {}
+        self.invites_by_server_id: typing.Dict[str, discord.Invite] = {}
+        self.invites_by_tag: typing.Dict[str, typing.Set[discord.Invite]] = {}
 
-    @staticmethod
-    def _make_entries_by_server_id(raw_entries):
-        # case insensitive
-        return {str(raw_entry['server_id']).lower(): raw_entry for raw_entry in raw_entries}
-
-    @staticmethod
-    def _make_entries_by_name(raw_entries):
-        entries = {}
-        for raw_entry in raw_entries:
-            # case insensitive
-            keys = [str(key).lower() for key in raw_entry['keys']]
-            for key in keys:
-                if key not in entries:
-                    entries[key] = []
-                entries[key].append(raw_entry)
-        return entries
-
-    def get_entry_by_server_id(self, server_id: str):
-        return self.entries_by_server_id.get(server_id)
-
-    def get_entries_by_name(self, name: str):
-        return self.entries_by_name.get(name.lower())
-
-    def reload_data(self):
+    async def reload_data(self):
         log.info('Reloading invites from: {}'.format(self.config.database))
 
         response = urllib.request.urlopen(self.config.database)
@@ -59,41 +38,72 @@ class Invite:
         except Exception as e:
             raise CommandError('Failed to reload invites: {}'.format(e))
 
-        self.data = data
-        self.entries_by_server_id = self._make_entries_by_server_id(data)
-        self.entries_by_name = self._make_entries_by_name(data)
+        # dynamically reload servers using the invites
+        invites_by_server_id = {}
+        invites_by_tag = {}
+        for raw_entry in data:
+            invite_url = raw_entry['invite']
+            invite: discord.Invite = await self.bot.get_invite(invite_url)
+            server: discord.Server = invite.server
+            server_id = server.id
+            invites_by_server_id[server_id] = invite
+            raw_tags: str = raw_entry.get('tags')
+            if raw_tags:
+                for tag in raw_tags.lower().split():
+                    if tag not in invites_by_tag:
+                        invites_by_tag[tag] = set()
+                    invites_by_tag[tag].add(invite)
 
-        log.info('Successfully reloaded {} invites'.format(len(data)))
+        self.invites_by_server_id = invites_by_server_id
+        self.invites_by_tag = invites_by_tag
+
+        log.info('Successfully reloaded {} invites'.format(len(invites_by_server_id)))
+
+    def get_invites_by_tag(self, tag: str) -> typing.Set[discord.Invite]:
+        return self.invites_by_tag.get(tag, set())
+    
+    def get_invites_by_tags(self, tags: str) -> typing.Set[discord.Invite]:
+        results = [self.get_invites_by_tag(tag) for tag in tags.split()]
+        result = set().union(*results)
+        return result
+
+    def get_invite_by_server_id(self, server_id: str) -> discord.Invite:
+        return self.invites_by_server_id.get(server_id)
 
     async def on_ready(self):
-        self.reload_data()
+        await self.reload_data()
 
     @commands.group(pass_context=True, name='invite')
-    async def cmd_invite(self, ctx: Context, *, name: str = ''):
-        # given name, use it as a key to lookup another server
-        if name:
-            entries = self.get_entries_by_name(name)
-            if entries:
-                await self.bot.say('\n'.join(entry['invite'] for entry in entries))
+    async def cmd_invite(self, ctx: Context, *, tags: str = ''):
+        # given tags, use them to look-up servers by tag
+        if tags:
+            invites = self.get_invites_by_tags(tags)
+            if invites:
+                await self.bot.say('\n'.join(invite.url for invite in invites))
             else:
                 await self.bot.add_reaction(ctx.message, u'🤷')
 
         # no name, lookup current server
         else:
             # check if there's an invite for the current server
-            entry = self.get_entry_by_server_id(ctx.message.server.id)
-            if entry:
-                await self.bot.say(entry['invite'])
+            invite: discord.Invite = self.get_invite_by_server_id(ctx.message.server.id)
+            if invite:
+                await self.bot.say(invite.url)
 
             # otherwise can't do anything
             else:
                 await self.bot.add_reaction(ctx.message, u'😭')
 
+    @commands.command(pass_context=True, name='invites')
+    async def cmd_invites(self, ctx: Context):
+        message = '\n'.join(invite.url for invite in self.invites_by_server_id.values())
+        await self.bot.say(message)
+
     @checks.is_manager()
     @commands.command(pass_context=True, name='invitereload', hidden=True)
     async def cmd_invitereload(self, ctx: Context):
         try:
-            self.reload_data()
+            await self.reload_data()
             await self.bot.react_success(ctx)
         except:
             await self.bot.react_failure(ctx)
