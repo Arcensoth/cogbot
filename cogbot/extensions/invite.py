@@ -40,13 +40,14 @@ class Invite:
 
         # dynamically reload servers using the invites
         invites_by_server_id = {}
+        invites_by_server_name = {}
         invites_by_tag = {}
         for raw_entry in data:
             invite_url = raw_entry['invite']
             invite: discord.Invite = await self.bot.get_invite(invite_url)
             server: discord.Server = invite.server
-            server_id = server.id
-            invites_by_server_id[server_id] = invite
+            invites_by_server_id[server.id] = invite
+            invites_by_server_name[server.name.lower()] = invite
             raw_tags: str = raw_entry.get('tags')
             if raw_tags:
                 for tag in raw_tags.lower().split():
@@ -55,20 +56,24 @@ class Invite:
                     invites_by_tag[tag].add(invite)
 
         self.invites_by_server_id = invites_by_server_id
+        self.invites_by_server_name = invites_by_server_name
         self.invites_by_tag = invites_by_tag
 
         log.info('Successfully reloaded {} invites'.format(len(invites_by_server_id)))
 
+    def get_invite_by_server_id(self, server_id: str) -> discord.Invite:
+        return self.invites_by_server_id.get(server_id)
+
+    def get_invite_by_server_name(self, server_name: str) -> discord.Invite:
+        return self.invites_by_server_name.get(server_name.lower())
+
     def get_invites_by_tag(self, tag: str) -> typing.Set[discord.Invite]:
-        return self.invites_by_tag.get(tag, set())
+        return self.invites_by_tag.get(tag.lower(), set())
     
     def get_invites_by_tags(self, tags: str) -> typing.Set[discord.Invite]:
         results = [self.get_invites_by_tag(tag) for tag in tags.split()]
         result = set().union(*results)
         return result
-
-    def get_invite_by_server_id(self, server_id: str) -> discord.Invite:
-        return self.invites_by_server_id.get(server_id)
 
     async def on_ready(self):
         await self.reload_data()
@@ -77,7 +82,15 @@ class Invite:
     async def cmd_invite(self, ctx: Context, *, tags: str = ''):
         # given tags, use them to look-up servers by tag
         if tags:
-            invites = self.get_invites_by_tags(tags)
+            # first check if the input matches perfectly a server name
+            invite_by_name = self.get_invite_by_server_name(tags)
+
+            # otherwise treat the input as a list of tags
+            if invite_by_name:
+                invites = [invite_by_name]
+            else:
+                invites = self.get_invites_by_tags(tags)
+
             if invites:
                 await self.bot.say('\n'.join(invite.url for invite in invites))
             else:
@@ -96,7 +109,13 @@ class Invite:
 
     @commands.command(pass_context=True, name='invites')
     async def cmd_invites(self, ctx: Context):
-        message = '\n'.join(invite.url for invite in self.invites_by_server_id.values())
+        if self.invites_by_server_id:
+            message = '\n'.join([
+                'Run `>invite <name>` to get an invite for one of the following servers:',
+                '```' + '\n'.join(invite.server.name for invite in self.invites_by_server_id.values()) + '```'
+            ])
+        else:
+            message = 'There are no invites available.'
         await self.bot.say(message)
 
     @checks.is_manager()
