@@ -1,10 +1,11 @@
 import logging
+import re
+import typing
 import urllib.parse
 import urllib.request
+from datetime import datetime
 from xml.etree import ElementTree
 
-import re
-from datetime import datetime
 from discord import Embed
 from discord.ext import commands
 from discord.ext.commands import Context
@@ -16,12 +17,13 @@ log = logging.getLogger(__name__)
 
 class JiraReport:
     def __init__(
-            self, id_: int, key: str, url: str, title: str, description: str,
+            self, id_: int, key: str, base_url: str, url: str, title: str, description: str,
             created_on: datetime, resolved_on: datetime, reporter: str, assignee: str,
             status: str, status_icon_url: str, resolution: str, versions: list, fix_version: str,
             votes: int, watches: int):
         self.id = id_
         self.key = key
+        self.base_url = base_url
         self.url = url
         self.title = title
         self.description = description
@@ -45,10 +47,18 @@ class JiraReport:
 class JiraConfig:
     def __init__(self, **options):
         self.base_url = options['base_url']
+        self.default_project = str(options['default_project']).upper()
 
 
 class Jira:
-    REPORT_PATTERN = re.compile('^(mc-)?(\d+)$', re.IGNORECASE)
+    ID_PATTERN_STR = r'^(\d+)$'
+    ID_PATTERN = re.compile(ID_PATTERN_STR, re.IGNORECASE)
+
+    BUG_PATTERN_STR = r'^(\w+)-(\d+)$'
+    BUG_PATTERN = re.compile(BUG_PATTERN_STR, re.IGNORECASE)
+
+    URL_PATTERN_STR = r'^(\w+\:\/\/.+)\/browse\/(\w+)-(\d+)$'
+    URL_PATTERN = re.compile(URL_PATTERN_STR, re.IGNORECASE)
 
     REPORT_FIELDS = (
         'link',
@@ -73,9 +83,11 @@ class Jira:
         self.bot = bot
         self.config = JiraConfig(**bot.state.get_extension_state(ext))
 
-    def fetch_report(self, report_id) -> JiraReport:
-        url = f'{self.config.base_url}/si/jira.issueviews:issue-xml/' \
-            f'MC-{report_id}/MC-{report_id}.xml?{self.REQUEST_ARGS}'
+    def fetch_report(self, base_url: str, report_project: str, report_id: int) -> JiraReport:
+        report_no = f'{report_project}-{report_id}'
+
+        url = f'{base_url}/si/jira.issueviews:issue-xml/' \
+            f'{report_no}/{report_no}.xml?{self.REQUEST_ARGS}'
 
         log.info(f'Requesting JIRA report XML from: {url}')
 
@@ -131,20 +143,40 @@ class Jira:
         watches_int = int(watches_tag.text)
 
         return JiraReport(
-            id_=id_, key=key, url=url, title=title, description=description,
+            id_=id_, key=key, base_url=base_url, url=url, title=title, description=description,
             created_on=created_on, resolved_on=resolved_on, reporter=reporter, assignee=assignee,
             status=status, status_icon_url=status_icon_url, resolution=resolution,
             versions=versions, fix_version=fix_version, votes=votes_int, watches=watches_int)
 
+    def get_report(self, query: str) -> typing.Optional[JiraReport]:
+        id_match = self.ID_PATTERN.match(query)
+        bug_match = self.BUG_PATTERN.match(query)
+        url_match = self.URL_PATTERN.match(query)
+
+        base_url = self.config.base_url
+
+        if id_match:
+            report_project = self.config.default_project
+            report_id = id_match.groups()[0]
+            return self.fetch_report(base_url, report_project, report_id)
+
+        elif bug_match:
+            report_project = str(bug_match.groups()[0]).upper()
+            report_id = bug_match.groups()[1]
+            return self.fetch_report(base_url, report_project, report_id)
+
+        elif url_match:
+            base_url = url_match.groups()[0]
+            report_project = str(url_match.groups()[1]).upper()
+            report_id = url_match.groups()[2]
+            return self.fetch_report(base_url, report_project, report_id)
+
     @commands.command(pass_context=True)
     async def jira(self, ctx: Context, *, query: str):
-        rmatch = self.REPORT_PATTERN.match(query)
-
-        if rmatch:
-            rgroups = rmatch.groups()
-            report_id = rgroups[1]
-            favicon_url = f'{self.config.base_url}/favicon.png'
-            report = self.fetch_report(report_id)
+        report = self.get_report(query)
+        
+        if report:
+            favicon_url = f'{report.base_url}/favicon.png'
             em = Embed(title=report.title, url=report.url, colour=0xDB1F29)
             em.set_thumbnail(url=report.status_icon_url)
             em.set_author(name=report.key, url=report.url, icon_url=favicon_url)

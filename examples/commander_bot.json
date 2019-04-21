@@ -43,7 +43,8 @@
       "database": "https://raw.githubusercontent.com/Arcensoth/mcdata/master/generated/reports/blocks.json"
     },
     "cogbot.extensions.jira": {
-      "base_url": "https://bugs.mojang.com"
+      "base_url": "https://bugs.mojang.com",
+      "default_project": "MC"
     },
     "cogbot.extensions.about": {
       "repos": [
