@@ -119,8 +119,7 @@ class Jira:
         resolved_tag = raw.get('resolved', [None])[0]
         version_tags = raw.get('version', [])
         # TODO fix once we figure out why the api doesn't return fixVersion
-        fix_version_tag = version_tags[-1] if len(version_tags) > 1 else None
-        # fix_version_tag = raw.get('fix_version', [None])[0]
+        fix_version_tag = raw.get('fix_version', [None])[0]
         votes_tag = raw.get('votes')[0]
         watches_tag = raw.get('watches')[0]
 
@@ -191,6 +190,8 @@ class Jira:
                 em.add_field(name='Resolution', value=report.resolution)
                 em.add_field(name='Resolved on', value=report.resolved_on.strftime('%d/%m/%Y'))
                 em.add_field(name='Since version', value=report.since_version)
+                if report.versions:
+                    em.add_field(name='Affects version', value=report.versions[-1])
                 if report.fix_version:
                     em.add_field(name='Fix version', value=report.fix_version)
             await self.bot.say(f'<{report.url}>', embed=em)
