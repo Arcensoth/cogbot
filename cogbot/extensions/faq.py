@@ -101,13 +101,8 @@ class Faq:
         # also create map of tags to entries
         entries_by_key: typing.Dict[FAQEntry] = {}
         entries_by_tag: typing.Dict[typing.List[FAQEntry]] = {}
-        aliases = {}
         for key, raw_entry in data.items():
-            # string is an alias
-            if isinstance(raw_entry, str):
-                aliases[key] = raw_entry
-
-            elif isinstance(raw_entry, dict):
+            if isinstance(raw_entry, dict):
                 # list becomes lines
                 raw_message = raw_entry['message']
                 message = '\n'.join(raw_message) if isinstance(raw_message, list) else str(raw_message)
@@ -121,11 +116,14 @@ class Faq:
                     if tag not in entries_by_tag:
                         entries_by_tag[tag] = []
                     entries_by_tag[tag].append(entry)
+
+                # process aliases
+                aliases = raw_entry.get('aliases', [])
+                for alias in aliases:
+                    entries_by_key[alias] = entry
+                    
             else:
                 log.error('Invalid FAQ entry "{}": {}'.format(key, raw_entry))
-
-        for source_key, destination_key in aliases.items():
-            entries_by_key[source_key] = entries_by_key[destination_key]
 
         self.entries_by_key = entries_by_key
         self.entries_by_tag = entries_by_tag
