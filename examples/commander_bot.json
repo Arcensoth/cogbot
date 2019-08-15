@@ -1,4 +1,5 @@
 {
+  "command_prefix": [">", "."],
   "description": "The /r/MinecraftCommands personal assistant.",
   "notify_on_recovery": false,
   "managers": [

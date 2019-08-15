@@ -1,11 +1,12 @@
 import logging
-
 from datetime import datetime
+
 from discord import Channel
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands.bot import _get_variable
 from discord.ext.commands.errors import *
+from discord.message import Message
 
 from cogbot.cog_bot_state import CogBotState
 
@@ -15,7 +16,7 @@ log = logging.getLogger(__name__)
 class CogBot(commands.Bot):
     def __init__(self, state: CogBotState, **options):
         super().__init__(
-            command_prefix=state.command_prefix,
+            command_prefix=commands.when_mentioned_or(*state.command_prefix),
             description=state.description,
             help_attrs=state.help_attrs,
             **options)
@@ -108,8 +109,22 @@ class CogBot(commands.Bot):
                 dest = await dest_getter(dest_id)
                 await self.send_message(dest, content)
 
+    def care_about_it(self, message: Message):
+        # ignore bot's own messages
+        if message.author != self.user:
+            # must start with one of the command prefixes
+            for prefix in self.state.command_prefix:
+                if message.content.startswith(prefix):
+                    return True
+
+            # or mentions the bot
+            if self.user in message.mentions:
+                return True
+
+        return False
+
     async def on_message(self, message):
-        if (message.author != self.user) and message.content.startswith(self.command_prefix):
+        if self.care_about_it(message):
             # listen to anyone on public channels
             if message.server:
                 log.info(f'[{message.server}/{message.author}] {message.content}')

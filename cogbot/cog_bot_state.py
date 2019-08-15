@@ -18,6 +18,8 @@ class CogBotState:
 
         # Optional
         self.command_prefix = raw_state.get('command_prefix', '>')
+        if not isinstance(self.command_prefix, list):
+            self.command_prefix = [self.command_prefix]
         self.description = raw_state.get('description', '')
         self.mod_log = raw_state.get('mod_log', '')
         self.managers = set(raw_state.get('managers', ()))
