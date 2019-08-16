@@ -18,6 +18,7 @@
     "cogbot.extensions.vote",
     "cogbot.extensions.kick",
     "cogbot.extensions.groups",
+    "cogbot.extensions.redirect",
     "cogbot.extensions.invite",
     "cogbot.extensions.faq",
     "cogbot.extensions.mccq",
@@ -31,6 +32,21 @@
     "cogbot.extensions.ping"
   ],
   "extension_state": {
+    "cogbot.extensions.redirect": {
+      "message_with_channel": "Hi {author}, please ask questions in an unoccupied help chat. You can try {channel}, but look out for unanswered questions.",
+      "message_without_channel": "Hi {author}, please ask questions in an unoccupied help chat.",
+      "threshold": 7200,
+      "channels": {
+        "154777837382008833": [
+          "154778900835205120",
+          "155701556833026048",
+          "187655051219697664",
+          "338040270832795669",
+          "542149104222863371",
+          "602224240984588290"
+        ]
+      }
+    },
     "cogbot.extensions.faq": {
       "database": "https://raw.githubusercontent.com/MinecraftCommands/commanderbot/master/config/faq.json"
     },
