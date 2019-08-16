@@ -102,20 +102,17 @@
         "master": "{actual} (latest)"
       }
     },
-    "cogbot.extensions.feed": {
-      "polling_interval": 30,
-      "subscriptions": {
-        "247818621005332480": {
-          "subreddit": {
-            "url": "https://www.reddit.com/r/MinecraftCommands/new/.rss"
-          },
-          "arqade": {
-            "url": "https://gaming.stackexchange.com/feeds/tag/minecraft-commands"
-          },
-          "minecraft": {
-            "url": "https://minecraft.net/en-us/feeds/community-content/rss"
-          }
+    "cogbot.extensions.proto": {
+      "servers": {
+        "mcc": {
+          "id": "154777837382008833"
         }
+      },
+      "bot_roles": {
+        "mcc": [
+          "611766264553275393",
+          "398571321354747904"
+        ]
       }
     }
   }

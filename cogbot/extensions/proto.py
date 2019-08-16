@@ -54,8 +54,8 @@ class Proto:
         if (not member.bot) and (member.server in self.bot_roles):
             bad_roles = self.bot_roles[member.server].intersection(member.roles)
             if bad_roles:
-                log.warning('Removing bot-only roles from {}: {}'.format(
-                    member.display_name, ', '.join('{} <{}>'.format(role.name, role.id) for role in bad_roles)))
+                log.warning('Removing bot-only roles from {}#{}: {}'.format(
+                    member.name, member.discriminator, ', '.join('{} <{}>'.format(role.name, role.id) for role in bad_roles)))
                 await self.bot.remove_roles(member, *bad_roles)
 
 
