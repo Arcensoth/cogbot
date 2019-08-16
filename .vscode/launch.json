@@ -14,7 +14,7 @@
         "--log",
         "INFO",
         "--state",
-        "./examples/commander_bot.json",
+        "bot.json",
         "--tokenfile",
         "bot.token"
       ]
