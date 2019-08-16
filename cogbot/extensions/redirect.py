@@ -13,7 +13,7 @@ class Redirect:
         self.message_with_channel = options['message_with_channel']
         self.message_without_channel = options['message_without_channel']
         self.channels = options['channels']
-        self.emojis = set(options.get('emojis', ['❔']))
+        self.emojis = set(options.get('emojis', ['🛴']))
         self.threshold = options.get('threshold', 3600)
 
     async def get_suggested_channel(self, reaction: discord.Reaction) -> discord.Channel:
