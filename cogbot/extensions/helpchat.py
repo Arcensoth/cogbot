@@ -65,7 +65,7 @@ class HelpChat:
                                     name=self.stale_prefix
                                     + channel.name[len(self.busy_prefix) :],
                                 )
-            await asyncio.sleep(10)
+            await asyncio.sleep(min(10, self.stale_time))
 
     async def get_free_channel(self, server: discord.Server) -> discord.Channel:
         for channel in self.get_managed_channels_for_server(server):
@@ -76,11 +76,13 @@ class HelpChat:
         free_channel = await self.get_free_channel(message.server)
         if free_channel:
             response = self.message_with_channel.format(
-                author=message.author.mention, channel=free_channel.mention
+                mention=message.author.mention,
+                name=message.author.display_name,
+                channel=free_channel.mention,
             )
         else:
             response = self.message_without_channel.format(
-                author=message.author.mention
+                mention=message.author.mention, name=message.author.display_name
             )
         await self.bot.send_message(message.channel, response)
 
@@ -113,12 +115,15 @@ class HelpChat:
         if reactor != self.bot and reaction.count == 1:
             # redirect author to a free channel
             if reaction.emoji == self.redirect_emoji:
+                log.info(f'[{reactor.server}/{reactor}] {self.redirect_emoji}')
+                await self.bot.add_reaction(reaction.message, self.redirect_emoji)
                 await self.redirect(reaction.message)
 
     async def on_message(self, message: discord.Message):
         if self.is_managed_channel(message.channel):
             # free up the channel
             if message.content == self.mark_free_emoji:
+                log.info(f'[{message.server}/{message.author}] {self.mark_free_emoji}')
                 await self.mark_channel_free(message.channel)
                 # await self.bot.add_reaction(message, self.mark_free_emoji)
             # otherwise mark it as busy
