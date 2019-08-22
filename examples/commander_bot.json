@@ -7,9 +7,7 @@
     "127163300348821504",
     "187961803844747264"
   ],
-  "staff_roles": [
-    "409808531865337866"
-  ],
+  "staff_roles": ["409808531865337866"],
   "extensions": [
     "cogbot.extensions.proto",
     "cogbot.extensions.about",
@@ -18,7 +16,7 @@
     "cogbot.extensions.vote",
     "cogbot.extensions.kick",
     "cogbot.extensions.groups",
-    "cogbot.extensions.redirect",
+    "cogbot.extensions.helpchat",
     "cogbot.extensions.invite",
     "cogbot.extensions.faq",
     "cogbot.extensions.mccq",
@@ -32,12 +30,12 @@
     "cogbot.extensions.ping"
   ],
   "extension_state": {
-    "cogbot.extensions.redirect": {
-      "message_with_channel": "Hi {author}, please ask questions in an unoccupied help chat. You can try {channel}, but look out for unanswered questions.",
-      "message_without_channel": "Hi {author}, please ask questions in an unoccupied help chat.",
-      "threshold": 7200,
-      "channels": {
-        "154777837382008833": [
+    "cogbot.extensions.helpchat": {
+      "154777837382008833": {
+        "message_with_channel": "Hi {mention}, please ask questions in an unoccupied help-chat: {channel}",
+        "message_without_channel": "Hi {mention}, please ask questions in an unoccupied help-chat.",
+        "seconds_until_stale": 1200,
+        "channels": [
           "154778900835205120",
           "155701556833026048",
           "187655051219697664",
@@ -95,9 +93,7 @@
       "help_url": "https://minecraft.gamepedia.com/Commands/{command}",
       "database": "https://raw.githubusercontent.com/Arcensoth/mcdata",
       "presence_version": "master",
-      "show_versions": [
-        "master"
-      ],
+      "show_versions": ["master"],
       "version_labels": {
         "master": "{actual} (latest)"
       }
@@ -109,10 +105,7 @@
         }
       },
       "bot_roles": {
-        "mcc": [
-          "611766264553275393",
-          "398571321354747904"
-        ]
+        "mcc": ["611766264553275393", "398571321354747904"]
       }
     }
   }
