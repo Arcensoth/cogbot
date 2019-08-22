@@ -119,6 +119,7 @@ class HelpChatServerState:
         ):
             log.info(f"[{reactor.server}/{reactor}] {self.relocate_emoji}")
             await self.redirect(reaction.message)
+            await self.bot.add_reaction(reaction.message, self.relocate_emoji)
         # resolve: only when enabled and for managed channels
         if (
             reaction.emoji == self.resolve_emoji
@@ -127,6 +128,7 @@ class HelpChatServerState:
         ):
             log.info(f"[{reactor.server}/{reactor}] {self.resolve_emoji}")
             await self.mark_channel_free(channel)
+            await self.bot.add_reaction(reaction.message, self.resolve_emoji)
 
     async def on_message(self, message: discord.Message):
         channel: discord.Channel = message.channel
