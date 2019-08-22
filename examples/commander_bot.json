@@ -35,6 +35,7 @@
         "message_with_channel": "Hi {mention}, please ask questions in an unoccupied help-chat: {channel}",
         "message_without_channel": "Hi {mention}, please ask questions in an unoccupied help-chat.",
         "seconds_until_stale": 1200,
+        "resolve_with_reaction": true,
         "channels": [
           "154778900835205120",
           "155701556833026048",

@@ -26,12 +26,12 @@ class HelpChatServerState:
         message_with_channel: str,
         message_without_channel: str,
         seconds_until_stale: int = 3600,
-        relocate_emoji: str = "➡️",
+        relocate_emoji: str = "🛴",
         resolve_emoji: str = "✅",
         free_prefix: str = "✅",
         busy_prefix: str = "💬",
         stale_prefix: str = "⏰",
-        resolve_with_reaction: bool = True,
+        resolve_with_reaction: bool = False,
     ):
         self.bot: CogBot = bot
         self.server: discord.Server = self.bot.get_server(server)
