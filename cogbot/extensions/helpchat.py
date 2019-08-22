@@ -99,7 +99,9 @@ class HelpChatServerState:
         await self.bot.edit_channel(channel, name=new_name)
 
     async def mark_channel_free(self, channel: discord.Channel):
-        await self.mark_channel(channel, self.free_prefix)
+        while not self.is_channel_free(channel):
+            await self.mark_channel(channel, self.free_prefix)
+            channel = self.bot.get_channel(channel.id)
 
     async def mark_channel_busy(self, channel: discord.Channel):
         await self.mark_channel(channel, self.busy_prefix)
