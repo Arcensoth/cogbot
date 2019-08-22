@@ -52,14 +52,17 @@ class HelpChatServerState:
         self.stale_prefix: str = stale_prefix
         self.resolve_with_reaction: bool = resolve_with_reaction
 
+    def is_channel(self, channel: discord.Channel, prefix: str) -> bool:
+        return channel.name.startswith(prefix)
+
     def is_channel_free(self, channel: discord.Channel) -> bool:
-        return channel.name.startswith(self.free_prefix)
+        return self.is_channel(channel, self.free_prefix)
 
     def is_channel_busy(self, channel: discord.Channel) -> bool:
-        return channel.name.startswith(self.busy_prefix)
+        return self.is_channel(channel, self.busy_prefix)
 
     def is_channel_stale(self, channel: discord.Channel) -> bool:
-        return channel.name.startswith(self.stale_prefix)
+        return self.is_channel(channel, self.stale_prefix)
 
     def get_free_channel(self) -> discord.Channel:
         for channel in self.channels:
