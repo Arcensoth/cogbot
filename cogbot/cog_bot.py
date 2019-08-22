@@ -1,12 +1,11 @@
 import logging
 from datetime import datetime
 
-from discord import Channel
+import discord
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands.bot import _get_variable
 from discord.ext.commands.errors import *
-from discord.message import Message
 
 from cogbot.cog_bot_state import CogBotState
 
@@ -39,6 +38,13 @@ class CogBot(commands.Bot):
             log.info("No extensions to load")
 
         log.info("Initialization successful")
+
+    def get_emoji(self, server: discord.Server, emoji: str):
+        if emoji.startswith("<"):
+            for e in server.emojis:
+                if str(e) == emoji:
+                    return e
+        return emoji
 
     async def reply(self, content, *args, **kwargs):
         author = kwargs.pop("author", _get_variable("_internal_author"))
@@ -86,7 +92,9 @@ class CogBot(commands.Bot):
         reply = f"There was a problem with your command{place}: *{error.args[0]}*"
         await self.send_message(destination, reply)
 
-    async def mod_log(self, ctx: Context, content: str, destination: Channel = None):
+    async def mod_log(
+        self, ctx: Context, content: str, destination: discord.Channel = None
+    ):
         await self.send_message(
             destination or self.mod_log_channel or ctx.message.author,
             f"[{ctx.message.author}] {content}",
@@ -111,7 +119,7 @@ class CogBot(commands.Bot):
                 dest = await dest_getter(dest_id)
                 await self.send_message(dest, content)
 
-    def care_about_it(self, message: Message):
+    def care_about_it(self, message: discord.Message):
         # ignore bot's own messages
         if message.author != self.user:
             # must start with one of the command prefixes
