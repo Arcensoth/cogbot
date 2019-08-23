@@ -73,6 +73,14 @@ class HelpChatServerState:
             return channel.name[len(self.stale_prefix) :]
         return channel.name
 
+    async def get_latest_message(self, channel: discord.Channel) -> discord.Message:
+        async for message in self.bot.logs_from(channel, limit=1):
+            return message
+
+    async def is_latest_message(self, message: discord.Message) -> bool:
+        latest_message = await self.get_latest_message(message.channel)
+        return message.id == latest_message.id
+
     async def redirect(self, message: discord.Message, reactor: discord.Member):
         free_channel = self.get_free_channel()
         response = (
@@ -109,17 +117,18 @@ class HelpChatServerState:
             and reactee != self.bot.user
         ):
             await self.bot.mod_log(reactor, f"Relocating {reactee}")
-            await self.redirect(reaction.message, reactor)
-            await self.bot.add_reaction(reaction.message, self.relocate_emoji)
-        # resolve: only when enabled and for managed channels
+            await self.redirect(message, reactor)
+            await self.bot.add_reaction(message, self.relocate_emoji)
+        # resolve: only when enabled and for the last message of a managed channel
         if (
             reaction.emoji == self.resolve_emoji
             and self.resolve_with_reaction
             and channel in self.channels
+            and await self.is_latest_message(message)
         ):
             await self.bot.mod_log(reactor, f"Resolving {channel.mention}")
             await self.mark_channel_free(channel)
-            await self.bot.add_reaction(reaction.message, self.resolve_emoji)
+            await self.bot.add_reaction(message, self.resolve_emoji)
 
     async def on_message(self, message: discord.Message):
         channel: discord.Channel = message.channel
@@ -139,8 +148,8 @@ class HelpChatServerState:
                 now: datetime = datetime.utcnow()
                 delta = timedelta(seconds=self.seconds_until_stale)
                 # look at the timestamp of the latest message
-                async for message in self.bot.logs_from(channel, limit=1):
-                    then: datetime = message.timestamp + delta
+                latest_message = await self.get_latest_message(channel)
+                then: datetime = latest_message.timestamp + delta
                 # check if it passes the configured threshold
                 if now > then:
                     await self.mark_channel_stale(channel)
