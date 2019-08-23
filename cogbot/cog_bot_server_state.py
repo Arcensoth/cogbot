@@ -33,5 +33,6 @@ class CogBotServerState:
             quote_name = f"{member.display_name} ({member.name}#{member.discriminator})"
             em = discord.Embed(description=content, timestamp=now)
             em.set_author(name=quote_name, icon_url=member.avatar_url)
-            em.set_footer(text=f"#{channel}" if channel else None)
+            if channel:
+                em.set_footer(text=f"#{channel}")
             await self.bot.send_message(self.log_channel, embed=em)
