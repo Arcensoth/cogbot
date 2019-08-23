@@ -76,18 +76,11 @@ class HelpChatServerState:
             return channel.name[len(self.stale_prefix) :]
         return channel.name
 
-    async def redirect(self, message: discord.Message):
+    async def redirect(self, message: discord.Message, reactor: discord.Member):
         free_channel = self.get_free_channel()
-        if free_channel:
-            response = self.message_with_channel.format(
-                mention=message.author.mention,
-                name=message.author.display_name,
-                channel=free_channel.mention,
-            )
-        else:
-            response = self.message_without_channel.format(
-                mention=message.author.mention, name=message.author.display_name
-            )
+        response = (
+            self.message_with_channel if free_channel else self.message_without_channel
+        ).format(author=message.author, reactor=reactor, channel=free_channel or "")
         await self.bot.send_message(message.channel, response)
 
     async def mark_channel(self, channel: discord.Channel, prefix: str):
@@ -119,7 +112,7 @@ class HelpChatServerState:
             and reactee != self.bot.user
         ):
             log.info(f"[{reactor.server}/{reactor}] {self.relocate_emoji}")
-            await self.redirect(reaction.message)
+            await self.redirect(reaction.message, reactor)
             await self.bot.add_reaction(reaction.message, self.relocate_emoji)
         # resolve: only when enabled and for managed channels
         if (
