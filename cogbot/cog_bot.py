@@ -98,13 +98,17 @@ class CogBot(commands.Bot):
         reply = f"There was a problem with your command{place}: *{error.args[0]}*"
         await self.send_message(destination, reply)
 
+    def get_server_from_key(self, key: str) -> discord.Server:
+        # try first our cache, then fallback to built-in method
+        return self.server_by_key.get(key) or self.get_server(key)
+
     def get_server_state(self, server: discord.Server) -> CogBotServerState:
         return self.server_state.get(server.id)
 
     def get_server_state_from_key(self, key: str) -> CogBotServerState:
-        server = self.server_by_key.get(key)
+        server = self.get_server_from_key(key)
         if server:
-            return self.server_state.get(server)
+            return self.server_state.get(server.id)
 
     async def mod_log(self, member: discord.Member, content: str):
         if isinstance(member, discord.Member):

@@ -16,7 +16,7 @@ class HelpChatServerState:
     def __init__(
         self,
         bot: CogBot,
-        server: ServerId,
+        server: discord.Server,
         channels: typing.List[ChannelId],
         message_with_channel: str,
         message_without_channel: str,
@@ -29,7 +29,7 @@ class HelpChatServerState:
         resolve_with_reaction: bool = False,
     ):
         self.bot: CogBot = bot
-        self.server: discord.Server = self.bot.get_server(server)
+        self.server: discord.Server = server
         self.channels: typing.List[discord.Channel] = [
             self.bot.get_channel(channel_id) for channel_id in channels
         ]
@@ -162,10 +162,11 @@ class HelpChat:
             await asyncio.sleep(10)
 
     async def on_ready(self):
-        for server_id, options in self.options.items():
-            if self.bot.get_server(server_id):
-                state = HelpChatServerState(self.bot, server_id, **options)
-                self.server_state[server_id] = state
+        for server_key, server_options in self.options.get("servers", {}).items():
+            server = self.bot.get_server_from_key(server_key)
+            if server:
+                state = HelpChatServerState(self.bot, server, **server_options)
+                self.server_state[server.id] = state
         await self.poll()
 
     async def on_reaction_add(
