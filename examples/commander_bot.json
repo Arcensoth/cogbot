@@ -39,7 +39,7 @@
     "cogbot.extensions.helpchat": {
       "servers": {
         "mcc": {
-          "message_with_channel": "Hi {author.mention}, please ask questions in an unoccupied help-chat: {channel.mention}",
+          "message_with_channel": "Hi {author.mention}, please ask questions in an unoccupied help-chat: {to_channel.mention}",
           "message_without_channel": "Hi {author.mention}, please ask questions in an unoccupied help-chat.",
           "seconds_until_stale": 1200,
           "resolve_with_reaction": true,

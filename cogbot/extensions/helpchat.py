@@ -73,10 +73,30 @@ class HelpChatServerState:
         return channel.name
 
     async def redirect(self, message: discord.Message, reactor: discord.Member):
-        free_channel = self.get_free_channel()
-        response = (
-            self.message_with_channel if free_channel else self.message_without_channel
-        ).format(author=message.author, reactor=reactor, channel=free_channel or "")
+        author: discord.Member = message.author
+        from_channel: discord.Channel = message.channel
+        to_channel = self.get_free_channel()
+        if to_channel:
+            await self.bot.mod_log(
+                reactor,
+                f"Relocating {author.mention} from {from_channel.mention} to {to_channel.mention}",
+                channel=from_channel,
+            )
+            response = self.message_with_channel.format(
+                author=author,
+                reactor=reactor,
+                from_channel=from_channel,
+                to_channel=to_channel,
+            )
+        else:
+            await self.bot.mod_log(
+                reactor,
+                f"Relocating {author.mention} from {from_channel.mention}",
+                channel=from_channel,
+            )
+            response = self.message_without_channel.format(
+                author=author, reactor=reactor, from_channel=from_channel
+            )
         await self.bot.send_message(message.channel, response)
 
     async def mark_channel(self, channel: discord.Channel, prefix: str):
@@ -100,14 +120,13 @@ class HelpChatServerState:
     async def on_reaction(self, reaction: discord.Reaction, reactor: discord.Member):
         message: discord.Message = reaction.message
         channel: discord.Channel = message.channel
-        reactee: discord.Member = message.author
+        author: discord.Member = message.author
         # relocate: only on the first of a reaction on a fresh human message
         if (
             reaction.emoji == self.relocate_emoji
             and reaction.count == 1
-            and reactee != self.bot.user
+            and author != self.bot.user
         ):
-            await self.bot.mod_log(reactor, f"Relocating {reactee}")
             await self.redirect(message, reactor)
             await self.bot.add_reaction(message, self.relocate_emoji)
         # resolve: only when enabled and for the last message of a managed channel
@@ -117,7 +136,9 @@ class HelpChatServerState:
             and channel in self.channels
             and await self.bot.is_latest_message(message)
         ):
-            await self.bot.mod_log(reactor, f"Resolving {channel.mention}")
+            await self.bot.mod_log(
+                reactor, f"Resolving {channel.mention}", channel=channel
+            )
             await self.mark_channel_free(channel)
             await self.bot.add_reaction(message, self.resolve_emoji)
 
@@ -127,7 +148,9 @@ class HelpChatServerState:
         if channel in self.channels:
             # resolve: only when the message contains exactly the resolve emoji
             if message.content == str(self.resolve_emoji):
-                await self.bot.mod_log(message.author, f"Resolving {channel.mention}")
+                await self.bot.mod_log(
+                    message.author, f"Resolving {channel.mention}", channel=channel
+                )
                 await self.mark_channel_free(channel)
             # otherwise mark it as busy
             else:
