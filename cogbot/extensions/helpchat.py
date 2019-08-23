@@ -181,10 +181,12 @@ class HelpChat:
     async def on_reaction_add(
         self, reaction: discord.Reaction, reactor: discord.Member
     ):
-        state = self.get_state(reactor.server)
-        # ignore bot's reactions
-        if state and reactor != self.bot.user:
-            await state.on_reaction(reaction, reactor)
+        # make sure this isn't a DM
+        if isinstance(reactor, discord.Member):
+            state = self.get_state(reactor.server)
+            # ignore bot's reactions
+            if state and reactor != self.bot.user:
+                await state.on_reaction(reaction, reactor)
 
     async def on_message(self, message: discord.Message):
         state = self.get_state(message.server)
