@@ -25,8 +25,6 @@ class Kick:
         cmd: Message = ctx.message
         server: Server = cmd.server
 
-        await self.bot.mod_log(cmd.author, f"Attempting to kick: {user}")
-
         # 1. check for a mention
         mention_match = self.MENTION_PATTERN.match(user)
         if mention_match:
@@ -44,35 +42,40 @@ class Kick:
         # otherwise, error
         else:
             response = "Please provide a mention, an id, or a username + discriminator (without spaces)"
-            await self.bot.mod_log(cmd.author, response)
             await self.bot.send_message(cmd.channel, response)
             await self.bot.add_reaction(cmd, "➖")
             return
 
         if not member:
             response = f"Couldn't find anyone matching the input: {user}"
-            await self.bot.mod_log(cmd.author, response)
             await self.bot.send_message(cmd.channel, response)
             await self.bot.add_reaction(cmd, "❓")
             return
 
-        direct_message = f"You got a warning kick from **{server.name}** for the following reason: ```{reason}```"
+        direct_message = (
+            f"You got a warning kick from **{server.name}** for:\n>>> {reason}"
+        )
         log.info(f"Kicking <{member.name}> with message: {direct_message}")
 
         try:
             await self.bot.send_message(member, direct_message)
             await self.bot.mod_log(
-                cmd.author, f"Messaged {member.mention}: {direct_message}"
+                cmd.author,
+                f"Messaged {member.mention} about being kicked for:\n>>> {reason}",
+                channel=cmd.channel,
             )
         except:
-            log.warning(f"Failed to warn <{member}> about being kicked")
-            response = f"Failed to message {member.mention} about being kicked. They may have DMs disabled."
-            await self.bot.mod_log(cmd.author, response)
+            log.warning(f"Unable to warn <{member}> about being kicked")
+            await self.bot.mod_log(
+                cmd.author,
+                f"Unable to message {member.mention} about being kicked. They may have DMs disabled.",
+                channel=cmd.channel,
+            )
 
         try:
             await self.bot.kick(member)
         except:
-            log.warning(f"Failed to kick <{member}> altogether")
+            log.warning(f"Failed to kick <{member}>")
             await self.bot.send_message(
                 cmd.channel,
                 f"Uh oh! Couldn't kick {member.mention}! You should look in to this.",
@@ -81,7 +84,7 @@ class Kick:
             return
 
         response = f"Kicked {member.mention} with a warning!"
-        await self.bot.mod_log(cmd.author, response)
+        await self.bot.mod_log(cmd.author, response, channel=cmd.channel)
         await self.bot.send_message(cmd.channel, response)
         await self.bot.add_reaction(cmd, "👢")
 
