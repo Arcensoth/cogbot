@@ -111,7 +111,7 @@ class CogBot(commands.Bot):
             return self.server_state.get(server.id)
 
     async def mod_log(
-        self, member: discord.Member, content: str, channel: discord.Channel
+        self, member: discord.Member, content: str, channel: discord.Channel = None
     ):
         if isinstance(member, discord.Member):
             state = self.get_server_state(member.server)
