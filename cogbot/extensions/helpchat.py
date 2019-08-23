@@ -4,8 +4,6 @@ import typing
 from datetime import datetime, timedelta
 
 import discord
-
-
 from discord.iterators import LogsFromIterator
 
 from cogbot.cog_bot import CogBot
@@ -99,13 +97,16 @@ class HelpChatServerState:
         await self.bot.edit_channel(channel, name=new_name)
 
     async def mark_channel_free(self, channel: discord.Channel):
-        await self.mark_channel(channel, self.free_prefix)
+        if self.is_channel_busy(channel) or self.is_channel_stale(channel):
+            await self.mark_channel(channel, self.free_prefix)
 
     async def mark_channel_busy(self, channel: discord.Channel):
-        await self.mark_channel(channel, self.busy_prefix)
+        if self.is_channel_free(channel) or self.is_channel_stale(channel):
+            await self.mark_channel(channel, self.busy_prefix)
 
     async def mark_channel_stale(self, channel: discord.Channel):
-        await self.mark_channel(channel, self.stale_prefix)
+        if self.is_channel_free(channel) or self.is_channel_busy(channel):
+            await self.mark_channel(channel, self.stale_prefix)
 
     async def on_reaction(self, reaction: discord.Reaction, reactor: discord.Member):
         message: discord.Message = reaction.message
