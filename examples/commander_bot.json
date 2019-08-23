@@ -32,8 +32,8 @@
   "extension_state": {
     "cogbot.extensions.helpchat": {
       "154777837382008833": {
-        "message_with_channel": "Hi {mention}, please ask questions in an unoccupied help-chat: {channel}",
-        "message_without_channel": "Hi {mention}, please ask questions in an unoccupied help-chat.",
+        "message_with_channel": "Hi {name}, please ask questions in an unoccupied help-chat: {channel}",
+        "message_without_channel": "Hi {name}, please ask questions in an unoccupied help-chat.",
         "seconds_until_stale": 1200,
         "resolve_with_reaction": true,
         "relocate_emoji": "<:relocate:614073716103708672>",
