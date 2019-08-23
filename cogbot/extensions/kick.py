@@ -52,6 +52,12 @@ class Kick:
             await self.bot.add_reaction(cmd, "❓")
             return
 
+        elif member == self.bot.user:
+            response = f"I don't think you want to do that."
+            await self.bot.send_message(cmd.channel, response)
+            await self.bot.add_reaction(cmd, "🤖")
+            return
+
         direct_message = (
             f"You got a warning kick from **{server.name}** for:\n>>> {reason}"
         )
