@@ -6,13 +6,10 @@ from datetime import datetime, timedelta
 import discord
 from discord.iterators import LogsFromIterator
 
-from cogbot.cog_bot import CogBot
+from cogbot.cog_bot import CogBot, ServerId, ChannelId
+
 
 log = logging.getLogger(__name__)
-
-
-ServerId = str
-ChannelId = str
 
 
 class HelpChatServerState:
@@ -111,7 +108,7 @@ class HelpChatServerState:
             and reaction.count == 1
             and reactee != self.bot.user
         ):
-            log.info(f"[{reactor.server}/{reactor}] {self.relocate_emoji}")
+            await self.bot.mod_log(reactor, f"Relocating {reactee}")
             await self.redirect(reaction.message, reactor)
             await self.bot.add_reaction(reaction.message, self.relocate_emoji)
         # resolve: only when enabled and for managed channels
@@ -120,7 +117,7 @@ class HelpChatServerState:
             and self.resolve_with_reaction
             and channel in self.channels
         ):
-            log.info(f"[{reactor.server}/{reactor}] {self.resolve_emoji}")
+            await self.bot.mod_log(reactor, f"Resolving {channel.mention}")
             await self.mark_channel_free(channel)
             await self.bot.add_reaction(reaction.message, self.resolve_emoji)
 
@@ -130,7 +127,7 @@ class HelpChatServerState:
         if channel in self.channels:
             # resolve: only when the message contains exactly the resolve emoji
             if message.content == str(self.resolve_emoji):
-                log.info(f"[{message.server}/{message.author}] {self.resolve_emoji}")
+                await self.bot.mod_log(message.author, f"Resolving {channel.mention}")
                 await self.mark_channel_free(channel)
             # otherwise mark it as busy
             else:
@@ -182,10 +179,12 @@ class HelpChat:
                 await state.on_reaction(reaction, reactor)
 
     async def on_message(self, message: discord.Message):
-        state = self.get_state(message.server)
-        # ignore bot's messages
-        if state and message.author != self.bot.user:
-            await state.on_message(message)
+        # make sure this isn't a DM
+        if message.server:
+            state = self.get_state(message.server)
+            # ignore bot's messages
+            if state and message.author != self.bot.user:
+                await state.on_message(message)
 
 
 def setup(bot):
