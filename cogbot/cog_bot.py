@@ -1,6 +1,6 @@
 import logging
 import typing
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import discord
 from discord.ext import commands
@@ -162,6 +162,22 @@ class CogBot(commands.Bot):
                 return True
 
         return False
+
+    def is_message_younger_than(
+        self, message: discord.Message, *args, **kwargs
+    ) -> bool:
+        now: datetime = datetime.utcnow()
+        delta = timedelta(*args, **kwargs)
+        then: datetime = message.timestamp + delta
+        return now > then
+
+    async def get_latest_message(self, channel: discord.Channel) -> discord.Message:
+        async for message in self.logs_from(channel, limit=1):
+            return message
+
+    async def is_latest_message(self, message: discord.Message) -> bool:
+        latest_message = await self.get_latest_message(message.channel)
+        return message.id == latest_message.id
 
     async def on_message(self, message):
         if self.care_about_it(message):

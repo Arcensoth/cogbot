@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import typing
-from datetime import datetime, timedelta
 
 import discord
 from discord.iterators import LogsFromIterator
@@ -73,14 +72,6 @@ class HelpChatServerState:
             return channel.name[len(self.stale_prefix) :]
         return channel.name
 
-    async def get_latest_message(self, channel: discord.Channel) -> discord.Message:
-        async for message in self.bot.logs_from(channel, limit=1):
-            return message
-
-    async def is_latest_message(self, message: discord.Message) -> bool:
-        latest_message = await self.get_latest_message(message.channel)
-        return message.id == latest_message.id
-
     async def redirect(self, message: discord.Message, reactor: discord.Member):
         free_channel = self.get_free_channel()
         response = (
@@ -110,7 +101,7 @@ class HelpChatServerState:
         message: discord.Message = reaction.message
         channel: discord.Channel = message.channel
         reactee: discord.Member = message.author
-        # relocate: only on the first of a reaction on a human message
+        # relocate: only on the first of a reaction on a fresh human message
         if (
             reaction.emoji == self.relocate_emoji
             and reaction.count == 1
@@ -124,7 +115,7 @@ class HelpChatServerState:
             reaction.emoji == self.resolve_emoji
             and self.resolve_with_reaction
             and channel in self.channels
-            and await self.is_latest_message(message)
+            and await self.bot.is_latest_message(message)
         ):
             await self.bot.mod_log(reactor, f"Resolving {channel.mention}")
             await self.mark_channel_free(channel)
@@ -145,13 +136,10 @@ class HelpChatServerState:
     async def poll_channels(self):
         for channel in self.channels:
             if self.is_channel_busy(channel):
-                now: datetime = datetime.utcnow()
-                delta = timedelta(seconds=self.seconds_until_stale)
-                # look at the timestamp of the latest message
-                latest_message = await self.get_latest_message(channel)
-                then: datetime = latest_message.timestamp + delta
-                # check if it passes the configured threshold
-                if now > then:
+                latest_message = await self.bot.get_latest_message(channel)
+                if self.bot.is_message_younger_than(
+                    latest_message, seconds=self.seconds_until_stale
+                ):
                     await self.mark_channel_stale(channel)
 
 
