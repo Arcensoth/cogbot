@@ -110,11 +110,13 @@ class CogBot(commands.Bot):
         if server:
             return self.server_state.get(server.id)
 
-    async def mod_log(self, member: discord.Member, content: str):
+    async def mod_log(
+        self, member: discord.Member, content: str, channel: discord.Channel
+    ):
         if isinstance(member, discord.Member):
             state = self.get_server_state(member.server)
             if state:
-                await state.mod_log(member, content)
+                await state.mod_log(member, content, channel)
 
     async def on_ready(self):
         log.info(f"Logged in as {self.user.name} (id {self.user.id})")

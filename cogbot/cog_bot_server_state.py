@@ -1,6 +1,7 @@
 import json
 import logging
 import typing
+from datetime import datetime
 
 import discord
 
@@ -24,9 +25,13 @@ class CogBotServerState:
                     f"[{self.server}] Failed to resolve log channel <{log_channel}>"
                 )
 
-    async def mod_log(self, member: discord.Member, content: str):
-        # TODO use an embed with local timestamp
+    async def mod_log(
+        self, member: discord.Member, content: str, channel: discord.Channel = None
+    ):
         if self.log_channel:
-            await self.bot.send_message(
-                self.log_channel, f"[{member.server}/{member}] {content}"
-            )
+            now = datetime.utcnow()
+            quote_name = f"{member.display_name} ({member.name}#{member.discriminator})"
+            em = discord.Embed(description=content, timestamp=now)
+            em.set_author(name=quote_name, icon_url=member.avatar_url)
+            em.set_footer(text=f"#{channel}" if channel else None)
+            await self.bot.send_message(self.log_channel, embed=em)
