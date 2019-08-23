@@ -1,2 +1,1 @@
-__version__ = '0.2.11-dev'
-w
+__version__ = "0.2.12-dev"
