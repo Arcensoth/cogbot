@@ -1,0 +1,2 @@
+ServerId = str
+ChannelId = str

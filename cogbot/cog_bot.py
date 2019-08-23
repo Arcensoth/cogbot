@@ -1,4 +1,5 @@
 import logging
+import typing
 from datetime import datetime
 
 import discord
@@ -8,6 +9,9 @@ from discord.ext.commands.bot import _get_variable
 from discord.ext.commands.errors import *
 
 from cogbot.cog_bot_state import CogBotState
+from cogbot.cog_bot_server_state import CogBotServerState
+from cogbot.types import ServerId, ChannelId
+
 
 log = logging.getLogger(__name__)
 
@@ -21,13 +25,15 @@ class CogBot(commands.Bot):
             **options,
         )
 
+        # global bot state/config
         self.state = state
+
+        # per-server state/config
+        self.server_state: typing.Dict[ServerId, CogBotServerState] = {}
+        self.server_by_key: typing.Dict[str, discord.Server] = {}
 
         # Remember when we started.
         self.started_at = datetime.now()
-
-        # Channel to log mod messages to.
-        self.mod_log_channel = None
 
         # A queue of messages to send after login.
         self.queued_messages = []
@@ -92,25 +98,45 @@ class CogBot(commands.Bot):
         reply = f"There was a problem with your command{place}: *{error.args[0]}*"
         await self.send_message(destination, reply)
 
-    async def mod_log(
-        self, ctx: Context, content: str, destination: discord.Channel = None
-    ):
-        await self.send_message(
-            destination or self.mod_log_channel or ctx.message.author,
-            f"[{ctx.message.author}] {content}",
-        )
+    def get_server_state(self, server: discord.Server) -> CogBotServerState:
+        return self.server_state.get(server.id)
+
+    def get_server_state_from_key(self, key: str) -> CogBotServerState:
+        server = self.server_by_key.get(key)
+        if server:
+            return self.server_state.get(server)
+
+    async def mod_log(self, member: discord.Member, content: str):
+        if isinstance(member, discord.Member):
+            state = self.get_server_state(member.server)
+            if state:
+                await state.mod_log(member, content)
 
     async def on_ready(self):
         log.info(f"Logged in as {self.user.name} (id {self.user.id})")
 
-        # Resolve mod log channel.
-        self.mod_log_channel = (
-            self.get_channel(self.state.mod_log) if self.state.mod_log else None
-        )
-        if self.mod_log_channel:
-            log.info(f"Resolved mod log channel: #{self.mod_log_channel}")
-        else:
-            log.warning(f"No mod log configured!")
+        # resolve configured servers
+        for server_key, server_options in self.state.servers.items():
+            # NOTE pop id so we don't send it to the state constructor
+            server_id = server_options.pop("id")
+            if server_id:
+                server = self.get_server(server_id)
+                if server:
+                    try:
+                        self.server_by_key[server_key] = server
+                        state = CogBotServerState(self, server, **server_options)
+                        self.server_state[server_id] = state
+                        log.info(
+                            f"Successfully configured server {server_key} <{server.id}>: {server}"
+                        )
+                    except Exception as e:
+                        log.exception(
+                            f"Failed to configure server {server_key} <{server_id}>"
+                        )
+                else:
+                    log.error(f"Failed to resolve server {server_key} <{server_id}>")
+            else:
+                log.error(f"Missing server_id for server {server_key}")
 
         # Send any queued messages.
         if self.queued_messages:
