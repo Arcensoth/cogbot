@@ -27,32 +27,34 @@ class CogBotServerState:
 
     async def mod_log(
         self,
+        member: discord.Member,
         content: str,
-        member: discord.Member = None,
         message: discord.Message = None,
+        icon: str = None,
+        color: int = None,
     ):
         if self.log_channel:
-            if not member:
-                member = message.author if message else None
+            icon = icon or ":arrow_right:"
+            color = color or discord.Embed.Empty
 
-            em = discord.Embed(
-                timestamp=datetime.utcnow(),
-                description=content,
-                # title="View message" if message else None,
-                # url=self.bot.make_message_link(message) if message else None,
-            )
-
-            if member:
-                em.set_author(
-                    name=f"{member.display_name} ({member.name}#{member.discriminator})",
-                    icon_url=member.avatar_url,
-                )
+            timestamp = datetime.utcnow()
+            description = f"{member.mention} {content}"
 
             if message:
-                em.set_footer(text=f"#{message.channel}")
+                message_link = self.bot.make_message_link(message)
+                description = " ".join((f"[{icon}]({message_link})", description))
+            else:
+                description = " ".join((icon, description))
 
-            await self.bot.send_message(
-                self.log_channel,
-                embed=em,
-                content="> " + self.bot.make_message_link(message) if message else None,
+            em = discord.Embed(
+                timestamp=timestamp, description=description, color=color
             )
+
+            if message:
+                em.set_footer(
+                    text=f"{member} in #{message.channel}", icon_url=member.avatar_url
+                )
+            else:
+                em.set_footer(text=f"{member}", icon_url=member.avatar_url)
+
+            await self.bot.send_message(self.log_channel, embed=em)

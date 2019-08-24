@@ -78,9 +78,10 @@ class HelpChatServerState:
         to_channel = self.get_free_channel()
         if to_channel:
             await self.bot.mod_log(
-                f"Relocating {author.mention} from {from_channel.mention} to {to_channel.mention}",
-                member=reactor,
+                reactor,
+                f"relocated {author.mention} from {from_channel.mention} to {to_channel.mention}",
                 message=message,
+                icon=self.relocate_emoji,
             )
             response = self.message_with_channel.format(
                 author=author,
@@ -90,9 +91,10 @@ class HelpChatServerState:
             )
         else:
             await self.bot.mod_log(
-                f"Relocating {author.mention} from {from_channel.mention}",
-                member=reactor,
+                reactor,
+                f"relocated {author.mention} from {from_channel.mention}",
                 message=message,
+                icon=self.relocate_emoji,
             )
             response = self.message_without_channel.format(
                 author=author, reactor=reactor, from_channel=from_channel
@@ -137,7 +139,10 @@ class HelpChatServerState:
             and await self.bot.is_latest_message(message)
         ):
             await self.bot.mod_log(
-                f"Resolving {channel.mention}", member=reactor, message=message
+                reactor,
+                f"resolved {channel.mention}",
+                message=message,
+                icon=self.resolve_emoji,
             )
             await self.mark_channel_free(channel)
             await self.bot.add_reaction(message, self.resolve_emoji)
@@ -149,9 +154,10 @@ class HelpChatServerState:
             # resolve: only when the message contains exactly the resolve emoji
             if message.content == str(self.resolve_emoji):
                 await self.bot.mod_log(
-                    f"Resolving {channel.mention}",
-                    member=message.author,
+                    message.author,
+                    f"resolved {channel.mention}",
                     message=message,
+                    icon=self.resolve_emoji,
                 )
                 await self.mark_channel_free(channel)
             # otherwise mark it as busy

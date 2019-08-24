@@ -1,7 +1,7 @@
 import logging
 import re
 
-from discord import Message, Server
+import discord
 from discord.ext import commands
 from discord.ext.commands import Bot, Context
 
@@ -12,8 +12,8 @@ log = logging.getLogger(__name__)
 
 
 class Kick:
-    MENTION_PATTERN = re.compile("<@(\w+)>")
-    ID_PATTERN = re.compile("\d+")
+    MENTION_PATTERN = re.compile(r"<@(\w+)>")
+    ID_PATTERN = re.compile(r"\d+")
 
     def __init__(self, bot: CogBot, ext: str):
         self.bot = bot
@@ -22,8 +22,8 @@ class Kick:
     @commands.has_permissions(kick_members=True)
     @commands.command(pass_context=True, hidden=True)
     async def kick(self, ctx: Context, user: str, *, reason: str):
-        cmd: Message = ctx.message
-        server: Server = cmd.server
+        cmd: discord.Message = ctx.message
+        server: discord.Server = cmd.server
 
         # 1. check for a mention
         mention_match = self.MENTION_PATTERN.match(user)
@@ -46,6 +46,13 @@ class Kick:
             await self.bot.add_reaction(cmd, "➖")
             return
 
+        await self.bot.mod_log(
+            cmd.author,
+            f"kicked {member.mention} with a warning!",
+            message=ctx.message,
+            icon=":boot:",
+        )
+
         if not member:
             response = f"Couldn't find anyone matching the input: {user}"
             await self.bot.send_message(cmd.channel, response)
@@ -66,32 +73,42 @@ class Kick:
         try:
             await self.bot.send_message(member, direct_message)
             await self.bot.mod_log(
-                cmd.author,
-                f"Messaged {member.mention} about being kicked for:\n>>> {reason}",
-                context=ctx,
+                self.bot.as_member_of(ctx.message.server),
+                f"messaged {member.mention} about being kicked for:\n>>> {reason}",
+                message=ctx.message,
+                icon=":envelope:",
             )
         except:
             log.warning(f"Unable to warn <{member}> about being kicked")
             await self.bot.mod_log(
-                cmd.author,
-                f"Unable to message {member.mention} about being kicked. They may have DMs disabled.",
-                context=ctx,
+                self.bot.as_member_of(ctx.message.server),
+                f"couldn't message {member.mention} about being kicked. They may have DMs disabled.",
+                message=ctx.message,
+                icon=":warning:",
+                color=discord.Color.gold(),
             )
 
         try:
             await self.bot.kick(member)
         except:
-            log.warning(f"Failed to kick <{member}>")
+            log.error(f"Failed to kick <{member}>")
+            await self.bot.mod_log(
+                self.bot.as_member_of(ctx.message.server),
+                f"couldn't kick {member.mention}! You should look into this.",
+                message=ctx.message,
+                icon=":rotating_light:",
+                color=discord.Color.red(),
+            )
             await self.bot.send_message(
                 cmd.channel,
-                f"Uh oh! Couldn't kick {member.mention}! You should look in to this.",
+                f"Uh oh! Couldn't kick {member.mention}! You should look into this.",
             )
             await self.bot.add_reaction(cmd, "❗")
             return
 
-        response = f"Kicked {member.mention} with a warning!"
-        await self.bot.mod_log(cmd.author, response, context=ctx)
-        await self.bot.send_message(cmd.channel, response)
+        await self.bot.send_message(
+            cmd.channel, f"Kicked {member.mention} with a warning!"
+        )
         await self.bot.add_reaction(cmd, "👢")
 
 
