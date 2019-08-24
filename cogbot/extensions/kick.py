@@ -68,14 +68,14 @@ class Kick:
             await self.bot.mod_log(
                 cmd.author,
                 f"Messaged {member.mention} about being kicked for:\n>>> {reason}",
-                channel=cmd.channel,
+                context=ctx,
             )
         except:
             log.warning(f"Unable to warn <{member}> about being kicked")
             await self.bot.mod_log(
                 cmd.author,
                 f"Unable to message {member.mention} about being kicked. They may have DMs disabled.",
-                channel=cmd.channel,
+                context=ctx,
             )
 
         try:
@@ -90,7 +90,7 @@ class Kick:
             return
 
         response = f"Kicked {member.mention} with a warning!"
-        await self.bot.mod_log(cmd.author, response, channel=cmd.channel)
+        await self.bot.mod_log(cmd.author, response, context=ctx)
         await self.bot.send_message(cmd.channel, response)
         await self.bot.add_reaction(cmd, "👢")
 

@@ -54,7 +54,7 @@ class Quote:
         channel: discord.Channel = message.channel
 
         quote_name = f'{author.display_name} ({author.name}#{author.discriminator})'
-        quote_link = f'https://discordapp.com/channels/{server.id}/{channel.id}/{message.id}'
+        quote_link = self.bot.make_message_link(message)
 
         # include the server name if the source and destination are not the same server
         footer_text = f'{server} #{channel}' if server.id != destination.server.id else f'#{channel}'

@@ -110,13 +110,24 @@ class CogBot(commands.Bot):
         if server:
             return self.server_state.get(server.id)
 
+    def make_message_link(self, message: discord.Message) -> str:
+        return f"https://discordapp.com/channels/{message.server.id}/{message.channel.id}/{message.id}"
+
     async def mod_log(
-        self, member: discord.Member, content: str, channel: discord.Channel = None
+        self,
+        content: str,
+        member: discord.Member = None,
+        message: discord.Message = None,
+        context: Context = None,
     ):
+        if not message:
+            message = context.message if context else None
+        if not member:
+            member = message.author if message else None
         if isinstance(member, discord.Member):
             state = self.get_server_state(member.server)
             if state:
-                await state.mod_log(member, content, channel)
+                await state.mod_log(content, member=member, message=message)
 
     async def on_ready(self):
         log.info(f"Logged in as {self.user.name} (id {self.user.id})")

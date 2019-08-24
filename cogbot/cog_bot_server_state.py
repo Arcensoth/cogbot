@@ -26,13 +26,33 @@ class CogBotServerState:
                 )
 
     async def mod_log(
-        self, member: discord.Member, content: str, channel: discord.Channel = None
+        self,
+        content: str,
+        member: discord.Member = None,
+        message: discord.Message = None,
     ):
         if self.log_channel:
-            now = datetime.utcnow()
-            quote_name = f"{member.display_name} ({member.name}#{member.discriminator})"
-            em = discord.Embed(description=content, timestamp=now)
-            em.set_author(name=quote_name, icon_url=member.avatar_url)
-            if channel:
-                em.set_footer(text=f"#{channel}")
-            await self.bot.send_message(self.log_channel, embed=em)
+            if not member:
+                member = message.author if message else None
+
+            em = discord.Embed(
+                timestamp=datetime.utcnow(),
+                description=content,
+                # title="View message" if message else None,
+                # url=self.bot.make_message_link(message) if message else None,
+            )
+
+            if member:
+                em.set_author(
+                    name=f"{member.display_name} ({member.name}#{member.discriminator})",
+                    icon_url=member.avatar_url,
+                )
+
+            if message:
+                em.set_footer(text=f"#{message.channel}")
+
+            await self.bot.send_message(
+                self.log_channel,
+                embed=em,
+                content="> " + self.bot.make_message_link(message) if message else None,
+            )
