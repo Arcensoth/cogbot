@@ -81,7 +81,7 @@ class HelpChatServerState:
                 reactor,
                 f"relocated {author.mention} from {from_channel.mention} to {to_channel.mention}",
                 message=message,
-                icon=self.relocate_emoji,
+                icon=":arrow_right:",
             )
             response = self.message_with_channel.format(
                 author=author,
@@ -94,7 +94,7 @@ class HelpChatServerState:
                 reactor,
                 f"relocated {author.mention} from {from_channel.mention}",
                 message=message,
-                icon=self.relocate_emoji,
+                icon=":arrow_right:",
             )
             response = self.message_without_channel.format(
                 author=author, reactor=reactor, from_channel=from_channel
@@ -146,7 +146,7 @@ class HelpChatServerState:
                     reactor,
                     f"resolved {channel.mention}",
                     message=message,
-                    icon=self.resolve_emoji,
+                    icon=":white_check_mark:",
                 )
 
     async def on_message(self, message: discord.Message):
@@ -160,7 +160,7 @@ class HelpChatServerState:
                         message.author,
                         f"resolved {channel.mention}",
                         message=message,
-                        icon=self.resolve_emoji,
+                        icon=":white_check_mark:",
                     )
             # otherwise mark it as busy
             else:
