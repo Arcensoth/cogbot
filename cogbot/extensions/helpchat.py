@@ -101,23 +101,25 @@ class HelpChatServerState:
             )
         await self.bot.send_message(message.channel, response)
 
-    async def mark_channel(self, channel: discord.Channel, prefix: str):
+    async def mark_channel(self, channel: discord.Channel, prefix: str) -> bool:
         base_name = self.get_base_channel_name(channel)
         # NOTE get_base_channel_name() depends on how this is constructed
         new_name = prefix + base_name
-        await self.bot.edit_channel(channel, name=new_name)
+        if new_name != channel.name:
+            await self.bot.edit_channel(channel, name=new_name)
+            return True
 
-    async def mark_channel_free(self, channel: discord.Channel):
+    async def mark_channel_free(self, channel: discord.Channel) -> bool:
         if self.is_channel_busy(channel) or self.is_channel_stale(channel):
-            await self.mark_channel(channel, self.free_prefix)
+            return await self.mark_channel(channel, self.free_prefix)
 
-    async def mark_channel_busy(self, channel: discord.Channel):
+    async def mark_channel_busy(self, channel: discord.Channel) -> bool:
         if self.is_channel_free(channel) or self.is_channel_stale(channel):
-            await self.mark_channel(channel, self.busy_prefix)
+            return await self.mark_channel(channel, self.busy_prefix)
 
-    async def mark_channel_stale(self, channel: discord.Channel):
+    async def mark_channel_stale(self, channel: discord.Channel) -> bool:
         if self.is_channel_free(channel) or self.is_channel_busy(channel):
-            await self.mark_channel(channel, self.stale_prefix)
+            return await self.mark_channel(channel, self.stale_prefix)
 
     async def on_reaction(self, reaction: discord.Reaction, reactor: discord.Member):
         message: discord.Message = reaction.message
@@ -138,14 +140,14 @@ class HelpChatServerState:
             and channel in self.channels
             and await self.bot.is_latest_message(message)
         ):
-            await self.bot.mod_log(
-                reactor,
-                f"resolved {channel.mention}",
-                message=message,
-                icon=self.resolve_emoji,
-            )
-            await self.mark_channel_free(channel)
-            await self.bot.add_reaction(message, self.resolve_emoji)
+            if await self.mark_channel_free(channel):
+                await self.bot.add_reaction(message, self.resolve_emoji)
+                await self.bot.mod_log(
+                    reactor,
+                    f"resolved {channel.mention}",
+                    message=message,
+                    icon=self.resolve_emoji,
+                )
 
     async def on_message(self, message: discord.Message):
         channel: discord.Channel = message.channel
@@ -153,13 +155,13 @@ class HelpChatServerState:
         if channel in self.channels:
             # resolve: only when the message contains exactly the resolve emoji
             if message.content == str(self.resolve_emoji):
-                await self.bot.mod_log(
-                    message.author,
-                    f"resolved {channel.mention}",
-                    message=message,
-                    icon=self.resolve_emoji,
-                )
-                await self.mark_channel_free(channel)
+                if await self.mark_channel_free(channel):
+                    await self.bot.mod_log(
+                        message.author,
+                        f"resolved {channel.mention}",
+                        message=message,
+                        icon=self.resolve_emoji,
+                    )
             # otherwise mark it as busy
             else:
                 await self.mark_channel_busy(channel)
