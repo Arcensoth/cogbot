@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import typing
+from datetime import datetime, timedelta
 
 import discord
 from discord.iterators import LogsFromIterator
@@ -9,6 +10,9 @@ from cogbot.cog_bot import CogBot, ServerId, ChannelId
 
 
 log = logging.getLogger(__name__)
+
+
+CLOCKS = ("🕛", "🕐", "🕑", "🕒", "🕓", "🕔", "🕕", "🕖", "🕗", "🕘", "🕙", "🕚", "⏰")
 
 
 class HelpChatServerState:
@@ -24,8 +28,9 @@ class HelpChatServerState:
         resolve_emoji: str = "✅",
         free_prefix: str = "✅",
         busy_prefix: str = "💬",
-        stale_prefix: str = "⏰",
+        stale_prefixes: typing.Iterable[str] = ["⏰"],
         resolve_with_reaction: bool = False,
+        destroy_audit_log: bool = False,
     ):
         self.bot: CogBot = bot
         self.server: discord.Server = server
@@ -43,7 +48,9 @@ class HelpChatServerState:
         )
         self.free_prefix: str = free_prefix
         self.busy_prefix: str = busy_prefix
-        self.stale_prefix: str = stale_prefix
+        self.stale_prefixes: typing.Tuple[str] = CLOCKS if destroy_audit_log else tuple(
+            stale_prefixes
+        )
         self.resolve_with_reaction: bool = resolve_with_reaction
 
     def is_channel(self, channel: discord.Channel, prefix: str) -> bool:
@@ -55,8 +62,11 @@ class HelpChatServerState:
     def is_channel_busy(self, channel: discord.Channel) -> bool:
         return self.is_channel(channel, self.busy_prefix)
 
-    def is_channel_stale(self, channel: discord.Channel) -> bool:
-        return self.is_channel(channel, self.stale_prefix)
+    def is_channel_stale(self, channel: discord.Channel, index: int = None) -> bool:
+        return self.is_channel(
+            channel,
+            self.stale_prefixes if index == None else self.get_stale_prefix(index),
+        )
 
     def get_free_channel(self) -> discord.Channel:
         for channel in self.channels:
@@ -69,8 +79,11 @@ class HelpChatServerState:
         if self.is_channel_busy(channel):
             return channel.name[len(self.busy_prefix) :]
         if self.is_channel_stale(channel):
-            return channel.name[len(self.stale_prefix) :]
+            return channel.name[len(self.stale_prefixes[0]) :]
         return channel.name
+
+    def get_stale_prefix(self, index: int) -> str:
+        return self.stale_prefixes[min(index, len(self.stale_prefixes) - 1)]
 
     async def redirect(self, message: discord.Message, reactor: discord.Member):
         author: discord.Member = message.author
@@ -117,9 +130,13 @@ class HelpChatServerState:
         if self.is_channel_free(channel) or self.is_channel_stale(channel):
             return await self.mark_channel(channel, self.busy_prefix)
 
-    async def mark_channel_stale(self, channel: discord.Channel) -> bool:
-        if self.is_channel_free(channel) or self.is_channel_busy(channel):
-            return await self.mark_channel(channel, self.stale_prefix)
+    async def mark_channel_stale(self, channel: discord.Channel, index: int) -> bool:
+        if not self.is_channel_stale(channel, index) and (
+            self.is_channel_free(channel)
+            or self.is_channel_busy(channel)
+            or self.is_channel_stale(channel)
+        ):
+            return await self.mark_channel(channel, self.get_stale_prefix(index))
 
     async def on_reaction(self, reaction: discord.Reaction, reactor: discord.Member):
         message: discord.Message = reaction.message
@@ -168,12 +185,14 @@ class HelpChatServerState:
 
     async def poll_channels(self):
         for channel in self.channels:
-            if self.is_channel_busy(channel):
+            if self.is_channel_busy(channel) or self.is_channel_stale(channel):
                 latest_message = await self.bot.get_latest_message(channel)
-                if self.bot.is_message_younger_than(
-                    latest_message, seconds=self.seconds_until_stale
-                ):
-                    await self.mark_channel_stale(channel)
+                now: datetime = datetime.utcnow()
+                then: datetime = latest_message.timestamp
+                delta = now - then
+                amount = delta.seconds // self.seconds_until_stale
+                if amount > 0:
+                    await self.mark_channel_stale(channel, amount - 1)
 
 
 class HelpChat:
