@@ -200,6 +200,7 @@ class HelpChat:
         self.bot: CogBot = bot
         self.server_state: typing.Dict[ServerId, HelpChatServerState] = {}
         self.options = self.bot.state.get_extension_state(ext)
+        self.polling_task = None
 
     def get_state(self, server: discord.Server) -> HelpChatServerState:
         return self.server_state.get(server.id)
@@ -211,12 +212,15 @@ class HelpChat:
             await asyncio.sleep(10)
 
     async def on_ready(self):
+        # construct server state objects for easier context management
         for server_key, server_options in self.options.get("servers", {}).items():
             server = self.bot.get_server_from_key(server_key)
             if server:
                 state = HelpChatServerState(self.bot, server, **server_options)
                 self.server_state[server.id] = state
-        await self.poll()
+
+        # create a proper background task to poll managed channels
+        self.polling_task = self.bot.loop.create_task(self.poll())
 
     async def on_reaction_add(
         self, reaction: discord.Reaction, reactor: discord.Member
