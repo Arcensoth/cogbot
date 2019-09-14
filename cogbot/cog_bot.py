@@ -136,14 +136,18 @@ class CogBot(commands.Bot):
 
         # resolve configured servers
         for server_key, server_options in self.state.servers.items():
-            # NOTE pop id so we don't send it to the state constructor
-            server_id = server_options.pop("id")
+            # copy options dict because we need to make modifications
+            options = {k: v for k, v in server_options.items()}
+            
+            # pop id so we don't send it to the state constructor
+            server_id = options.pop("id")
+
             if server_id:
                 server = self.get_server(server_id)
                 if server:
                     try:
                         self.server_by_key[server_key] = server
-                        state = CogBotServerState(self, server, **server_options)
+                        state = CogBotServerState(self, server, **options)
                         self.server_state[server_id] = state
                         log.info(
                             f"Successfully configured server {server_key} <{server.id}>: {server}"
