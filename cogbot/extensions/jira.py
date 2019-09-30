@@ -20,7 +20,7 @@ class JiraReport:
             self, id_: int, key: str, base_url: str, url: str, title: str, description: str,
             created_on: datetime, resolved_on: datetime, reporter: str, assignee: str,
             status: str, status_icon_url: str, resolution: str, versions: list, fix_version: str,
-            votes: int, watches: int):
+            votes: int, watches: int, category: str, priority: str):
         self.id = id_
         self.key = key
         self.base_url = base_url
@@ -38,6 +38,8 @@ class JiraReport:
         self.fix_version = fix_version
         self.votes = votes
         self.watches = watches
+        self.category = category
+        self.priority = priority
 
     @property
     def since_version(self) -> str:
@@ -75,6 +77,12 @@ class Jira:
         'fixVersion',
         'votes',
         'watches',
+
+        # Category
+        'customfield_11901',
+
+        # Priority
+        'customfield_12200',
     )
 
     REQUEST_ARGS = '&'.join(f'field={field}' for field in REPORT_FIELDS)
@@ -123,6 +131,20 @@ class Jira:
         votes_tag = raw.get('votes')[0]
         watches_tag = raw.get('watches')[0]
 
+        category = None
+        priority = None
+        custom_fields = raw.get('customfields', [None])[0]
+        for custom_field in custom_fields:
+            custom_field_id = custom_field.get('id')
+
+            # Category
+            if custom_field_id == 'customfield_11901':
+                category = custom_field[1][0].text
+
+            # Priority
+            elif custom_field_id == 'customfield_12200':
+                priority = custom_field[1][0].text
+
         id_ = key_tag.attrib['id']
         key = key_tag.text
         url = link_tag.text
@@ -145,7 +167,8 @@ class Jira:
             id_=id_, key=key, base_url=base_url, url=url, title=title, description=description,
             created_on=created_on, resolved_on=resolved_on, reporter=reporter, assignee=assignee,
             status=status, status_icon_url=status_icon_url, resolution=resolution,
-            versions=versions, fix_version=fix_version, votes=votes_int, watches=watches_int)
+            versions=versions, fix_version=fix_version, votes=votes_int, watches=watches_int,
+            category=category, priority=priority)
 
     def get_report(self, query: str) -> typing.Optional[JiraReport]:
         id_match = self.ID_PATTERN.match(query)
@@ -182,6 +205,13 @@ class Jira:
             em.add_field(name='Assigned to', value=report.assignee)
             em.add_field(name='Reported by', value=report.reporter)
             em.add_field(name='Created on', value=report.created_on.strftime('%d/%m/%Y'))
+
+            if report.category:
+                em.add_field(name='Category', value=report.category)
+
+            if report.priority:
+                em.add_field(name='Priority', value=report.priority)
+
             if report.resolution == 'Unresolved':
                 em.add_field(name='Status', value=report.status)
                 em.add_field(name='Since version', value=report.since_version)
@@ -194,6 +224,7 @@ class Jira:
                     em.add_field(name='Affects version', value=report.versions[-1])
                 if report.fix_version:
                     em.add_field(name='Fix version', value=report.fix_version)
+                    
             await self.bot.say(f'<{report.url}>', embed=em)
 
         else:
