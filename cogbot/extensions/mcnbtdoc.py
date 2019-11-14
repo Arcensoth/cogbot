@@ -201,6 +201,8 @@ class McNbtDoc:
                 return await self.walk(data, cpd['fields'][path[0]]['nbttype'], path[1:], ctx)
             else:
                 if 'supers' in cpd:
+                    if cpd['supers'] == None:
+                        return None
                     if 'Compound' in cpd['supers']:
                         return await self.walk(
                             data,
@@ -304,7 +306,11 @@ class McNbtDoc:
             msg = 'page {}'.format(ace.get_page_msg())
         else:
             msg = ''
-        thismsg = await self.bot.send_message(ctx.message.channel, content=msg, embed=ace.get_embed())
+        em = ace.get_embed()
+        if em == None:
+            await self.bot.add_reaction(ctx.message, u'❌')
+            return
+        thismsg = await self.bot.send_message(ctx.message.channel, content=msg, embed=em)
         ace.message = thismsg
         if not thismsg.channel.server in self.active_embeds:
             self.active_embeds[thismsg.channel.server] = {}
@@ -526,6 +532,8 @@ class ActiveEmbed:
 
     def get_embed(self):
         em = self.get_proto_embed()
+        if em == None:
+            return None
         # Number of regular fields per page
         p_len = max(1, self.fl - len(em.persist_fields))
         fmin = self.page * p_len
@@ -594,7 +602,7 @@ class ActiveEmbed:
                             inline=False
                         )
                     )
-                else:
+                elif 'Registry' in cpd['supers']:
                     vals = []
                     for x in cpd['supers']['Registry']['path']:
                         if x == 'Super':
@@ -629,7 +637,7 @@ class ActiveEmbed:
                     if type(ls[0][2]) is int:
                         ls = [(name, desc, str(x)) for name, desc, x in sorted(ls, key=lambda v: v[2])]
                     else:
-                        ls.sort(key=lambda name, desc, val: val)
+                        ls.sort(key=lambda v: v[2])
                     for name, desc, v in ls:
                         embed.fields.append(ProtoEmbedField(name=name, value='{}\n{}'.format(desc, v)))
         elif 'List' in item:
@@ -637,7 +645,7 @@ class ActiveEmbed:
             embed.persist_fields.append(
                 ProtoEmbedField(
                     name='List Item Type',
-                    value=format_nbttype(item['List']['value_type'])
+                    value=format_nbttype(item['List']['value_type'], self.data)
                 )
             )
             if item['List']['length_range']:
@@ -749,6 +757,8 @@ class ActiveEmbed:
 
     def should_scroll(self):
         pe = self.get_proto_embed()
+        if pe == None:
+            return False
         flen = len(pe.fields)
         pflen = len(pe.persist_fields)
         out = (flen + pflen) > self.fl
