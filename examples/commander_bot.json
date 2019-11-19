@@ -65,8 +65,7 @@
     "cogbot.extensions.mcnbtdoc": {
       "version_database": "https://raw.githubusercontent.com/MrYurihi/mc-nbtdoc/{}-gen/build/generated.json",
       "database": "https://raw.githubusercontent.com/MrYurihi/mc-nbtdoc/generated/build/generated.json",
-      "ac_limit": "300",
-      "poll_delta": "60",
+      "ac_limit": "600",
       "field_limit": "10"
     },
     "cogbot.extensions.mcblock": {

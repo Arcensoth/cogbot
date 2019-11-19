@@ -30,7 +30,6 @@ class McNbtDocConfig:
         self.database = options['database']
         self.versions = options['version_database']
         self.active_limit: timedelta = timedelta(seconds=int(options['ac_limit']))
-        self.poll_delta: timedelta = timedelta(seconds=int(options['poll_delta']))
         self.field_limit: int = int(options['field_limit'])
 
 INTRAVERSABLE = [
@@ -300,8 +299,7 @@ class McNbtDoc:
             title = name
             if len(path) > 0:
                 title = path[-1]
-        
-        ace = ActiveEmbed(None, item, data, self.config.field_limit, title)
+        ace = ActiveEmbed(None, item, data, self.config.field_limit, title, False, self.config.active_limit)
         if ace.should_scroll():
             msg = 'page {}'.format(ace.get_page_msg())
         else:
@@ -315,7 +313,15 @@ class McNbtDoc:
         if not thismsg.channel.server in self.active_embeds:
             self.active_embeds[thismsg.channel.server] = {}
         self.active_embeds[thismsg.channel.server][str(thismsg.id)] = ace
+        ace.remove_task_factory = lambda: remove_ae(
+            str(thismsg.id),
+            thismsg.channel.server,
+            self,
+            self.config.active_limit
+        )
+        ace.change_active()
         if ace.should_scroll():
+            ace.is_scrolling = True
             await self.bot.add_reaction(thismsg, u'◀')
             await self.bot.add_reaction(thismsg, u'▶')
         await self.bot.add_reaction(thismsg, u'🔼')
@@ -340,16 +346,6 @@ class McNbtDoc:
                 elif reaction.emoji == u'🔼' or reaction.emoji == u'🔽':
                     await self.ro_embed(state, reaction.emoji == u'🔼', reaction.message, reaction)
 
-    async def on_message(self, message: discord.Message):
-        if self.last_poll + self.config.poll_delta > datetime.utcnow():
-            for s in self.active_embeds.values():
-                torem = []
-                for k, v in s.items():
-                    if v.can_remove(self.config.active_limit):
-                        torem.append(k)
-                for k in torem:
-                    del s[k]
-
     async def scroll_embed(self, state, left: bool, message: discord.Message, re: discord.Reaction):
         em = state.get(str(message.id), None)
         if em == None:
@@ -373,10 +369,12 @@ class McNbtDoc:
             if not em.dec_level():
                 return
         await self.bot.edit_message(message, 'page {}'.format(em.get_page_msg()), embed=em.get_embed())
-        if em.should_scroll():
+        if em.should_scroll() and not em.is_scrolling:
+            em.is_scrolling = True
             await self.bot.add_reaction(message, u'◀')
             await self.bot.add_reaction(message, u'▶')
-        else:
+        elif em.is_scrolling:
+            em.is_scrolling = False
             await asyncio.gather(
                 self.bot.remove_reaction(message, u'◀', message.server.me),
                 self.bot.remove_reaction(message, u'▶', message.server.me)
@@ -494,20 +492,48 @@ def format_nbtpath(p):
             vals.append(x['Child'])
     return '.'.join(vals)
 
+async def remove_ae(ae: str, server: discord.Server, mcnbtdoc: McNbtDoc, dt: timedelta):
+    try:
+        await asyncio.sleep(dt.total_seconds())
+    except asyncio.CancelledError:
+        ace = mcnbtdoc.active_embeds[server][ae]
+    if ace.no_delete > 0:
+        ace.no_delete -= 1
+    else:
+        del mcnbtdoc.active_embeds[server][ae]
+
 class ActiveEmbed:
-    def __init__(self, m: discord.Message, src, data, fl: int, title: str):
+    def __init__(
+        self,
+        m: discord.Message,
+        src,
+        data,
+        fl: int,
+        title: str,
+        scrolling: bool,
+        time_limit: timedelta
+    ):
         self.page = 0
         self.level = 0
         self.message = m
-        self.active = datetime.utcnow()
+        self.tl = time_limit
         self.fl = fl
         self.data = data
         self.cached_embeds: typing.List[ProtoEmbed] = []
         self.cached_nbttype = [src]
         self.title = title
+        self.is_scrolling = scrolling
+        # Delete counter so multiple queued requests should work out
+        self.no_delete = 0
+        self.remove_task: typing.Optional[asyncio.Task] = None
+        self.remove_task_factory: typing.Optional[typing.Any] = None
 
-    def can_remove(self, tl: timedelta):
-        return (self.active + tl) > datetime.utcnow()
+    def change_active(self):
+        if self.remove_task:
+            self.no_delete += 1
+            self.remove_task.cancel()
+        if self.remove_task_factory:
+            self.remove_task = asyncio.get_event_loop().create_task(self.remove_task_factory())
 
     def get_current_item(self):
         # there should always be at least one
@@ -720,7 +746,7 @@ class ActiveEmbed:
         )
     
     def inc_page(self):
-        self.active = datetime.utcnow()
+        self.change_active()
         pem = self.get_proto_embed()
         if (self.page + 1) * (self.fl - len(pem.persist_fields)) >= len(pem.fields):
             return False
@@ -729,7 +755,7 @@ class ActiveEmbed:
             return True
     
     def dec_page(self):
-        self.active = datetime.utcnow()
+        self.change_active()
         if self.page <= 0:
             return False
         else:
@@ -737,7 +763,7 @@ class ActiveEmbed:
             return True
 
     def inc_level(self):
-        self.active = datetime.utcnow()
+        self.change_active()
         self.level += 1
         if self.get_proto_embed() == None:
             self.level -= 1
@@ -747,7 +773,7 @@ class ActiveEmbed:
             return True
     
     def dec_level(self):
-        self.active = datetime.utcnow()
+        self.change_active()
         if self.level <= 0:
             return False
         else:
