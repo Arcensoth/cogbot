@@ -380,7 +380,11 @@ class McNbtDoc:
                 self.bot.remove_reaction(message, u'▶', message.server.me)
             )
 
-
+def format_len(val):
+    if val[0] == val[1]:
+        return '{}'.format(val[0])
+    else:
+        return '{} to {}'.format(val[0], val[1])
 
 def format_nbttype(val, data):
     if 'Compound' in val:
@@ -393,10 +397,9 @@ def format_nbttype(val, data):
         )))
     elif 'List' in val:
         if val['List']['length_range'] != None:
-            return 'List[{}] in range {} to {}'.format(
+            return 'List[{}] with length {}'.format(
                 format_nbttype(val['List']['value_type'], data),
-                val['List']['length_range'][0],
-                val['List']['length_range'][1]
+                format_len(val['List']['length_range'])
             )
         else:
             return 'List[{}]'.format(format_nbttype(val['List']['value_type'], data))
@@ -441,10 +444,9 @@ def format_nbttype(val, data):
         for k, n in NUM_VALS:
             if k in val:
                 if val[k]['range'] != None:
-                    return '{} in range from {} to {}'.format(
+                    return '{} in {}'.format(
                         n,
-                        val[k]['range'][0],
-                        val[k]['range'][1]
+                        format_len(val[k]['range'])
                     )
                 else:
                     return n
@@ -452,17 +454,15 @@ def format_nbttype(val, data):
             if k in val:
                 lct = ' and'
                 if val[k]['length_range'] != None:
-                    lr = ' with length in {} to {}'.format(
-                        val[k]['length_range'][0],
-                        val[k]['length_range'][1]
+                    lr = ' with length {}'.format(
+                        format_len(val[k]['length_range'])
                     )
                 else:
                     lr = ''
                     lct = ''
                 if val[k]['value_range'] != None:
-                    vr = ' with values in {} to {}'.format(
-                        val[k]['value_range'][0],
-                        val[k]['value_range'][1]
+                    vr = ' with values in {}'.format(
+                        format_len(val[k]['value_range'])
                     )
                     vrt = True
                 else:
@@ -678,10 +678,7 @@ class ActiveEmbed:
                 embed.persist_fields.append(
                     ProtoEmbedField(
                         name='Length Range',
-                        value='{} to {}'.format(
-                            item['List']['length_range'][0],
-                            item['List']['length_range'][1]
-                        )
+                        value=format_len(item['List']['length_range'], item['List']['length_range'])
                     )
                 )
         elif 'Index' in item:
@@ -713,7 +710,7 @@ class ActiveEmbed:
                         embed.persist_fields.append(
                             ProtoEmbed(
                                 name='Value Range',
-                                value='{} to {}'.format(item[k]['range'][0], item[k]['range'][1])
+                                value=format_len(item[k]['range'])
                             )
                         )
             for k, n in ARRAY_VALS:
@@ -723,7 +720,7 @@ class ActiveEmbed:
                         embed.persist_fields.append(
                             ProtoEmbed(
                                 name='Length Range',
-                                value='{} to {}'.format(item[k]['length_range'][0], item[k]['length_range'][1])
+                                value=format_len(item[k]['length_range'])
                             )
                         )
                     
@@ -731,7 +728,7 @@ class ActiveEmbed:
                         embed.persist_fields.append(
                             ProtoEmbed(
                                 name='Value Range',
-                                value='{} to {}'.format(item[k]['value_range'][0], item[k]['value_range'][1])
+                                value=format_len(item[k]['value_range'])
                             )
                         )
         self.cached_embeds.append(embed)
