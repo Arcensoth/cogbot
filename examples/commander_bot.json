@@ -20,6 +20,7 @@
     "cogbot.extensions.say",
     "cogbot.extensions.react",
     "cogbot.extensions.vote",
+    "cogbot.extensions.nominate",
     "cogbot.extensions.kick",
     "cogbot.extensions.groups",
     "cogbot.extensions.helpchat",
@@ -52,6 +53,27 @@
             "338040270832795669",
             "542149104222863371",
             "602224240984588290"
+          ]
+        }
+      }
+    },
+    "cogbot.extensions.nominate": {
+      "servers": {
+        "mcc": {
+          "help_channels": [
+            "154778900835205120",
+            "155701556833026048",
+            "187655051219697664",
+            "338040270832795669",
+            "542149104222863371",
+            "602224240984588290"
+          ],
+          "other_channels": [
+            "154777837382008833",
+            "593812273164976166",
+            "259800273445191690",
+            "469622918402539520",
+            "306175724942000128"
           ]
         }
       }
