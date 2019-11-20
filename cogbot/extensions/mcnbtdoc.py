@@ -29,8 +29,9 @@ class McNbtDocConfig:
     def __init__(self, **options):
         self.database = options['database']
         self.versions = options['version_database']
-        self.active_limit: timedelta = timedelta(seconds=int(options['ac_limit']))
-        self.field_limit: int = int(options['field_limit'])
+        self.active_limit: timedelta = timedelta(seconds=options['ac_limit'])
+        self.field_limit: int = options['field_limit']
+        self.search_limit: int = options['search_limit']
 
 INTRAVERSABLE = [
     'Byte', 'Short', 'Int', 'Long', 'Float', 'Double',
@@ -73,7 +74,7 @@ parser.add_argument(
 )
 parser.add_argument(
     'name',
-    help='The name of the NBT target',
+    help='The name of the NBT target. Must be something valid as a minecraft id',
     action='store',
     nargs='?'
 )
@@ -81,7 +82,7 @@ parser.add_argument(
     '-p',
     '--path',
     dest='path',
-    help='The path to the NBT',
+    help='The path to the NBT. Should look like abc.def.ghi, where the parts are fields of a compound',
     default=None,
     action='store'
 )
@@ -97,6 +98,27 @@ parser.add_argument(
     dest='get_path',
     help='Get the nbtdoc path of an NBT item. Should look like abc::def::Ghi'
 )
+parser.add_argument(
+    '-ns', '--nbtdoc-search',
+    action='store',
+    dest='nbt_search',
+    help='Search up an nbtdoc name'
+)
+parser.add_argument(
+    '-s', '--search',
+    action='store',
+    dest='search',
+    help='Search for a compound field name'
+)
+help_template = '''
+Command Help:
+{}
+Embed Interaction:
+🔼: go to the super compound
+🔽: go to the child compound that was perviously visited
+▶: scroll the page right
+◀: scroll the page left
+'''
 
 class McNbtDoc:
     '''
@@ -274,6 +296,48 @@ class McNbtDoc:
                 path = []
             item = await self.walk(data, item, path, ctx)
             title = args['get_path'].split('::')[-1]
+        elif args['nbt_search']:
+            s = args['nbt_search']
+            matches = search_nbt(s, data['root_modules']['minecraft'], [], data)
+            if len(matches) == 0:
+                await self.bot.add_reaction(ctx.message, u'🤷‍♀️')
+                return
+            else:
+                await self.bot.send_message(
+                    ctx.message.channel,
+                    'Found {} matches:\n{}{}'.format(
+                        len(matches),
+                        '\n'.join(['`{}`: {}'.format(
+                            '::'.join(k),
+                            'Compound' if 'Compound' in v else
+                            'Module' if 'Module' in v else
+                            'Enum' if 'Enum' in v else None
+                        ) for k, v in matches[:self.config.search_limit]]),
+                        '\nAnd {} more'.format(len(matches) - self.config.search_limit)
+                            if len(matches) > self.config.search_limit else ''
+                    )
+                )
+                return
+        elif args['search']:
+            matches = search_field(args['search'], data)
+            if len(matches) == 0:
+                await self.bot.add_reaction(ctx.message, u'🤷‍♀️')
+                return
+            else:
+                await self.bot.send_message(
+                    ctx.message.channel,
+                    'Found {} matches:\n{}{}'.format(
+                        len(matches),
+                        '\n'.join([' * {} in `{}` with type {}'.format(
+                            fn,
+                            '::'.join(cn),
+                            format_nbttype(fv['nbttype'], data).replace('\n', '\n    ')
+                        ) for cn, fn, fv in matches[:self.config.field_limit]]),
+                        '\nAnd {} more'.format(len(matches) - self.config.field_limit)
+                            if len(matches) > self.config.field_limit else ''
+                    )
+                )
+                return
         else:
             if not args['type'] or not args['name']:
                 await self.bot.add_reaction(ctx.message, u'💩')
@@ -368,7 +432,18 @@ class McNbtDoc:
         else:
             if not em.dec_level():
                 return
-        await self.bot.edit_message(message, 'page {}'.format(em.get_page_msg()), embed=em.get_embed())
+        if em.should_scroll():
+            await self.bot.edit_message(
+                message,
+                new_content='page {}'.format(em.get_page_msg()),
+                embed=em.get_embed()
+            )
+        else:
+            await self.bot.edit_message(
+                message,
+                new_content=' ',
+                embed=em.get_embed()
+            )
         if em.should_scroll() and not em.is_scrolling:
             em.is_scrolling = True
             await self.bot.add_reaction(message, u'◀')
@@ -387,8 +462,12 @@ def format_len(val):
         return '{} to {}'.format(val[0], val[1])
 
 def format_nbttype(val, data):
-    if 'Compound' in val:
-        return 'Compound {}'.format('::'.join(find_index_locs(
+    if 'Boolean' == val:
+        return 'byte: 0 or 1'
+    elif 'String' == val:
+        return 'string'
+    elif 'Compound' in val:
+        return 'Compound `{}`'.format('::'.join(find_index_locs(
             val['Compound'],
             'Compound',
             data['module_arena'][data['root_modules']['minecraft']],
@@ -424,7 +503,7 @@ def format_nbttype(val, data):
                         n,
                         '`, `'.join(ls)
                     )
-                return '{}\n\n{}'.format(out, '::'.join(find_index_locs(
+                return '{}\nenum: `{}`'.format(out, '::'.join(find_index_locs(
                     val['Enum'],
                     'Enum',
                     data['module_arena'][data['root_modules']['minecraft']],
@@ -436,10 +515,6 @@ def format_nbttype(val, data):
             val['Index']['target'],
             format_nbtpath(val['Index']['path'])
         )
-    elif 'Boolean' in val:
-        return 'byte: 0 or 1'
-    elif 'String' in val:
-        return 'string'
     else:
         for k, n in NUM_VALS:
             if k in val:
@@ -618,13 +693,13 @@ class ActiveEmbed:
                     embed.persist_fields.append(
                         ProtoEmbedField(
                             name='__**Super Compound**__',
-                            value='::'.join(find_index_locs(
+                            value='`' + '::'.join(find_index_locs(
                                 cpd['supers']['Compound'],
                                 'Compound',
                                 self.data['module_arena'][self.data['root_modules']['minecraft']],
                                 self.data,
                                 []
-                            )),
+                            )) + '`',
                             inline=False
                         )
                     )
@@ -807,6 +882,34 @@ class ProtoEmbed:
             self.persist_fields = []
         else:
             self.persist_fields = fields
+
+def search_nbt(val: str, module: int, mpath: typing.List[str], data):
+    out = []
+    for k, v in data['module_arena'][module]['children'].items():
+        if val.lower() in k.lower():
+            out.append(([*mpath, k], v))
+        if 'Module' in v:
+            out.extend(search_nbt(val, v['Module'], [*mpath, k], data))
+    return out
+
+def search_field(val: str, data):
+    out = []
+    for i, x in enumerate(data['compound_arena']):
+        for k, v in x['fields'].items():
+            if val.lower() in k.lower():
+                out.append((
+                    find_index_locs(
+                        i,
+                        'Compound',
+                        data['module_arena'][data['root_modules']['minecraft']],
+                        data,
+                        []
+                    ),
+                    k,
+                    v
+                ))
+    return out
+
 
 def setup(bot):
     bot.add_cog(McNbtDoc(bot, __name__))
