@@ -19,7 +19,6 @@ from cogbot import checks
 from cogbot.cog_bot import CogBot
 
 import math
-import functools
 
 import asyncio
 
@@ -27,10 +26,15 @@ log = logging.getLogger(__name__)
 
 class McNbtDocConfig:
     def __init__(self, **options):
+        # Latest NBT database
         self.database = options['database']
+        # Version specific database
         self.versions = options['version_database']
+        # Time for an interactable embed to be deactivated
         self.active_limit: timedelta = timedelta(seconds=options['ac_limit'])
+        # Limit for nuber of fields in an embed (and a `-s` query)
         self.field_limit: int = options['field_limit']
+        # Limit for number of entries in a `-ns` query
         self.search_limit: int = options['search_limit']
 
 INTRAVERSABLE = [
@@ -393,7 +397,7 @@ class McNbtDoc:
 
     @checks.is_manager()
     @commands.command(pass_context=True, name='nbtreload', hidden=True)
-    async def cmd_invitereload(self, ctx: Context):
+    async def cmd_nbtreload(self, ctx: Context):
         try:
             self.reload_data()
             await self.bot.react_success(ctx)
