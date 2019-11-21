@@ -3,3 +3,4 @@ requests==2.22.0
 feedparser==5.2.1
 python-dateutil==2.7.0
 mccq==1.0.1
+argparse==1.4.0

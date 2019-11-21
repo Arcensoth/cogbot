@@ -28,7 +28,7 @@
     "cogbot.extensions.faq",
     "cogbot.extensions.mccq",
     "cogbot.extensions.mcc12",
-    "cogbot.extensions.mcnbtpaths",
+    "cogbot.extensions.mcnbtdoc",
     "cogbot.extensions.mcblock",
     "cogbot.extensions.jira",
     "cogbot.extensions.quote",
@@ -84,8 +84,12 @@
     "cogbot.extensions.invite": {
       "database": "https://raw.githubusercontent.com/MinecraftCommands/commanderbot/master/config/invite.json"
     },
-    "cogbot.extensions.mcnbtpaths": {
-      "database": "https://raw.githubusercontent.com/MrYurihi/mc-nbt-paths/master/output.json"
+    "cogbot.extensions.mcnbtdoc": {
+      "version_database": "https://raw.githubusercontent.com/MrYurihi/mc-nbtdoc/{}-gen/build/generated.json",
+      "database": "https://raw.githubusercontent.com/MrYurihi/mc-nbtdoc/generated/build/generated.json",
+      "ac_limit": 600,
+      "search_limit": 20,
+      "field_limit": 10
     },
     "cogbot.extensions.mcblock": {
       "database": "https://raw.githubusercontent.com/Arcensoth/mcdata/master/generated/reports/blocks.json"
