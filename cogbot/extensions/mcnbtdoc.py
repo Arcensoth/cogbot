@@ -36,6 +36,8 @@ class McNbtDocConfig:
         self.field_limit: int = options['field_limit']
         # Limit for number of entries in a `-ns` query
         self.search_limit: int = options['search_limit']
+        # Database of registry entries
+        self.registry_database = options['registry_database']
 
 INTRAVERSABLE = [
     'Byte', 'Short', 'Int', 'Long', 'Float', 'Double',
@@ -58,6 +60,12 @@ NUM_VALS = [
 ARRAY_VALS = [
     ('ByteArray', 'byte'), ('IntArray', 'int'), ('LongArray', 'long')
 ]
+
+NBTDOC_REAL_REG = {
+    'minecraft:item': 'minecraft:item',
+    'minecraft:block': 'minecraft:block',
+    'minecraft:entity': 'minecraft:entity_type'
+}
 
 class ErrorCatchingArgumentParser(argparse.ArgumentParser):
     def exit(self, status=0, message=None):
@@ -142,8 +150,10 @@ class McNbtDoc:
         log.info('Reloading NBT schemas from: {}'.format(self.config.database))
 
         response = urllib.request.urlopen(self.config.database)
+        mcregres = urllib.request.urlopen(self.config.registry_database)
         try:
             self.data = json.loads(response.read().decode('utf8'))
+            self.registries = json.loads(mcregres.read().decode('utf8'))
             self.version_data = {}
         except Exception as e:
             raise CommandError('Failed to reload NBT schemas: {}'.format(e))
@@ -186,6 +196,10 @@ class McNbtDoc:
     async def walk_from_reg(self, it: str, reg: str, data, path: typing.List[str], ctx: Context):
         registry = data['registries'][reg]
         if not registry:
+            await self.bot.add_reaction(ctx.message, u'🤷')
+            return None
+
+        if not it in self.registries[NBTDOC_REAL_REG[reg]]['entries']:
             await self.bot.add_reaction(ctx.message, u'🤷')
             return None
         
@@ -351,11 +365,8 @@ class McNbtDoc:
                 path = args['path'].split('.')
             else:
                 path = []
-
-            if not args['name'].startswith('minecraft:'):
-                name = 'minecraft:{}'.format(args['name'])
-            else:
-                name = args['name']
+            
+            name = args['name'] if args['name'].startswith('minecraft:') else 'minecraft:{}'.format(args['name'])
 
             item = await self.get_from_reg(
                 name,
@@ -364,6 +375,8 @@ class McNbtDoc:
                 path,
                 version=args['version']
             )
+            if item == None:
+                return
             title = name
             if len(path) > 0:
                 title = path[-1]
@@ -407,7 +420,7 @@ class McNbtDoc:
     async def on_reaction_add(self, reaction: discord.Reaction, reactor: discord.Member):
         if isinstance(reactor, discord.Member):
             state = self.active_embeds.get(reactor.server, None)
-            if str(reaction.message.id) in state and reactor != self.bot.user:
+            if state and str(reaction.message.id) in state and reactor != self.bot.user:
                 if reaction.emoji == u'◀' or reaction.emoji == u'▶':
                     await self.bot.remove_reaction(reaction.message, reaction.emoji, reactor)
                     await self.scroll_embed(state, reaction.emoji == u'◀', reaction.message, reaction)
@@ -576,7 +589,8 @@ async def remove_ae(ae: str, server: discord.Server, mcnbtdoc: McNbtDoc, dt: tim
     try:
         await asyncio.sleep(dt.total_seconds())
     except asyncio.CancelledError:
-        ace = mcnbtdoc.active_embeds[server][ae]
+        pass
+    ace = mcnbtdoc.active_embeds[server][ae]
     if ace.no_delete > 0:
         ace.no_delete -= 1
     else:
