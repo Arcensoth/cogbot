@@ -87,6 +87,7 @@
     "cogbot.extensions.mcnbtdoc": {
       "version_database": "https://raw.githubusercontent.com/MrYurihi/mc-nbtdoc/{}-gen/build/generated.json",
       "database": "https://raw.githubusercontent.com/MrYurihi/mc-nbtdoc/generated/build/generated.json",
+      "registry_database": "https://raw.githubusercontent.com/Arcensoth/mcdata/master/generated/reports/registries.json",
       "ac_limit": 600,
       "search_limit": 20,
       "field_limit": 10
