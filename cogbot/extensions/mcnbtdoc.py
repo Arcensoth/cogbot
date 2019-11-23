@@ -407,11 +407,12 @@ class McNbtDoc:
     async def on_reaction_add(self, reaction: discord.Reaction, reactor: discord.Member):
         if isinstance(reactor, discord.Member):
             state = self.active_embeds.get(reactor.server, None)
-            if state and reactor != self.bot.user:
-                await self.bot.remove_reaction(reaction.message, reaction.emoji, reactor)
+            if reaction.message in state and reactor != self.bot.user:
                 if reaction.emoji == u'◀' or reaction.emoji == u'▶':
+                    await self.bot.remove_reaction(reaction.message, reaction.emoji, reactor)
                     await self.scroll_embed(state, reaction.emoji == u'◀', reaction.message, reaction)
                 elif reaction.emoji == u'🔼' or reaction.emoji == u'🔽':
+                    await self.bot.remove_reaction(reaction.message, reaction.emoji, reactor)
                     await self.ro_embed(state, reaction.emoji == u'🔼', reaction.message, reaction)
 
     async def scroll_embed(self, state, left: bool, message: discord.Message, re: discord.Reaction):
