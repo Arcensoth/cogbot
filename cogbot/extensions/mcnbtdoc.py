@@ -407,7 +407,7 @@ class McNbtDoc:
     async def on_reaction_add(self, reaction: discord.Reaction, reactor: discord.Member):
         if isinstance(reactor, discord.Member):
             state = self.active_embeds.get(reactor.server, None)
-            if reaction.message in state and reactor != self.bot.user:
+            if str(reaction.message.id) in state and reactor != self.bot.user:
                 if reaction.emoji == u'◀' or reaction.emoji == u'▶':
                     await self.bot.remove_reaction(reaction.message, reaction.emoji, reactor)
                     await self.scroll_embed(state, reaction.emoji == u'◀', reaction.message, reaction)
