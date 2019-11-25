@@ -134,7 +134,7 @@ class Jira:
         category = None
         priority = None
         custom_fields = raw.get('customfields', [None])[0]
-        for custom_field in custom_fields:
+        for custom_field in custom_fields or ():
             custom_field_id = custom_field.get('id')
 
             # Category
