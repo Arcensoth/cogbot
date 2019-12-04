@@ -13,7 +13,10 @@
     "127163300348821504",
     "187961803844747264"
   ],
-  "staff_roles": ["409808531865337866"],
+  "staff_roles": [
+    "154919514553712640",
+    "247061977136889856"
+  ],
   "extensions": [
     "cogbot.extensions.proto",
     "cogbot.extensions.about",
