@@ -134,7 +134,7 @@ Embed Interaction:
 
 class McNbtDoc:
     '''
-    Written specifically for this schema: https://github.com/MrYurihi/mc-nbtdoc
+    Written specifically for this schema: https://github.com/Yurihaia/mc-nbtdoc
     '''
 
     def __init__(self, bot: CogBot, ext: str):
