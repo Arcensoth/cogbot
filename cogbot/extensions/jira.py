@@ -116,13 +116,13 @@ class Jira:
             raw[child.tag].append(child)
 
         link_tag = raw.get('link')[0]
-        description_tag = raw.get('description')[0]
+        description_tag = raw.get('description', [None])[0]
         key_tag = raw.get('key')[0]
-        summary_tag = raw.get('summary')[0]
-        status_tag = raw.get('status')[0]
-        resolution_tag = raw.get('resolution')[0]
-        assignee_tag = raw.get('assignee')[0]
-        reporter_tag = raw.get('reporter')[0]
+        summary_tag = raw.get('summary', [None])[0]
+        status_tag = raw.get('status', [None])[0]
+        resolution_tag = raw.get('resolution', [None])[0]
+        assignee_tag = raw.get('assignee', [None])[0]
+        reporter_tag = raw.get('reporter', [None])[0]
         created_tag = raw.get('created')[0]
         resolved_tag = raw.get('resolved', [None])[0]
         version_tags = raw.get('version', [])
@@ -148,16 +148,16 @@ class Jira:
         id_ = key_tag.attrib['id']
         key = key_tag.text
         url = link_tag.text
-        title = summary_tag.text
-        description = description_tag.text
+        title = summary_tag.text if (summary_tag is not None) else None
+        description = description_tag.text if (description_tag is not None) else None
         created_on = datetime.strptime(created_tag.text, '%a, %d %b %Y %H:%M:%S %z')
         resolved_on = datetime.strptime(resolved_tag.text, '%a, %d %b %Y %H:%M:%S %z') if (
                 resolved_tag is not None) else None
-        reporter = reporter_tag.text
-        assignee = assignee_tag.text
-        status = status_tag.text
+        reporter = reporter_tag.text if (reporter_tag is not None) else None
+        assignee = assignee_tag.text if (assignee_tag is not None) else None
+        status = status_tag.text if (status_tag is not None) else None
         status_icon_url = status_tag.attrib['iconUrl']
-        resolution = resolution_tag.text
+        resolution = resolution_tag.text if (resolution_tag is not None) else None
         versions = [v.text for v in version_tags]
         fix_version = fix_version_tag.text if (fix_version_tag is not None) else None
         votes_int = int(votes_tag.text)
@@ -204,7 +204,7 @@ class Jira:
             em.set_author(name=report.key, url=report.url, icon_url=favicon_url)
             em.add_field(name='Assigned to', value=report.assignee)
             em.add_field(name='Reported by', value=report.reporter)
-            em.add_field(name='Created on', value=report.created_on.strftime('%d/%m/%Y'))
+            em.add_field(name='Created on', value=report.created_on.strftime('%d/%m/%Y') if report.created_on else 'Unknown')
 
             if report.category:
                 em.add_field(name='Category', value=report.category)
@@ -218,7 +218,7 @@ class Jira:
                 em.add_field(name='Votes', value=str(report.votes))
             else:
                 em.add_field(name='Resolution', value=report.resolution)
-                em.add_field(name='Resolved on', value=report.resolved_on.strftime('%d/%m/%Y'))
+                em.add_field(name='Resolved on', value=report.resolved_on.strftime('%d/%m/%Y') if report.resolved_on else 'Unknown')
                 em.add_field(name='Since version', value=report.since_version)
                 if report.versions:
                     em.add_field(name='Affects version', value=report.versions[-1])
