@@ -1,11 +1,7 @@
 import logging
 
 import discord
-import requests
-from discord.ext import commands
-from discord.ext.commands import Context
 
-from cogbot import checks
 from cogbot.cog_bot import CogBot
 
 log = logging.getLogger(__name__)
