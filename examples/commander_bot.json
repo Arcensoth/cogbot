@@ -37,6 +37,7 @@
     "cogbot.extensions.quote",
     "cogbot.extensions.playing",
     "cogbot.extensions.status",
+    "cogbot.extensions.nick",
     "cogbot.extensions.ping"
   ],
   "extension_state": {
