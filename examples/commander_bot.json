@@ -119,11 +119,15 @@
         "154777837382008833": [
           "Add-ons",
           "Advancements",
+          "Fonts",
           "Game-code",
           "Loot-tables",
           "Models",
           "NBT",
+          "Optimization",
+          "Predicates",
           "Resource-packs",
+          "Shaders",
           "Structures",
           "Text-components",
           "Recipes"
