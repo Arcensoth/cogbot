@@ -10,10 +10,18 @@ from discord.ext.commands.errors import *
 
 from cogbot.cog_bot_state import CogBotState
 from cogbot.cog_bot_server_state import CogBotServerState
-from cogbot.types import ServerId, ChannelId
+from cogbot.types import ServerId, ChannelId, UserId
 
 
 log = logging.getLogger(__name__)
+
+
+class MessageReport:
+    def __init__(self):
+        self.total_messages: typing.Dict[discord.Channel, int] = {}
+        self.messages_per_member: typing.Dict[
+            discord.Channel, typing.Dict[discord.Member, int]
+        ] = {}
 
 
 class CogBot(commands.Bot):
@@ -113,6 +121,25 @@ class CogBot(commands.Bot):
     def make_message_link(self, message: discord.Message) -> str:
         return f"https://discordapp.com/channels/{message.server.id}/{message.channel.id}/{message.id}"
 
+    async def make_message_report(
+        self,
+        channels: typing.List[discord.Channel],
+        members: typing.List[discord.Member],
+        since: datetime,
+    ) -> MessageReport:
+        report = MessageReport()
+        for channel in channels:
+            report.total_messages[channel] = 0
+            messages_per_member = {member: 0 for member in members}
+            report.messages_per_member[channel] = messages_per_member
+            async for message in self.logs_from(channel, limit=999999999, after=since):
+                message: discord.Message
+                author: discord.Member = message.author
+                report.total_messages[channel] += 1
+                if author in messages_per_member:
+                    messages_per_member[author] += 1
+        return report
+
     async def mod_log(
         self,
         member: discord.Member,
@@ -138,7 +165,7 @@ class CogBot(commands.Bot):
         for server_key, server_options in self.state.servers.items():
             # copy options dict because we need to make modifications
             options = {k: v for k, v in server_options.items()}
-            
+
             # pop id so we don't send it to the state constructor
             server_id = options.pop("id")
 

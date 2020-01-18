@@ -8,9 +8,23 @@ from discord.ext import commands
 from discord.ext.commands import CommandError, Context
 
 from cogbot import checks
-from cogbot.cog_bot import ChannelId, CogBot, ServerId
+from cogbot.cog_bot import ChannelId, CogBot, ServerId, MessageReport
 
 log = logging.getLogger(__name__)
+
+
+class MemberReport:
+    def __init__(
+        self,
+        member: discord.Member,
+        recency: timedelta,
+        help_messages: int = 0,
+        other_messages: int = 0,
+    ):
+        self.member: discord.Member = member
+        self.recency: timedelta = recency
+        self.help_messages: int = help_messages
+        self.other_messages: int = other_messages
 
 
 class NominateServerState:
@@ -18,14 +32,11 @@ class NominateServerState:
         self,
         bot: CogBot,
         server: discord.Server,
-        recency_in_days: int,
         help_channels: typing.List[ChannelId],
         other_channels: typing.List[ChannelId],
     ):
         self.bot: CogBot = bot
         self.server: discord.Server = server
-
-        self.recency_in_days: int = recency_in_days
 
         self.help_channels: typing.List[discord.Channel] = [
             self.bot.get_channel(channel_id) for channel_id in help_channels
@@ -41,45 +52,11 @@ class NominateServerState:
         other_channels_str = ", ".join(str(channel) for channel in self.other_channels)
         log.info(f"Resolved other channels: {other_channels_str}")
 
-    async def count_recent_messages(
-        self, channel: discord.Channel, member: discord.Member, since: datetime
-    ) -> int:
-        # this is horribly inefficient but apparently there's no better way
-        # https://discordpy.readthedocs.io/en/v0.16.12/api.html#discord.Client.logs_from
-        # https://github.com/discordapp/discord-api-docs/issues/663
-        logs = self.bot.logs_from(channel, limit=999999999, after=since)
-        messages = [message async for message in logs if message.author == member]
-        return len(messages)
-
-    async def nominate(self, ctx: Context, user_id):
-        # let the nominator know we're working on it
-        await self.bot.add_reaction(ctx.message, "🤖")
-
-        # get the user as a member of this server
-        member: discord.Member = self.server.get_member(user_id)
-
-        # short-circuit if we can't find the user in this server
-        if not member:
-            await self.bot.react_question(ctx)
-            return
-
-        # grab recent messages
-        now = datetime.utcnow()
-        then = now - timedelta(days=self.recency_in_days)
-
-        # sum up help messages first
-        recent_help_messages = 0
-        for channel in self.help_channels:
-            recent_help_messages += await self.count_recent_messages(
-                channel, member, since=then
-            )
-
-        # then sum up total messages
-        total_recent_messages = recent_help_messages
-        for channel in self.other_channels:
-            total_recent_messages += await self.count_recent_messages(
-                channel, member, since=then
-            )
+    async def send_embed(self, ctx: Context, report: MemberReport):
+        member = report.member
+        help_messages = report.help_messages
+        other_messages = report.other_messages
+        total_messages = help_messages + other_messages
 
         # create an embed with clickable mention
         em = discord.Embed(
@@ -93,15 +70,15 @@ class NominateServerState:
         # add the total number of recent messages
         em.add_field(
             name="Number of recent messages",
-            value=f"{total_recent_messages} in {self.recency_in_days} days",
+            value=f"{total_messages} in {report.recency.days} days",
         )
 
         # and the help ratio, if any
-        if total_recent_messages > 0:
-            help_ratio = round(100 * recent_help_messages / total_recent_messages)
+        if total_messages > 0:
+            help_ratio = round(100 * help_messages / total_messages)
             em.add_field(
                 name="Ratio of messages in help-chats",
-                value=f"{help_ratio}% of {total_recent_messages}",
+                value=f"{help_ratio}% of {total_messages}",
             )
         else:
             em.add_field(name="Ratio of messages in help-chats", value=r"¯\_(ツ)_/¯")
@@ -118,8 +95,55 @@ class NominateServerState:
         await self.bot.add_reaction(nom_message, "👍")
         await self.bot.add_reaction(nom_message, "👎")
 
-        # delete the user command
-        await self.bot.delete_message(ctx.message)
+    async def nominate(self, ctx: Context, days: int):
+        # let the nominator know we're working on it
+        await self.bot.add_reaction(ctx.message, "🤖")
+
+        # calculate the date to start counting from
+        recency = timedelta(days=days)
+        now = datetime.utcnow()
+        then = now - recency
+
+        # get the nominees from mentions
+        message: discord.Message = ctx.message
+        members = message.mentions
+
+        # map members to their number of messages in each channel type
+        member_buckets = {member: MemberReport(member, recency) for member in members}
+
+        # update on progress
+        await self.bot.add_reaction(ctx.message, "🕛")
+
+        # get a message report for help channels
+        help_channels_report: MessageReport = await self.bot.make_message_report(
+            self.help_channels, members, since=then
+        )
+        for messages_per_member in help_channels_report.messages_per_member.values():
+            for member, count in messages_per_member.items():
+                member_report: MemberReport = member_buckets[member]
+                member_report.help_messages += count
+
+        # update on progress
+        await self.bot.add_reaction(ctx.message, "🕐")
+
+        # and another report for other channels
+        other_channels_report: MessageReport = await self.bot.make_message_report(
+            self.other_channels, members, since=then
+        )
+        for messages_per_member in other_channels_report.messages_per_member.values():
+            for member, count in messages_per_member.items():
+                member_report: MemberReport = member_buckets[member]
+                member_report.other_messages += count
+
+        # update on progress
+        await self.bot.add_reaction(ctx.message, "🕑")
+
+        # and then spit out a separate embed for each nominee
+        for member in members:
+            await self.send_embed(ctx, member_buckets[member])
+
+        # update on progress
+        await self.bot.add_reaction(ctx.message, "☑️")
 
 
 class Nominate:
@@ -141,13 +165,14 @@ class Nominate:
 
     @checks.is_staff()
     @commands.command(pass_context=True, hidden=True, aliases=["nom"])
-    async def nominate(self, ctx: Context, user_id):
+    async def nominate(self, ctx: Context, days: int, *, members):
         # make sure this isn't a DM
         if ctx.message.server:
             state = self.get_state(ctx.message.server)
             # ignore bot's messages
             if state and ctx.message.author != self.bot.user:
-                await state.nominate(ctx, user_id)
+                # NOTE don't need to pass members because mentions are available in the context
+                await state.nominate(ctx, days)
 
 
 def setup(bot):

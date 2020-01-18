@@ -64,7 +64,6 @@
     "cogbot.extensions.nominate": {
       "servers": {
         "mcc": {
-          "recency_in_days": 14,
           "help_channels": [
             "154778900835205120",
             "155701556833026048",
