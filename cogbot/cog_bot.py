@@ -10,7 +10,7 @@ from discord.ext.commands.errors import *
 
 from cogbot.cog_bot_state import CogBotState
 from cogbot.cog_bot_server_state import CogBotServerState
-from cogbot.types import ServerId, ChannelId, UserId
+from cogbot.types import ServerId, ChannelId, UserId, RoleId
 
 
 log = logging.getLogger(__name__)
@@ -139,6 +139,11 @@ class CogBot(commands.Bot):
                 if author in messages_per_member:
                     messages_per_member[author] += 1
         return report
+
+    def get_role(self, server: discord.Server, role_id: str) -> discord.Role:
+        for role in server.roles:
+            if role.id == role_id:
+                return role
 
     async def mod_log(
         self,

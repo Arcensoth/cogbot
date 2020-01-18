@@ -153,6 +153,15 @@
         }
       }
     },
+    "cogbot.extensions.custodian": {
+      "servers": {
+        "mcc": {
+          "roles": [
+            "154919580563800064"
+          ]
+        }
+      }
+    },
     "cogbot.extensions.proto": {
       "servers": {
         "mcc": {
