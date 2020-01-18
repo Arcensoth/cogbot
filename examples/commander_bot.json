@@ -146,6 +146,13 @@
         "master": "{actual} (latest)"
       }
     },
+    "cogbot.extensions.nick": {
+      "servers": {
+        "mcc": {
+          "enabled": true
+        }
+      }
+    },
     "cogbot.extensions.proto": {
       "servers": {
         "mcc": {
