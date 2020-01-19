@@ -24,8 +24,10 @@ class CustodianServerState:
         self.emoji: typing.List[str] = emoji
 
     async def on_reaction(self, reaction: discord.Reaction, reactor: discord.Member):
-        # check if this is one of the emoji we care about
-        if reaction.emoji in self.emoji:
+        message: discord.Message = reaction.message
+        author: discord.Member = message.author
+        # check if this is one of the bot's messages and we care about the emoji
+        if author == self.bot.user and reaction.emoji in self.emoji:
             # check if the user has one of the elevated roles
             matching_roles = set(reactor.roles).intersection(self.roles)
             if matching_roles:
