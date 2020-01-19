@@ -87,14 +87,15 @@ def _attempt_logout(loop, bot):
 
 
 def run():
-    state = CogBotState(args.state)
-
     loop = asyncio.get_event_loop()
 
     last_death: type = None
 
     while True:
+        state = CogBotState(args.state)
+
         log.info('Starting bot...')
+        
         bot = CogBot(state=state, loop=loop)
 
         if last_death and state.notify_on_recovery and state.managers:
