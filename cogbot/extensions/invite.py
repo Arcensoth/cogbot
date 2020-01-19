@@ -44,7 +44,11 @@ class Invite:
         invites_by_tag = {}
         for raw_entry in data:
             invite_url = raw_entry['invite']
-            invite: discord.Invite = await self.bot.get_invite(invite_url)
+            try:
+                invite: discord.Invite = await self.bot.get_invite(invite_url)
+            except:
+                log.error(f'Failed to get invite for server at: {invite_url}')
+                continue
             server: discord.Server = invite.server
             invites_by_server_id[server.id] = invite
             invites_by_server_name[server.name.lower()] = invite
