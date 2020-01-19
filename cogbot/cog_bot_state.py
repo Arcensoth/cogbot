@@ -1,5 +1,6 @@
 import json
 import logging
+import urllib.request
 
 log = logging.getLogger(__name__)
 
@@ -9,12 +10,25 @@ log = logging.getLogger(__name__)
 
 class CogBotState:
     def __init__(self, state_file: str):
-        with open(state_file) as fp:
+        log.info("Loading main bot state from: {}".format(state_file))
+
+        raw_state = {}
+
+        if state_file.startswith(("http://", "https://")):
             try:
-                raw_state = json.load(fp)
+                response = urllib.request.urlopen(state_file)
+                content = response.read().decode("utf8")
+                raw_state = json.loads(content)
+                log.info('Successfully loaded main bot state from remote location')
+            except Exception as error:
+                log.error(f"Failed to load main bot state: {error}")
+        else:
+            try:
+                with open(state_file) as fp:
+                    raw_state = json.load(fp)
+                log.info('Successfully loaded main bot state from local file')
             except FileNotFoundError:
-                log.warning(f"Bot state file not found: {state_file}")
-                raw_state = {}
+                log.error(f"Bot state file not found: {state_file}")
 
         # Optional
         self.servers = raw_state.get("servers", {})

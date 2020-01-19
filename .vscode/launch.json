@@ -5,7 +5,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: cogbot",
+      "name": "Python: local config",
       "type": "python",
       "request": "launch",
       "module": "cogbot",
@@ -15,6 +15,21 @@
         "INFO",
         "--state",
         "bot.json",
+        "--tokenfile",
+        "bot.token"
+      ]
+    },
+    {
+      "name": "Python: remote config",
+      "type": "python",
+      "request": "launch",
+      "module": "cogbot",
+      "console": "integratedTerminal",
+      "args": [
+        "--log",
+        "INFO",
+        "--state",
+        "https://raw.githubusercontent.com/MinecraftCommands/commanderbot/master/config/bot.json",
         "--tokenfile",
         "bot.token"
       ]
