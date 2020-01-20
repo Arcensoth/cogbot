@@ -204,7 +204,7 @@ class Jira:
             em.set_author(name=report.key, url=report.url, icon_url=favicon_url)
             em.add_field(name='Assigned to', value=report.assignee)
             em.add_field(name='Reported by', value=report.reporter)
-            em.add_field(name='Created on', value=report.created_on.strftime('%d/%m/%Y') if report.created_on else 'Unknown')
+            em.add_field(name='Created on', value=report.created_on.strftime('%Y-%m-%d') if report.created_on else 'Unknown')
 
             if report.category:
                 em.add_field(name='Category', value=report.category)
@@ -218,7 +218,7 @@ class Jira:
                 em.add_field(name='Votes', value=str(report.votes))
             else:
                 em.add_field(name='Resolution', value=report.resolution)
-                em.add_field(name='Resolved on', value=report.resolved_on.strftime('%d/%m/%Y') if report.resolved_on else 'Unknown')
+                em.add_field(name='Resolved on', value=report.resolved_on.strftime('%Y-%m-%d') if report.resolved_on else 'Unknown')
                 em.add_field(name='Since version', value=report.since_version)
                 if report.versions:
                     em.add_field(name='Affects version', value=report.versions[-1])
