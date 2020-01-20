@@ -78,7 +78,7 @@ class NominateServerState:
             help_ratio = round(100 * help_messages / total_messages)
             em.add_field(
                 name="Ratio of messages in help-chats",
-                value=f"{help_ratio}% of {total_messages}",
+                value=f"{help_messages} of {total_messages} ({help_ratio}%)",
             )
         else:
             em.add_field(name="Ratio of messages in help-chats", value=r"¯\_(ツ)_/¯")
