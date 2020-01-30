@@ -92,8 +92,7 @@ class Kick:
                 )
 
         try:
-            # await self.bot.kick(member)
-            pass
+            await self.bot.kick(member)
         except:
             log.error(f"Failed to kick <{member}>")
             await self.bot.mod_log(
