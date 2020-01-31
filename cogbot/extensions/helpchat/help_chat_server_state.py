@@ -116,8 +116,7 @@ class HelpChatServerState:
     def start_polling_task(self):
         if not self.polling_task or self.polling_task.done():
             # not already running
-            seconds = self.delta_until_stale.total_seconds()
-            self.log.info(f"Polling channels every {seconds} seconds")
+            self.log.info(f"Polling channels every {self.seconds_to_poll} seconds")
             self.polling_task = asyncio.get_event_loop().create_task(
                 self.polling_loop()
             )
@@ -133,8 +132,7 @@ class HelpChatServerState:
     async def polling_loop(self):
         while not self.bot.is_closed:
             try:
-                seconds = self.delta_until_stale.total_seconds()
-                await asyncio.sleep(seconds)
+                await asyncio.sleep(self.seconds_to_poll)
                 await self.poll_channels()
             except asyncio.CancelledError:
                 self.log.warning("Polling task was cancelled; breaking from loop...")
