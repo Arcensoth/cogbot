@@ -204,11 +204,9 @@ class HelpChatServerState:
         # remember if the channel was hoisted
         was_hoisted = self.is_channel_hoisted(channel)
         # set the new channel name, which doubles as its persistent state
+        # also move it to the new category, if supplied
         new_name = state.format(self.get_base_name(channel))
-        await self.bot.edit_channel(channel, name=new_name)
-        # move the channel to the given category, if any
-        if category:
-            await self.bot.move_channel_to_category(channel, category)
+        await self.bot.edit_channel(channel, name=new_name, category=category)
         # sync hoisted channels if this change is relevant to them
         if was_hoisted or self.is_channel_hoisted(channel):
             await self.sync_hoisted_channels()
