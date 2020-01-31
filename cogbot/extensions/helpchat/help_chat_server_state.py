@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import typing
 from datetime import datetime, timedelta
@@ -104,12 +105,42 @@ class HelpChatServerState:
 
         self.auto_poll: bool = auto_poll
 
-        if not self.auto_poll:
+        self.polling_task: asyncio.Task = None
+        self.delta_until_stale = timedelta(seconds=self.seconds_until_stale)
+
+        if self.auto_poll:
+            self.start_polling_task()
+        else:
             self.log.warning("Auto-polling is DISABLED")
 
-        self.last_polled = datetime.utcnow()
-        self.delta_until_stale = timedelta(seconds=self.seconds_until_stale)
-        self.delta_to_poll = timedelta(seconds=self.seconds_to_poll)
+    def start_polling_task(self):
+        if not self.polling_task or self.polling_task.done():
+            # not already running
+            seconds = self.delta_until_stale.total_seconds()
+            self.log.info(f"Polling channels every {seconds} seconds")
+            self.polling_task = asyncio.get_event_loop().create_task(
+                self.polling_loop()
+            )
+            self.log.info(f"Created polling task: {self.polling_task}")
+            return True
+
+    def stop_polling_task(self):
+        if self.polling_task and not self.polling_task.done():
+            # running; can be cancelled
+            self.polling_task.cancel()
+            return True
+
+    async def polling_loop(self):
+        while not self.bot.is_closed:
+            try:
+                seconds = self.delta_until_stale.total_seconds()
+                await asyncio.sleep(seconds)
+                await self.poll_channels()
+            except asyncio.CancelledError:
+                self.log.warning("Polling task was cancelled; breaking from loop...")
+                break
+            except:
+                self.log.warning("Polling task encountered an error; ignoring...")
 
     def is_channel(self, channel: discord.Channel, channel_state: ChannelState) -> bool:
         return channel_state.matches(channel)
@@ -309,8 +340,6 @@ class HelpChatServerState:
                     icon=":white_check_mark:",
                 )
 
-        await self.maybe_poll_channels()
-
     async def on_message(self, message: discord.Message):
         channel: discord.Channel = message.channel
 
@@ -340,9 +369,8 @@ class HelpChatServerState:
             else:
                 await self.set_channel_busy(channel)
 
-        await self.maybe_poll_channels()
-
     async def poll_channels(self):
+        self.log.debug(f"Polling {len(self.channels)} channels...")
         for channel in self.channels:
             # only busy channels can become stale
             if self.is_channel_busy(channel):
@@ -358,13 +386,3 @@ class HelpChatServerState:
                     await self.set_channel_stale(channel)
         # might as well sync hoisted channels just in case
         await self.sync_hoisted_channels()
-
-    async def maybe_poll_channels(self):
-        if self.auto_poll:
-            # check if enough time has passed for us to poll channels again
-            # sort of a hack, because f**k polling tasks
-            now: datetime = datetime.utcnow()
-            then: datetime = self.last_polled + self.delta_to_poll
-            if now > then:
-                self.last_polled = now
-                await self.poll_channels()
