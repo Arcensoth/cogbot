@@ -1,8 +1,12 @@
+import asyncio
 import logging
 import typing
 
 import discord
+from discord.ext import commands
+from discord.ext.commands import Context
 
+from cogbot import checks
 from cogbot.cog_bot import CogBot, ServerId
 from cogbot.extensions.helpchat.help_chat_server_state import HelpChatServerState
 
@@ -14,6 +18,7 @@ class HelpChat:
         self.bot: CogBot = bot
         self.server_state: typing.Dict[ServerId, HelpChatServerState] = {}
         self.options = self.bot.state.get_extension_state(ext)
+        self.ext = ext
 
     def get_state(self, server: discord.Server) -> HelpChatServerState:
         return self.server_state.get(server.id)
@@ -23,7 +28,9 @@ class HelpChat:
         for server_key, server_options in self.options.get("servers", {}).items():
             server = self.bot.get_server_from_key(server_key)
             if server:
-                state = HelpChatServerState(self.bot, server, **server_options)
+                state = HelpChatServerState(
+                    self.ext, self.bot, server, **server_options
+                )
                 self.server_state[server.id] = state
 
     async def on_reaction_add(
@@ -43,3 +50,73 @@ class HelpChat:
             # ignore bot's messages
             if state and message.author != self.bot.user:
                 await state.on_message(message)
+
+    @checks.is_manager()
+    @commands.group(pass_context=True, name="helpchat", aliases=["hc"], hidden=True)
+    async def cmd_helpchat(self, ctx: Context):
+        if ctx.invoked_subcommand is None:
+            await self.bot.react_question(ctx)
+
+    @checks.is_manager()
+    @cmd_helpchat.command(pass_context=True, name="poll")
+    async def cmd_helpchat_poll(self, ctx: Context):
+        channel: discord.Channel = ctx.message.channel
+        state = self.get_state(channel.server)
+        await state.poll_channels()
+        await self.bot.react_success(ctx)
+
+    @checks.is_manager()
+    @cmd_helpchat.command(pass_context=True, name="hoist")
+    async def cmd_helpchat_hoist(self, ctx: Context):
+        channel: discord.Channel = ctx.message.channel
+        state = self.get_state(channel.server)
+        await state.sync_hoisted_channels()
+        await self.bot.react_success(ctx)
+
+    @checks.is_manager()
+    @cmd_helpchat.group(pass_context=True, name="set")
+    async def cmd_helpchat_set(self, ctx: Context):
+        if ctx.invoked_subcommand is None:
+            await self.bot.react_question(ctx)
+
+    @checks.is_manager()
+    @cmd_helpchat_set.command(pass_context=True, name="free")
+    async def cmd_helpchat_set_free(self, ctx: Context):
+        channel: discord.Channel = ctx.message.channel
+        state = self.get_state(channel.server)
+        if channel in state.channels:
+            await asyncio.sleep(1)
+            await state.set_channel(channel, state.free_state, state.free_category)
+            await self.bot.react_success(ctx)
+
+    @checks.is_manager()
+    @cmd_helpchat_set.command(pass_context=True, name="busy")
+    async def cmd_helpchat_set_busy(self, ctx: Context):
+        channel: discord.Channel = ctx.message.channel
+        state = self.get_state(channel.server)
+        if channel in state.channels:
+            await asyncio.sleep(1)
+            await state.set_channel(channel, state.busy_state, state.busy_category)
+            await self.bot.react_success(ctx)
+
+    @checks.is_manager()
+    @cmd_helpchat_set.command(pass_context=True, name="stale")
+    async def cmd_helpchat_set_stale(self, ctx: Context):
+        channel: discord.Channel = ctx.message.channel
+        state = self.get_state(channel.server)
+        if channel in state.channels:
+            await asyncio.sleep(1)
+            await state.set_channel(channel, state.stale_state, state.stale_category)
+            await self.bot.react_success(ctx)
+
+    @checks.is_manager()
+    @cmd_helpchat_set.command(pass_context=True, name="hoisted")
+    async def cmd_helpchat_set_hoisted(self, ctx: Context):
+        channel: discord.Channel = ctx.message.channel
+        state = self.get_state(channel.server)
+        if channel in state.channels:
+            await asyncio.sleep(1)
+            await state.set_channel(
+                channel, state.hoisted_state, state.hoisted_category
+            )
+            await self.bot.react_success(ctx)

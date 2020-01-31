@@ -3,15 +3,15 @@ import typing
 from datetime import datetime, timedelta
 
 import discord
+import discord.http
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands.bot import _get_variable
 from discord.ext.commands.errors import *
 
-from cogbot.cog_bot_state import CogBotState
 from cogbot.cog_bot_server_state import CogBotServerState
-from cogbot.types import ServerId, ChannelId, UserId, RoleId
-
+from cogbot.cog_bot_state import CogBotState
+from cogbot.types import ChannelId, RoleId, ServerId, UserId
 
 log = logging.getLogger(__name__)
 
@@ -145,6 +145,20 @@ class CogBot(commands.Bot):
             if role.id == role_id:
                 return role
 
+    async def move_channel_to_category(
+        self, channel: discord.Channel, category: discord.Channel, position: int = None
+    ):
+        # NOTE hack because this version of discord is older than categories
+        payload = dict(parent_id=category.id)
+        if position is not None:
+            payload["position"] = position
+        return await self.http.request(
+            discord.http.Route(
+                "PATCH", "/channels/{channel_id}", channel_id=channel.id
+            ),
+            json=payload,
+        )
+
     async def mod_log(
         self,
         member: discord.Member,
@@ -200,19 +214,20 @@ class CogBot(commands.Bot):
                 dest = await dest_getter(dest_id)
                 await self.send_message(dest, content)
 
-    def care_about_it(self, message: discord.Message):
+    def is_command(self, message: discord.Message) -> bool:
+        for prefix in self.state.command_prefix:
+            if message.content.startswith(prefix):
+                return True
+
+    def care_about_it(self, message: discord.Message) -> bool:
         # ignore bot's own messages
         if message.author != self.user:
             # must start with one of the command prefixes
-            for prefix in self.state.command_prefix:
-                if message.content.startswith(prefix):
-                    return True
-
+            if self.is_command(message):
+                return True
             # or mentions the bot
             if self.user in message.mentions:
                 return True
-
-        return False
 
     def is_message_younger_than(
         self, message: discord.Message, *args, **kwargs
