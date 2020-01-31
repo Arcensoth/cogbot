@@ -145,19 +145,36 @@ class CogBot(commands.Bot):
             if role.id == role_id:
                 return role
 
-    async def move_channel_to_category(
-        self, channel: discord.Channel, category: discord.Channel, position: int = None
+    async def edit_channel(
+        self,
+        channel: discord.Channel,
+        name: str = None,
+        topic: str = None,
+        position: int = None,
+        category: discord.Channel = None,
+        **options,
     ):
         # NOTE hack because this version of discord is older than categories
-        payload = dict(parent_id=category.id)
+        payload = dict(**options)
+        if name is not None:
+            payload["name"] = name
+        if topic is not None:
+            payload["topic"] = topic
         if position is not None:
             payload["position"] = position
+        if category is not None:
+            payload["parent_id"] = category.id
         return await self.http.request(
             discord.http.Route(
                 "PATCH", "/channels/{channel_id}", channel_id=channel.id
             ),
             json=payload,
         )
+
+    async def move_channel_to_category(
+        self, channel: discord.Channel, category: discord.Channel, position: int = None
+    ):
+        return self.edit_channel(channel, category=category, position=position)
 
     async def mod_log(
         self,
