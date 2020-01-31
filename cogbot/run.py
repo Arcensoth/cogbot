@@ -71,11 +71,15 @@ def _attempt_logout(loop, bot):
         pending = asyncio.Task.all_tasks(loop=loop)
         gathered = asyncio.gather(*pending, loop=loop)
 
-        log.info('Cancelling leftover tasks...')
+        log.warning(f'Cancelling {len(pending)} pending tasks:')
+        for task in pending:
+            log.warning(f"    {getattr(task, '_coro')}")
+            
         gathered.cancel()
 
         log.info('Allowing cancelled tasks to finish...')
         try:
+            # NOTE this is expected to raise a CancelledError if there were cancelled tasks
             loop.run_until_complete(gathered)
         except:
             pass
@@ -123,12 +127,12 @@ def run():
         except Exception as ex:
             last_death = ex
             log.exception('Encountered a fatal exception')
-            _attempt_logout(loop, bot)
 
         except:
             last_death = None
             log.exception('Encountered an unknown error')
-            _attempt_logout(loop, bot)
+
+        _attempt_logout(loop, bot)
 
         log.info('Closing event loop...')
         loop.close()
