@@ -5,7 +5,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: local config",
+      "name": "Python: local config (log=INFO)",
       "type": "python",
       "request": "launch",
       "module": "cogbot",
@@ -13,6 +13,21 @@
       "args": [
         "--log",
         "INFO",
+        "--state",
+        "bot.json",
+        "--tokenfile",
+        "bot.token"
+      ]
+    },
+    {
+      "name": "Python: local config (log=DEBUG)",
+      "type": "python",
+      "request": "launch",
+      "module": "cogbot",
+      "console": "integratedTerminal",
+      "args": [
+        "--log",
+        "DEBUG",
         "--state",
         "bot.json",
         "--tokenfile",
