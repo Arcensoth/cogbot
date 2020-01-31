@@ -5,6 +5,21 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Python: local config (log=WARNING)",
+      "type": "python",
+      "request": "launch",
+      "module": "cogbot",
+      "console": "integratedTerminal",
+      "args": [
+        "--log",
+        "WARNING",
+        "--state",
+        "bot.json",
+        "--tokenfile",
+        "bot.token"
+      ]
+    },
+    {
       "name": "Python: local config (log=INFO)",
       "type": "python",
       "request": "launch",
