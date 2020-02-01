@@ -2,16 +2,14 @@ import typing
 
 import discord
 
-DEFAULT_NAME = "{emoji}help-chat-{index}"
-
 
 class ChannelState:
-    def __init__(self, emoji: str, name: str = DEFAULT_NAME):
+    def __init__(self, emoji: str, name_format: str):
         self.emoji: str = emoji
-        self.name = name
+        self.name_format: str = name_format
 
-    def format(self, name: str = None, first: bool = False) -> str:
-        return self.name.format(emoji=self.emoji, name=name)
+    def format(self, key: str = None, first: bool = False) -> str:
+        return self.name_format.format(emoji=self.emoji, key=key)
 
     def matches(self, channel: discord.Channel) -> bool:
         return channel.name.startswith(self.emoji)

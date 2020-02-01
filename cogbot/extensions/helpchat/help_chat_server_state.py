@@ -25,8 +25,8 @@ class HelpChatServerState:
         channels: typing.Dict[str, ChannelId],
         message_with_channel: str,
         message_without_channel: str,
-        seconds_until_stale: int = 3600,
-        seconds_to_poll: int = 600,
+        seconds_until_stale: int = 1800,
+        seconds_to_poll: int = 60,
         free_category: str = None,
         busy_category: str = None,
         stale_category: str = None,
@@ -39,6 +39,12 @@ class HelpChatServerState:
         busy_emoji: str = BUSY_EMOJI,
         stale_emoji: str = STALE_EMOJI,
         hoisted_emoji: str = HOISTED_EMOJI,
+        ducked_emoji: str = DUCKED_EMOJI,
+        free_format: str = "{emoji}free-chat-{key}",
+        busy_format: str = "{emoji}busy-chat-{key}",
+        stale_format: str = "{emoji}stale-chat-{key}",
+        hoisted_format: str = "{emoji}ask-here-{key}",
+        ducked_format: str = "{emoji}duck-chat-{key}",
         resolve_with_reaction: bool = False,
         auto_poll: bool = True,
     ):
@@ -94,14 +100,21 @@ class HelpChatServerState:
         self.busy_emoji: str = busy_emoji
         self.stale_emoji: str = stale_emoji
         self.hoisted_emoji: str = hoisted_emoji
+        self.ducked_emoji: str = ducked_emoji
+
+        self.free_format: str = free_format
+        self.busy_format: str = busy_format
+        self.stale_format: str = stale_format
+        self.hoisted_format: str = hoisted_format
+        self.ducked_format: str = ducked_format
 
         self.resolve_with_reaction: bool = resolve_with_reaction
 
-        self.free_state: str = ChannelState(free_emoji, "{emoji}free-chat-{name}")
-        self.busy_state: str = ChannelState(busy_emoji, "{emoji}busy-chat-{name}")
-        self.stale_state: str = ChannelState(stale_emoji, "{emoji}stale-chat-{name}")
-        self.hoisted_state: str = ChannelState(hoisted_emoji, "{emoji}ask-here")
-        self.ducked_state: str = ChannelState(DUCKED_EMOJI, "{emoji}duck-chat-{name}")
+        self.free_state: str = ChannelState(self.free_emoji, self.free_format)
+        self.busy_state: str = ChannelState(self.busy_emoji, self.busy_format)
+        self.stale_state: str = ChannelState(self.stale_emoji, self.stale_format)
+        self.hoisted_state: str = ChannelState(self.hoisted_emoji, self.hoisted_format)
+        self.ducked_state: str = ChannelState(self.ducked_emoji, self.ducked_format)
 
         self.auto_poll: bool = auto_poll
 
@@ -192,7 +205,7 @@ class HelpChatServerState:
     def get_hoisted_channel(self) -> discord.Channel:
         return self.get_channel(self.hoisted_state)
 
-    def get_base_name(self, channel: discord.Channel) -> str:
+    def get_channel_key(self, channel: discord.Channel) -> str:
         return self.channel_map.get(channel)
 
     async def set_channel(
@@ -205,7 +218,7 @@ class HelpChatServerState:
         was_hoisted = self.is_channel_hoisted(channel)
         # set the new channel name, which doubles as its persistent state
         # also move it to the new category, if supplied
-        new_name = state.format(self.get_base_name(channel))
+        new_name = state.format(self.get_channel_key(channel))
         await self.bot.edit_channel(channel, name=new_name, category=category)
         # sync hoisted channels if this change is relevant to them
         if was_hoisted or self.is_channel_hoisted(channel):
@@ -352,7 +365,7 @@ class HelpChatServerState:
                     )
 
             # quack
-            elif message.content == DUCKED_EMOJI:
+            elif message.content == str(self.ducked_emoji):
                 if await self.set_channel_ducked(channel):
                     await self.bot.mod_log(
                         message.author,
