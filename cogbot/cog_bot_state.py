@@ -24,7 +24,7 @@ class CogBotState:
                 log.error(f"Failed to load main bot state: {error}")
         else:
             try:
-                with open(state_file) as fp:
+                with open(state_file, encoding='utf-8') as fp:
                     raw_state = json.load(fp)
                 log.info('Successfully loaded main bot state from local file')
             except FileNotFoundError:
