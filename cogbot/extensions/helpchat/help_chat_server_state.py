@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 import typing
 from datetime import datetime, timedelta
 
@@ -195,20 +196,23 @@ class HelpChatServerState:
     def get_hoisted_channels(self) -> discord.Channel:
         return self.get_channels(self.hoisted_state)
 
-    def get_channel(self, state: ChannelState) -> discord.Channel:
-        return next(self.get_channels(state), None)
+    def get_random_channel(self, state: ChannelState) -> discord.Channel:
+        channels = list(self.get_channels(state))
+        if channels:
+            random.shuffle(channels)
+            return channels[0]
 
-    def get_free_channel(self) -> discord.Channel:
-        return self.get_channel(self.free_state)
+    def get_random_free_channel(self) -> discord.Channel:
+        return self.get_random_channel(self.free_state)
 
-    def get_busy_channel(self) -> discord.Channel:
-        return self.get_channel(self.busy_state)
+    def get_random_busy_channel(self) -> discord.Channel:
+        return self.get_random_channel(self.busy_state)
 
-    def get_stale_channel(self) -> discord.Channel:
-        return self.get_channel(self.stale_state)
+    def get_random_stale_channel(self) -> discord.Channel:
+        return self.get_random_channel(self.stale_state)
 
-    def get_hoisted_channel(self) -> discord.Channel:
-        return self.get_channel(self.hoisted_state)
+    def get_random_hoisted_channel(self) -> discord.Channel:
+        return self.get_random_channel(self.hoisted_state)
 
     def get_channel_key(self, channel: discord.Channel) -> str:
         return self.channel_map.get(channel)
@@ -270,7 +274,7 @@ class HelpChatServerState:
         author: discord.Member = message.author
         from_channel: discord.Channel = message.channel
         # might as well suggest going straight to a free channel
-        to_channel = self.get_free_channel()
+        to_channel = self.get_random_free_channel()
         if to_channel:
             await self.bot.mod_log(
                 reactor,
@@ -303,7 +307,9 @@ class HelpChatServerState:
         if num_hoisted_channels < self.max_hoisted_channels:
             # if we're under the min, hoist a free channel or even a stale one
             if num_hoisted_channels < self.min_hoisted_channels:
-                channel_to_hoist = self.get_free_channel() or self.get_stale_channel()
+                channel_to_hoist = (
+                    self.get_random_free_channel() or self.get_random_stale_channel()
+                )
                 # warn if we ran out of channels
                 if not (channel_to_hoist):
                     self.log.warning("No channels available to hoist!")
@@ -314,7 +320,7 @@ class HelpChatServerState:
                     return False
                 return True
             # otherwise, if we're just trying to top-off, hoist a free channel
-            channel_to_hoist = self.get_free_channel()
+            channel_to_hoist = self.get_random_free_channel()
             if channel_to_hoist:
                 await self.set_channel_hoisted(channel_to_hoist)
                 return True
