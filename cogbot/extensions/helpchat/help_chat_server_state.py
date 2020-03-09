@@ -111,7 +111,9 @@ class HelpChatServerState:
 
         self.resolve_with_reaction: bool = resolve_with_reaction
 
-        self.hoisted_message: str = hoisted_message
+        self.hoisted_message: str = "\n".join(hoisted_message) if isinstance(
+            hoisted_message, list
+        ) else hoisted_message
 
         self.free_state: str = ChannelState(self.free_emoji, self.free_format)
         self.busy_state: str = ChannelState(self.busy_emoji, self.busy_format)
