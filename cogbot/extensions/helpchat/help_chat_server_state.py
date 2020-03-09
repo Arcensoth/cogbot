@@ -46,6 +46,7 @@ class HelpChatServerState:
         hoisted_format: str = "{emoji}ask-here-{key}",
         ducked_format: str = "{emoji}duck-chat-{key}",
         resolve_with_reaction: bool = False,
+        hoisted_message: str = None,
         auto_poll: bool = True,
     ):
         self.log: logging.Logger = logging.getLogger(f"{ext}:{server.name}")
@@ -109,6 +110,8 @@ class HelpChatServerState:
         self.ducked_format: str = ducked_format
 
         self.resolve_with_reaction: bool = resolve_with_reaction
+
+        self.hoisted_message: str = hoisted_message
 
         self.free_state: str = ChannelState(self.free_emoji, self.free_format)
         self.busy_state: str = ChannelState(self.busy_emoji, self.busy_format)
@@ -246,6 +249,7 @@ class HelpChatServerState:
         # only free and stale channels (not busy) can become hoisted
         if self.is_channel_free(channel) or self.is_channel_stale(channel):
             await self.set_channel(channel, self.hoisted_state, self.hoisted_category)
+            await self.send_hoisted_message(channel)
             return True
 
     async def set_channel_ducked(self, channel: discord.Channel) -> bool:
@@ -253,6 +257,12 @@ class HelpChatServerState:
         if not self.is_channel_ducked(channel):
             await self.set_channel(channel, self.ducked_state, self.busy_category)
             return True
+
+    async def send_hoisted_message(self, channel: discord.Channel):
+        # send hoisted message, if any, in the newly-hoisted channel
+        if self.hoisted_message:
+            em = discord.Embed(description=self.hoisted_message, color=0x00ACED)
+            await self.bot.send_message(channel, embed=em)
 
     async def redirect(self, message: discord.Message, reactor: discord.Member):
         author: discord.Member = message.author
