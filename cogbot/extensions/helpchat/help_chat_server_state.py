@@ -273,7 +273,8 @@ class HelpChatServerState:
     async def redirect(self, message: discord.Message, reactor: discord.Member):
         author: discord.Member = message.author
         from_channel: discord.Channel = message.channel
-        to_channel = self.get_random_hoisted_channel()
+        # prefer redirecting to hoisted channels over free ones
+        to_channel = self.get_random_hoisted_channel() or self.get_random_free_channel()
         if to_channel:
             await self.bot.mod_log(
                 reactor,
