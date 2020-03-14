@@ -1,4 +1,5 @@
 import asyncio
+import collections
 import logging
 import random
 import typing
@@ -17,13 +18,19 @@ HOISTED_EMOJI = "👋"
 DUCKED_EMOJI = "🦆"
 
 
+class HelpChatChannelEntry:
+    def __init__(self, key: str, index: int):
+        self.key: str = key
+        self.index: int = index
+
+
 class HelpChatServerState:
     def __init__(
         self,
         ext: str,
         bot: CogBot,
         server: discord.Server,
-        channels: typing.Dict[str, ChannelId],
+        channels: typing.List[dict],
         message_with_channel: str,
         message_without_channel: str,
         seconds_until_idle: int = 1800,
@@ -55,10 +62,16 @@ class HelpChatServerState:
         self.bot: CogBot = bot
         self.server: discord.Server = server
 
-        self.channel_map: typing.Dict[discord.Channel, str] = {
-            self.bot.get_channel(channel_id): name
-            for name, channel_id in channels.items()
-        }
+        self.channel_map: typing.Dict[
+            discord.Channel, HelpChatServerState
+        ] = collections.OrderedDict()
+
+        for index, channel_dict in enumerate(channels):
+            channel_id: int = channel_dict["id"]
+            channel_key: str = channel_dict["key"]
+            channel: discord.Channel = self.bot.get_channel(channel_id)
+            channel_entry = HelpChatChannelEntry(channel_key, index)
+            self.channel_map[channel] = channel_entry
 
         self.channels: typing.List[discord.Channel] = list(self.channel_map.keys())
 
@@ -215,7 +228,14 @@ class HelpChatServerState:
         return self.get_random_channel(self.hoisted_state)
 
     def get_channel_key(self, channel: discord.Channel) -> str:
-        return self.channel_map.get(channel)
+        channel_entry: HelpChatChannelEntry = self.channel_map.get(channel)
+        if channel_entry:
+            return channel_entry.key
+
+    def get_channel_index(self, channel: discord.Channel) -> str:
+        channel_entry: HelpChatChannelEntry = self.channel_map.get(channel)
+        if channel_entry:
+            return channel_entry.index
 
     async def set_channel(
         self,
@@ -227,8 +247,14 @@ class HelpChatServerState:
         was_hoisted = self.is_channel_hoisted(channel)
         # set the new channel name, which doubles as its persistent state
         # also move it to the new category, if supplied
-        new_name = state.format(self.get_channel_key(channel))
-        await self.bot.edit_channel(channel, name=new_name, category=category)
+        channel_key = self.get_channel_key(channel)
+        new_name = state.format(channel_key)
+        # use the channels index to determine its relative ordering
+        channel_index = self.get_channel_index(channel)
+        position = channel_index * 100
+        await self.bot.edit_channel(
+            channel, name=new_name, category=category, position=position
+        )
         # sync hoisted channels if this change is relevant to them
         if was_hoisted or self.is_channel_hoisted(channel):
             await self.sync_hoisted_channels()
