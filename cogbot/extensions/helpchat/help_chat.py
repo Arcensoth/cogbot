@@ -67,7 +67,6 @@ class HelpChat:
     @cmd_helpchat.group(pass_context=True, name="channels")
     async def cmd_helpchat_channels(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
-        server: discord.Server = channel.server
         state = self.get_state(channel.server)
         pad_name = 24
         pad_position = 8
@@ -90,13 +89,13 @@ class HelpChat:
                 ]
             ),
         ]
-        channels_by_position = list(server.channels)
+        channels_by_position = list(state.channels)
         channels_by_position.sort(key=lambda c: c.position)
         for ch in channels_by_position:
             ch_name = ch.name
             ch_position = ch.position
-            ch_key = state.get_channel_key(ch) if ch in state.channels else ""
-            ch_index = state.get_channel_index(ch) if ch in state.channels else ""
+            ch_key = state.get_channel_key(ch)
+            ch_index = state.get_channel_index(ch)
             lines.append(
                 " | ".join(
                     [
