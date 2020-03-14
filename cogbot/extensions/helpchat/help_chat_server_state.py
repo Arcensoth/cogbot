@@ -271,12 +271,14 @@ class HelpChatServerState:
         # also move it to the new category, if supplied
         channel_key = self.get_channel_key(channel)
         new_name = state.format(channel_key)
-        # use the channels index to determine its relative ordering
-        channel_index = self.get_channel_index(channel)
-        position = channel_index * 100
-        await self.bot.edit_channel(
-            channel, name=new_name, category=category, position=position
-        )
+        # update the channel-in-question's category (parent)
+        await self.bot.edit_channel(channel, name=new_name, category=category)
+        # make sure all channel positions are synchronized
+        # go in reverse in case the positions were reverted and will cause cascading
+        for ch in reversed(self.channels):
+            expected_position = (self.get_channel_index(ch) + 1) * 100
+            if expected_position != ch.position:
+                await self.bot.edit_channel(ch, position=expected_position)
         # sync hoisted channels if this change is relevant to them
         if was_hoisted or self.is_channel_hoisted(channel):
             await self.sync_hoisted_channels()
