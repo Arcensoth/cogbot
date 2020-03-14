@@ -258,15 +258,20 @@ class CogBot(commands.Bot):
         async for message in self.logs_from(channel, limit=1):
             return message
 
-    async def get_latest_messages(
+    async def is_latest_message(self, message: discord.Message) -> bool:
+        latest_message = await self.get_latest_message(message.channel)
+        return message.id == latest_message.id
+
+    async def iter_latest_messages(
         self, channels: typing.List[discord.Channel]
     ) -> typing.Iterable[discord.Message]:
         for channel in channels:
             yield await self.get_latest_message(channel)
 
-    async def is_latest_message(self, message: discord.Message) -> bool:
-        latest_message = await self.get_latest_message(message.channel)
-        return message.id == latest_message.id
+    async def get_latest_messages(
+        self, channels: typing.List[discord.Channel]
+    ) -> typing.List[discord.Message]:
+        return [m async for m in self.iter_latest_messages(channels)]
 
     async def on_message(self, message):
         if self.care_about_it(message):

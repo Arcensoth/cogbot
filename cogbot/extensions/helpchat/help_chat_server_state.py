@@ -229,9 +229,7 @@ class HelpChatServerState:
 
     async def get_oldest_channel(self, state: ChannelState) -> discord.Channel:
         channels: typing.List[discord.Channel] = list(self.get_channels(state))
-        latest_messages: typing.List[discord.Message] = [
-            await self.bot.get_latest_message(channel) for channel in channels
-        ]
+        latest_messages = await self.bot.get_latest_messages(channels)
         if latest_messages:
             latest_messages.sort(key=lambda message: message.timestamp)
             oldest_channel = latest_messages[0].channel
@@ -392,7 +390,7 @@ class HelpChatServerState:
         # add the latest message from every channel into the client cache
         # so that discord.py will care about any reactions applied to it
         message_cache = self.bot.connection.messages
-        async for message in self.bot.get_latest_messages(self.channels):
+        async for message in self.bot.iter_latest_messages(self.channels):
             message_cache.append(message)
         self.log.info(f"Cached {len(message_cache)} latest messages across channels")
 
