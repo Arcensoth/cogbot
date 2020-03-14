@@ -227,6 +227,28 @@ class HelpChatServerState:
     def get_random_hoisted_channel(self) -> discord.Channel:
         return self.get_random_channel(self.hoisted_state)
 
+    async def get_oldest_channel(self, state: ChannelState) -> discord.Channel:
+        channels: typing.List[discord.Channel] = list(self.get_channels(state))
+        latest_messages: typing.List[discord.Message] = [
+            await self.bot.get_latest_message(channel) for channel in channels
+        ]
+        if latest_messages:
+            latest_messages.sort(key=lambda message: message.timestamp)
+            oldest_channel = latest_messages[0].channel
+            return oldest_channel
+
+    async def get_oldest_free_channel(self) -> discord.Channel:
+        return await self.get_oldest_channel(self.free_state)
+
+    async def get_oldest_busy_channel(self) -> discord.Channel:
+        return await self.get_oldest_channel(self.busy_state)
+
+    async def get_oldest_idle_channel(self) -> discord.Channel:
+        return await self.get_oldest_channel(self.idle_state)
+
+    async def get_oldest_hoisted_channel(self) -> discord.Channel:
+        return await self.get_oldest_channel(self.hoisted_state)
+
     def get_channel_key(self, channel: discord.Channel) -> str:
         channel_entry: HelpChatChannelEntry = self.channel_map.get(channel)
         if channel_entry:
@@ -331,11 +353,12 @@ class HelpChatServerState:
         num_hoisted_channels = len(hoisted_channels)
         # if we've hit the max, don't hoist any more channels
         if num_hoisted_channels < self.max_hoisted_channels:
-            # if we're under the min, hoist a free channel or even an idle one
+            # if we're under the min, hoist the oldest free channel
             if num_hoisted_channels < self.min_hoisted_channels:
-                channel_to_hoist = (
-                    self.get_random_free_channel() or self.get_random_idle_channel()
-                )
+                channel_to_hoist = await self.get_oldest_free_channel()
+                # if there's no free channels available to hoist, grab the oldest idle one
+                if not channel_to_hoist:
+                    channel_to_hoist = await self.get_oldest_idle_channel()
                 # warn if we ran out of channels
                 if not (channel_to_hoist):
                     self.log.warning("No channels available to hoist!")
@@ -345,8 +368,8 @@ class HelpChatServerState:
                     self.log.warning("Tried to hoist a channel that wasn't free/idle!")
                     return False
                 return True
-            # otherwise, if we're just trying to top-off, hoist a free channel
-            channel_to_hoist = self.get_random_free_channel()
+            # otherwise, if we're just trying to top-off, hoist the oldest free channel
+            channel_to_hoist = await self.get_oldest_free_channel()
             if channel_to_hoist:
                 await self.set_channel_hoisted(channel_to_hoist)
                 return True
