@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 import typing
 
 import discord
@@ -60,6 +61,53 @@ class HelpChat:
     async def cmd_helpchat(self, ctx: Context):
         if ctx.invoked_subcommand is None:
             await self.bot.react_question(ctx)
+
+    @checks.is_manager()
+    @cmd_helpchat.group(pass_context=True, name="channels")
+    async def cmd_helpchat_channels(self, ctx: Context):
+        channel: discord.Channel = ctx.message.channel
+        server: discord.Server = channel.server
+        state = self.get_state(channel.server)
+        pad_name = 24
+        pad_position = 8
+        pad_key = 8
+        lines = [
+            " | ".join(
+                [
+                    "name".ljust(pad_name),
+                    "position".ljust(pad_position),
+                    "hc-key".ljust(pad_key),
+                    "hc-index",
+                ]
+            ),
+            " | ".join(
+                [
+                    "-" * pad_name,
+                    "-" * pad_position,
+                    "-" * pad_key,
+                    "-" * len("hc-index"),
+                ]
+            ),
+        ]
+        channels_by_position = list(server.channels)
+        channels_by_position.sort(key=lambda c: c.position)
+        for ch in channels_by_position:
+            ch_name = ch.name
+            ch_position = ch.position
+            ch_key = state.get_channel_key(ch) if ch in state.channels else ""
+            ch_index = state.get_channel_index(ch) if ch in state.channels else ""
+            lines.append(
+                " | ".join(
+                    [
+                        str(ch_name).ljust(pad_name),
+                        str(ch_position).ljust(pad_position),
+                        str(ch_key).ljust(pad_key),
+                        str(ch_index),
+                    ]
+                )
+            )
+        message = "\n".join(("```", *lines, "```"))
+        await self.bot.send_message(channel, message)
 
     @checks.is_manager()
     @cmd_helpchat.group(pass_context=True, name="poll")
