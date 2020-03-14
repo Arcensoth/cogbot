@@ -12,7 +12,7 @@ from cogbot.extensions.helpchat.channel_state import ChannelState
 RELOCATE_EMOJI = "🛴"
 FREE_EMOJI = "✅"
 BUSY_EMOJI = "💬"
-STALE_EMOJI = "⏰"
+IDLE_EMOJI = "⏰"
 HOISTED_EMOJI = "👋"
 DUCKED_EMOJI = "🦆"
 
@@ -26,11 +26,11 @@ class HelpChatServerState:
         channels: typing.Dict[str, ChannelId],
         message_with_channel: str,
         message_without_channel: str,
-        seconds_until_stale: int = 1800,
+        seconds_until_idle: int = 1800,
         seconds_to_poll: int = 60,
         free_category: str = None,
         busy_category: str = None,
-        stale_category: str = None,
+        idle_category: str = None,
         hoisted_category: str = None,
         min_hoisted_channels: int = 0,
         max_hoisted_channels: int = 0,
@@ -38,12 +38,12 @@ class HelpChatServerState:
         resolve_emoji: str = FREE_EMOJI,
         free_emoji: str = FREE_EMOJI,
         busy_emoji: str = BUSY_EMOJI,
-        stale_emoji: str = STALE_EMOJI,
+        idle_emoji: str = IDLE_EMOJI,
         hoisted_emoji: str = HOISTED_EMOJI,
         ducked_emoji: str = DUCKED_EMOJI,
         free_format: str = "{emoji}free-chat-{key}",
         busy_format: str = "{emoji}busy-chat-{key}",
-        stale_format: str = "{emoji}stale-chat-{key}",
+        idle_format: str = "{emoji}idle-chat-{key}",
         hoisted_format: str = "{emoji}ask-here-{key}",
         ducked_format: str = "{emoji}duck-chat-{key}",
         resolve_with_reaction: bool = False,
@@ -66,7 +66,7 @@ class HelpChatServerState:
 
         self.message_with_channel: str = message_with_channel
         self.message_without_channel: str = message_without_channel
-        self.seconds_until_stale: int = seconds_until_stale
+        self.seconds_until_idle: int = seconds_until_idle
         self.seconds_to_poll: int = seconds_to_poll
         self.min_hoisted_channels: int = min_hoisted_channels
         self.max_hoisted_channels: int = max(min_hoisted_channels, max_hoisted_channels)
@@ -85,9 +85,9 @@ class HelpChatServerState:
             busy_category
         ) if busy_category else None
 
-        self.stale_category: discord.Channel = self.bot.get_channel(
-            stale_category
-        ) if stale_category else None
+        self.idle_category: discord.Channel = self.bot.get_channel(
+            idle_category
+        ) if idle_category else None
 
         self.hoisted_category: discord.Channel = self.bot.get_channel(
             hoisted_category
@@ -95,18 +95,18 @@ class HelpChatServerState:
 
         self.log.info(f"Free category: {self.free_category}")
         self.log.info(f"Busy category: {self.busy_category}")
-        self.log.info(f"Stale category: {self.stale_category}")
+        self.log.info(f"Idle category: {self.idle_category}")
         self.log.info(f"Hoisted category: {self.hoisted_category}")
 
         self.free_emoji: str = free_emoji
         self.busy_emoji: str = busy_emoji
-        self.stale_emoji: str = stale_emoji
+        self.idle_emoji: str = idle_emoji
         self.hoisted_emoji: str = hoisted_emoji
         self.ducked_emoji: str = ducked_emoji
 
         self.free_format: str = free_format
         self.busy_format: str = busy_format
-        self.stale_format: str = stale_format
+        self.idle_format: str = idle_format
         self.hoisted_format: str = hoisted_format
         self.ducked_format: str = ducked_format
 
@@ -118,14 +118,14 @@ class HelpChatServerState:
 
         self.free_state: str = ChannelState(self.free_emoji, self.free_format)
         self.busy_state: str = ChannelState(self.busy_emoji, self.busy_format)
-        self.stale_state: str = ChannelState(self.stale_emoji, self.stale_format)
+        self.idle_state: str = ChannelState(self.idle_emoji, self.idle_format)
         self.hoisted_state: str = ChannelState(self.hoisted_emoji, self.hoisted_format)
         self.ducked_state: str = ChannelState(self.ducked_emoji, self.ducked_format)
 
         self.auto_poll: bool = auto_poll
 
         self.polling_task: asyncio.Task = None
-        self.delta_until_stale = timedelta(seconds=self.seconds_until_stale)
+        self.delta_until_idle = timedelta(seconds=self.seconds_until_idle)
 
         if self.auto_poll:
             self.start_polling_task()
@@ -170,8 +170,8 @@ class HelpChatServerState:
             channel
         )
 
-    def is_channel_stale(self, channel: discord.Channel) -> bool:
-        return self.is_channel(channel, self.stale_state)
+    def is_channel_idle(self, channel: discord.Channel) -> bool:
+        return self.is_channel(channel, self.idle_state)
 
     def is_channel_hoisted(self, channel: discord.Channel) -> bool:
         return self.is_channel(channel, self.hoisted_state)
@@ -190,8 +190,8 @@ class HelpChatServerState:
     def get_busy_channels(self) -> discord.Channel:
         return self.get_channels(self.busy_state)
 
-    def get_stale_channels(self) -> discord.Channel:
-        return self.get_channels(self.stale_state)
+    def get_idle_channels(self) -> discord.Channel:
+        return self.get_channels(self.idle_state)
 
     def get_hoisted_channels(self) -> discord.Channel:
         return self.get_channels(self.hoisted_state)
@@ -208,8 +208,8 @@ class HelpChatServerState:
     def get_random_busy_channel(self) -> discord.Channel:
         return self.get_random_channel(self.busy_state)
 
-    def get_random_stale_channel(self) -> discord.Channel:
-        return self.get_random_channel(self.stale_state)
+    def get_random_idle_channel(self) -> discord.Channel:
+        return self.get_random_channel(self.idle_state)
 
     def get_random_hoisted_channel(self) -> discord.Channel:
         return self.get_random_channel(self.hoisted_state)
@@ -234,8 +234,8 @@ class HelpChatServerState:
             await self.sync_hoisted_channels()
 
     async def set_channel_free(self, channel: discord.Channel) -> bool:
-        # only busy and stale (not hoisted) channels can become free
-        if self.is_channel_busy(channel) or self.is_channel_stale(channel):
+        # only busy and idle (not hoisted) channels can become free
+        if self.is_channel_busy(channel) or self.is_channel_idle(channel):
             await self.set_channel(channel, self.free_state, self.free_category)
             return True
 
@@ -245,15 +245,15 @@ class HelpChatServerState:
             await self.set_channel(channel, self.busy_state, self.busy_category)
             return True
 
-    async def set_channel_stale(self, channel: discord.Channel) -> bool:
-        # only busy channels can become stale
+    async def set_channel_idle(self, channel: discord.Channel) -> bool:
+        # only busy channels can become idle
         if self.is_channel_busy(channel):
-            await self.set_channel(channel, self.stale_state, self.stale_category)
+            await self.set_channel(channel, self.idle_state, self.idle_category)
             return True
 
     async def set_channel_hoisted(self, channel: discord.Channel) -> bool:
-        # only free and stale channels (not busy) can become hoisted
-        if self.is_channel_free(channel) or self.is_channel_stale(channel):
+        # only free and idle channels (not busy) can become hoisted
+        if self.is_channel_free(channel) or self.is_channel_idle(channel):
             await self.set_channel(channel, self.hoisted_state, self.hoisted_category)
             await self.send_hoisted_message(channel)
             return True
@@ -305,10 +305,10 @@ class HelpChatServerState:
         num_hoisted_channels = len(hoisted_channels)
         # if we've hit the max, don't hoist any more channels
         if num_hoisted_channels < self.max_hoisted_channels:
-            # if we're under the min, hoist a free channel or even a stale one
+            # if we're under the min, hoist a free channel or even an idle one
             if num_hoisted_channels < self.min_hoisted_channels:
                 channel_to_hoist = (
-                    self.get_random_free_channel() or self.get_random_stale_channel()
+                    self.get_random_free_channel() or self.get_random_idle_channel()
                 )
                 # warn if we ran out of channels
                 if not (channel_to_hoist):
@@ -316,7 +316,7 @@ class HelpChatServerState:
                     return False
                 # warn if we hit a race condition
                 if not await self.set_channel_hoisted(channel_to_hoist):
-                    self.log.warning("Tried to hoist a channel that wasn't free/stale!")
+                    self.log.warning("Tried to hoist a channel that wasn't free/idle!")
                     return False
                 return True
             # otherwise, if we're just trying to top-off, hoist a free channel
@@ -399,7 +399,7 @@ class HelpChatServerState:
     async def poll_channels(self):
         self.log.debug(f"Polling {len(self.channels)} channels...")
         for channel in self.channels:
-            # only busy channels can become stale
+            # only busy channels can become idle
             if self.is_channel_busy(channel):
                 latest_message = await self.bot.get_latest_message(channel)
                 # if there's no latest message, then... free it up?
@@ -408,8 +408,8 @@ class HelpChatServerState:
                     continue
                 now: datetime = datetime.utcnow()
                 latest: datetime = latest_message.timestamp
-                then: datetime = latest + self.delta_until_stale
+                then: datetime = latest + self.delta_until_idle
                 if now > then:
-                    await self.set_channel_stale(channel)
+                    await self.set_channel_idle(channel)
         # might as well sync hoisted channels just in case
         await self.sync_hoisted_channels()

@@ -158,13 +158,13 @@ class HelpChat:
             await self.bot.react_success(ctx)
 
     @checks.is_manager()
-    @cmd_helpchat_set.command(pass_context=True, name="stale")
-    async def cmd_helpchat_set_stale(self, ctx: Context):
+    @cmd_helpchat_set.command(pass_context=True, name="idle")
+    async def cmd_helpchat_set_idle(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
         state = self.get_state(channel.server)
         if channel in state.channels:
             await asyncio.sleep(1)
-            await state.set_channel(channel, state.stale_state, state.stale_category)
+            await state.set_channel(channel, state.idle_state, state.idle_category)
             await self.bot.react_success(ctx)
 
     @checks.is_manager()
