@@ -388,6 +388,14 @@ class HelpChatServerState:
                     if not await self.try_hoist_channel():
                         break
 
+    async def on_ready(self):
+        # add the latest message from every channel into the client cache
+        # so that discord.py will care about any reactions applied to it
+        message_cache = self.bot.connection.messages
+        async for message in self.bot.get_latest_messages(self.channels):
+            message_cache.append(message)
+        self.log.info(f"Cached {len(message_cache)} latest messages across channels")
+
     async def on_reaction(self, reaction: discord.Reaction, reactor: discord.Member):
         message: discord.Message = reaction.message
         channel: discord.Channel = message.channel

@@ -37,6 +37,7 @@ class HelpChat:
                         self.ext, self.bot, server, **server_options
                     )
                     self.server_state[server.id] = state
+                    await state.on_ready()
 
     async def on_reaction_add(
         self, reaction: discord.Reaction, reactor: discord.Member
