@@ -19,6 +19,7 @@ class HelpChat:
         self.bot: CogBot = bot
         self.server_state: typing.Dict[ServerId, HelpChatServerState] = {}
         self.options = self.bot.state.get_extension_state(ext)
+        self.server_options: typing.Dict[ServerId, typing.Any] = {}
         self.ext = ext
         self.readied = False
 
@@ -32,12 +33,37 @@ class HelpChat:
             # construct server state objects for easier context management
             for server_key, server_options in self.options.get("servers", {}).items():
                 server = self.bot.get_server_from_key(server_key)
-                if server:
-                    state = HelpChatServerState(
-                        self.ext, self.bot, server, **server_options
+                if not server:
+                    log.error(f"Skipping unknown server {server_key}.")
+                    continue
+                self.server_options[server.id] = server_options
+                if isinstance(server_options, str):
+                    await self.init_external_server_state(
+                        server, server_key, server_options
                     )
-                    self.server_state[server.id] = state
-                    await state.on_ready()
+                else:
+                    await self.init_server_state(server, server_options)
+
+    async def init_external_server_state(
+        self, server: discord.Server, server_key: str, state_address: str
+    ):
+        try:
+            log.info(
+                f"Loading state data for server {server_key} from: {state_address}"
+            )
+            server_options = await self.bot.load_json(state_address)
+            log.info(f"Successfully loaded state data for server {server_key}.")
+        except:
+            log.exception(
+                f"Failed to load state data for server {server_key}. Skipping..."
+            )
+            return
+        await self.init_server_state(server, server_options)
+
+    async def init_server_state(self, server: discord.Server, server_options: dict):
+        state = HelpChatServerState(self.ext, self.bot, server, **server_options)
+        await state.on_ready()
+        self.server_state[server.id] = state
 
     async def on_reaction_add(
         self, reaction: discord.Reaction, reactor: discord.Member
@@ -64,7 +90,57 @@ class HelpChat:
             await self.bot.react_question(ctx)
 
     @checks.is_manager()
-    @cmd_helpchat.group(pass_context=True, name="channels")
+    @cmd_helpchat.command(pass_context=True, name="reload")
+    async def cmd_helpchat_reload(self, ctx: Context):
+        channel: discord.Channel = ctx.message.channel
+        server: discord.Server = channel.server
+        # remember the old state object
+        old_state = self.get_state(channel.server)
+        # let the user know things are happening
+        old_state.log.info(f"Attempting to reload state...")
+        await self.bot.add_reaction(ctx.message, "🤖")
+        # check if we're even using an external state
+        state_address = self.server_options.get(server.id, None)
+        if not isinstance(state_address, str):
+            old_state.log.warning(f"Attempted to reload non-external state.")
+            await self.bot.react_denied(ctx)
+            return
+        # load server options from the state address
+        server_options = None
+        old_state.log.info(f"Loading state data from: {state_address}")
+        try:
+            server_options = await self.bot.load_json(state_address)
+            old_state.log.info(f"Successfully loaded state data.")
+            await self.bot.add_reaction(ctx.message, "👌")
+        except:
+            old_state.log.exception(f"Failed to load state data.")
+            await self.bot.react_failure(ctx)
+            return
+        # create and set the new state object
+        old_state.log.info(f"Creating new state object...")
+        try:
+            new_state = HelpChatServerState(
+                self.ext, self.bot, server, **server_options
+            )
+            await new_state.on_ready()
+            self.server_state[server.id] = new_state
+            old_state.log.info(f"Successfully created new state object.")
+            await self.bot.add_reaction(ctx.message, "👍")
+        except:
+            old_state.log.exception(f"Failed to create new state object.")
+            await self.bot.react_failure(ctx)
+            return
+        # destroy the old state object
+        old_state.log.info(f"Destroying old state object...")
+        if await old_state.destroy():
+            old_state.log.info(f"Successfully destroyed old state object.")
+            await self.bot.add_reaction(ctx.message, "😄")
+        else:
+            old_state.log.error(f"Failed to destroy old state object: {old_state}")
+            await self.bot.add_reaction(ctx.message, "😬")
+
+    @checks.is_manager()
+    @cmd_helpchat.command(pass_context=True, name="channels")
     async def cmd_helpchat_channels(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
         state = self.get_state(channel.server)

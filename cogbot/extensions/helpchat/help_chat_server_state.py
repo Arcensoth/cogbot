@@ -75,7 +75,7 @@ class HelpChatServerState:
 
         self.channels: typing.List[discord.Channel] = list(self.channel_map.keys())
 
-        self.log.info(f"Resolved {len(self.channels)} help channels")
+        self.log.info(f"Resolved {len(self.channels)} help channels.")
 
         self.message_with_channel: str = message_with_channel
         self.message_without_channel: str = message_without_channel
@@ -106,10 +106,10 @@ class HelpChatServerState:
             hoisted_category
         ) if hoisted_category else None
 
-        self.log.info(f"Free category: {self.free_category}")
-        self.log.info(f"Busy category: {self.busy_category}")
-        self.log.info(f"Idle category: {self.idle_category}")
-        self.log.info(f"Hoisted category: {self.hoisted_category}")
+        self.log.info(f"Resolved free category: {self.free_category}")
+        self.log.info(f"Resolved busy category: {self.busy_category}")
+        self.log.info(f"Resolved idle category: {self.idle_category}")
+        self.log.info(f"Resolved hoisted category: {self.hoisted_category}")
 
         self.free_emoji: str = free_emoji
         self.busy_emoji: str = busy_emoji
@@ -143,16 +143,21 @@ class HelpChatServerState:
         if self.auto_poll:
             self.start_polling_task()
         else:
-            self.log.warning("Auto-polling is DISABLED")
+            self.log.warning("Auto-polling is DISABLED.")
 
     def start_polling_task(self):
         if not self.polling_task or self.polling_task.done():
             # not already running
-            self.log.info(f"Polling channels every {self.seconds_to_poll} seconds")
+            self.log.info(
+                f"Channels will be polled every {self.seconds_to_poll} seconds."
+            )
             self.polling_task = asyncio.get_event_loop().create_task(
                 self.polling_loop()
             )
-            self.log.info(f"Created polling task: {self.polling_task}")
+            self.log.info(
+                "Created polling task: "
+                + str(getattr(self.polling_task, "_coro", None))
+            )
             return True
 
     def stop_polling_task(self):
@@ -170,7 +175,7 @@ class HelpChatServerState:
                 self.log.warning("Polling task was cancelled; breaking from loop...")
                 break
             except:
-                self.log.warning("Polling task encountered an error; ignoring...")
+                self.log.exception("Polling task encountered an error; ignoring...")
 
     def is_channel(self, channel: discord.Channel, channel_state: ChannelState) -> bool:
         return channel_state.matches(channel)
@@ -392,7 +397,7 @@ class HelpChatServerState:
         message_cache = self.bot.connection.messages
         async for message in self.bot.iter_latest_messages(self.channels):
             message_cache.append(message)
-        self.log.info(f"Cached {len(message_cache)} latest messages across channels")
+        self.log.info(f"Cached {len(message_cache)} latest messages across channels.")
 
     async def on_reaction(self, reaction: discord.Reaction, reactor: discord.Member):
         message: discord.Message = reaction.message
@@ -470,3 +475,6 @@ class HelpChatServerState:
                     await self.set_channel_idle(channel)
         # might as well sync hoisted channels just in case
         await self.sync_hoisted_channels()
+
+    async def destroy(self) -> bool:
+        return self.stop_polling_task()
