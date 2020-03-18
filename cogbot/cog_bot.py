@@ -47,7 +47,11 @@ class CogBot(commands.Bot):
         self.queued_messages = []
 
         if self.state.extensions:
-            self.load_extensions(*self.state.extensions)
+            # skip disabled extensions (those beginning with a `!`)
+            enabled_extensions = [
+                ext for ext in self.state.extensions if not str(ext).startswith("!")
+            ]
+            self.load_extensions(*enabled_extensions)
         else:
             log.info("No extensions to load")
 
@@ -81,22 +85,22 @@ class CogBot(commands.Bot):
     def load_extensions(self, *extensions):
         log.info(f"Loading {len(extensions)} extensions...")
         for ext in extensions:
-            log.info(f"Loading extension {ext}...")
+            log.info(f"Loading extension: {ext}")
             try:
                 self.load_extension(ext)
-            except Exception as e:
-                log.exception(f"Failed to load extension {ext}")
-        log.info(f"Finished loading extensions")
+            except:
+                log.exception(f"Failed to load extension: {ext}")
+        log.info(f"Finished loading extensions.")
 
     def unload_extensions(self, *extensions):
         log.info(f"Unloading {len(extensions)} extensions...")
         for ext in extensions:
-            log.info(f"Unloading extension {ext}...")
+            log.info(f"Unloading extension: {ext}")
             try:
                 self.unload_extension(ext)
-            except Exception as e:
-                log.exception(f"Failed to unload extension {ext}")
-        log.info(f"Finished unloading extensions")
+            except:
+                log.exception(f"Failed to unload extension: {ext}")
+        log.info(f"Finished unloading extensions.")
 
     def force_logout(self):
         self._is_logged_in.clear()
