@@ -1,5 +1,7 @@
+import json
 import logging
 import typing
+import urllib.request
 from datetime import datetime, timedelta
 
 import discord
@@ -101,6 +103,16 @@ class CogBot(commands.Bot):
             except:
                 log.exception(f"Failed to unload extension: {ext}")
         log.info(f"Finished unloading extensions.")
+
+    async def load_json(self, address: str) -> dict:
+        if address.startswith(("http://", "https://")):
+            response = urllib.request.urlopen(address)
+            content = response.read().decode("utf8")
+            data = json.loads(content)
+        else:
+            with open(address, encoding='utf-8') as fp:
+                data = json.load(fp)
+        return data
 
     def force_logout(self):
         self._is_logged_in.clear()
