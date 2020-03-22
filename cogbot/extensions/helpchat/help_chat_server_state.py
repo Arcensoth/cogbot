@@ -19,12 +19,19 @@ IDLE_EMOJI = "⏰"
 HOISTED_EMOJI = "👋"
 DUCKED_EMOJI = "🦆"
 
-EMOJI_LOG_RELOCATED = RELOCATE_EMOJI
-EMOJI_LOG_RESOLVED = FREE_EMOJI
-EMOJI_LOG_DUCKED = DUCKED_EMOJI
-EMOJI_LOG_BUSIED_FROM_FREE = BUSY_EMOJI
-EMOJI_LOG_BUSIED_FROM_HOISTED = HOISTED_EMOJI
-EMOJI_LOG_REMINDED = "🚨"
+LOG_RELOCATED_EMOJI = RELOCATE_EMOJI
+LOG_RESOLVED_EMOJI = FREE_EMOJI
+LOG_DUCKED_EMOJI = DUCKED_EMOJI
+LOG_BUSIED_FROM_FREE_EMOJI = BUSY_EMOJI
+LOG_BUSIED_FROM_HOISTED_EMOJI = HOISTED_EMOJI
+LOG_REMINDED_EMOJI = "🚨"
+
+LOG_RELOCATED_COLOR = "3498db"  # discord.Color.blue()
+LOG_RESOLVED_COLOR = "2ecc71"  # discord.Color.green()
+LOG_DUCKED_COLOR = "c27c0e"  # discord.Color.dark_gold()
+LOG_BUSIED_FROM_FREE_COLOR = "e67e22"  # discord.Color.orange()
+LOG_BUSIED_FROM_HOISTED_COLOR = "f1c40f"  # discord.Color.gold()
+LOG_REMINDED_COLOR = "e74c3c"  # discord.Color.red()
 
 
 class HelpChatChannelEntry:
@@ -64,12 +71,18 @@ class HelpChatServerState:
         idle_format: str = "{emoji}idle-chat-{key}",
         hoisted_format: str = "{emoji}ask-here-{key}",
         ducked_format: str = "{emoji}duck-chat-{key}",
-        emoji_log_relocated: str = EMOJI_LOG_RELOCATED,
-        emoji_log_resolved: str = EMOJI_LOG_RESOLVED,
-        emoji_log_ducked: str = EMOJI_LOG_DUCKED,
-        emoji_log_busied_from_free: str = EMOJI_LOG_BUSIED_FROM_FREE,
-        emoji_log_busied_from_hoisted: str = EMOJI_LOG_BUSIED_FROM_HOISTED,
-        emoji_log_reminded: str = EMOJI_LOG_REMINDED,
+        log_relocated_emoji: str = LOG_RELOCATED_EMOJI,
+        log_resolved_emoji: str = LOG_RESOLVED_EMOJI,
+        log_ducked_emoji: str = LOG_DUCKED_EMOJI,
+        log_busied_from_free_emoji: str = LOG_BUSIED_FROM_FREE_EMOJI,
+        log_busied_from_hoisted_emoji: str = LOG_BUSIED_FROM_HOISTED_EMOJI,
+        log_reminded_emoji: str = LOG_REMINDED_EMOJI,
+        log_relocated_color: str = LOG_RELOCATED_COLOR,
+        log_resolved_color: str = LOG_RESOLVED_COLOR,
+        log_ducked_color: str = LOG_DUCKED_COLOR,
+        log_busied_from_free_color: str = LOG_BUSIED_FROM_FREE_COLOR,
+        log_busied_from_hoisted_color: str = LOG_BUSIED_FROM_HOISTED_COLOR,
+        log_reminded_color: str = LOG_REMINDED_COLOR,
         resolve_with_reaction: bool = False,
         hoisted_message: str = None,
         prompt_color: str = PROMPT_COLOR,
@@ -152,12 +165,23 @@ class HelpChatServerState:
         self.hoisted_format: str = hoisted_format
         self.ducked_format: str = ducked_format
 
-        self.emoji_log_relocated: str = emoji_log_relocated
-        self.emoji_log_resolved: str = emoji_log_resolved
-        self.emoji_log_ducked: str = emoji_log_ducked
-        self.emoji_log_busied_from_free: str = emoji_log_busied_from_free
-        self.emoji_log_busied_from_hoisted: str = emoji_log_busied_from_hoisted
-        self.emoji_log_reminded: str = emoji_log_reminded
+        self.log_relocated_emoji: str = log_relocated_emoji
+        self.log_resolved_emoji: str = log_resolved_emoji
+        self.log_ducked_emoji: str = log_ducked_emoji
+        self.log_busied_from_free_emoji: str = log_busied_from_free_emoji
+        self.log_busied_from_hoisted_emoji: str = log_busied_from_hoisted_emoji
+        self.log_reminded_emoji: str = log_reminded_emoji
+
+        self.log_relocated_color: str = int(f"0x{log_relocated_color}", base=16)
+        self.log_resolved_color: str = int(f"0x{log_resolved_color}", base=16)
+        self.log_ducked_color: str = int(f"0x{log_ducked_color}", base=16)
+        self.log_busied_from_free_color: str = int(
+            f"0x{log_busied_from_free_color}", base=16
+        )
+        self.log_busied_from_hoisted_color: str = int(
+            f"0x{log_busied_from_hoisted_color}", base=16
+        )
+        self.log_reminded_color: str = int(f"0x{log_reminded_color}", base=16)
 
         self.resolve_with_reaction: bool = resolve_with_reaction
 
@@ -189,7 +213,7 @@ class HelpChatServerState:
         description: str,
         message: discord.Message = None,
         actor: discord.Member = None,
-        color: str = discord.Embed.Empty,
+        color: discord.Color = discord.Embed.Empty,
     ):
         if not self.log_channel:
             return
@@ -403,10 +427,11 @@ class HelpChatServerState:
         to_channel = self.get_random_hoisted_channel() or self.get_random_free_channel()
         if to_channel:
             await self.log_to_channel(
-                emoji=self.emoji_log_relocated,
+                emoji=self.log_relocated_emoji,
                 description=f"relocated {author.mention} from {from_channel.mention} to {to_channel.mention}",
                 message=message,
                 actor=reactor,
+                color=self.log_relocated_color,
             )
             response = self.message_with_channel.format(
                 author=author,
@@ -416,10 +441,11 @@ class HelpChatServerState:
             )
         else:
             await self.log_to_channel(
-                emoji=self.emoji_log_relocated,
+                emoji=self.log_relocated_emoji,
                 description=f"relocated {author.mention} from {from_channel.mention}",
                 message=message,
                 actor=reactor,
+                color=self.log_relocated_color,
             )
             response = self.message_without_channel.format(
                 author=author, reactor=reactor, from_channel=from_channel
@@ -467,10 +493,11 @@ class HelpChatServerState:
         await self.set_channel_free(channel)
         # create a log entry
         await self.log_to_channel(
-            emoji=self.emoji_log_reminded,
+            emoji=self.log_reminded_emoji,
             description=f"was reminded in {channel.mention}",
             message=reminder,
             actor=user,
+            color=self.log_reminded_color,
         )
 
     async def sync_hoisted_channels(self):
@@ -515,10 +542,11 @@ class HelpChatServerState:
             if await self.set_channel_free(channel):
                 await self.bot.add_reaction(message, self.resolve_emoji)
                 await self.log_to_channel(
-                    emoji=self.emoji_log_resolved,
+                    emoji=self.log_resolved_emoji,
                     description=f"resolved {channel.mention}",
                     message=message,
                     actor=reactor,
+                    color=self.log_resolved_color,
                 )
 
     async def on_message(self, message: discord.Message):
@@ -529,17 +557,19 @@ class HelpChatServerState:
             if message.content == str(self.resolve_emoji):
                 if await self.set_channel_free(channel):
                     await self.log_to_channel(
-                        emoji=self.emoji_log_resolved,
+                        emoji=self.log_resolved_emoji,
                         description=f"resolved {channel.mention}",
                         message=message,
+                        color=self.log_resolved_color,
                     )
             # quack
             elif message.content == str(self.ducked_emoji):
                 if await self.set_channel_ducked(channel):
                     await self.log_to_channel(
-                        emoji=self.emoji_log_ducked,
+                        emoji=self.log_ducked_emoji,
                         description=f"ducked {channel.mention}",
                         message=message,
+                        color=self.log_ducked_color,
                     )
             # otherwise, mark it as busy
             else:
@@ -549,15 +579,17 @@ class HelpChatServerState:
                 if await self.set_channel_busy(channel):
                     if prior_state == self.free_state:
                         await self.log_to_channel(
-                            emoji=self.emoji_log_busied_from_free,
+                            emoji=self.log_busied_from_free_emoji,
                             description=f"re-opened {channel.mention}",
                             message=message,
+                            color=self.log_busied_from_free_color,
                         )
                     elif prior_state == self.hoisted_state:
                         await self.log_to_channel(
-                            emoji=self.emoji_log_busied_from_hoisted,
+                            emoji=self.log_busied_from_hoisted_emoji,
                             description=f"asked in {channel.mention}",
                             message=message,
+                            color=self.log_busied_from_hoisted_color,
                         )
 
     async def on_message_delete(self, message: discord.Message):
