@@ -10,12 +10,18 @@ import discord
 from cogbot.cog_bot import ChannelId, CogBot
 from cogbot.extensions.helpchat.channel_state import ChannelState
 
-RELOCATE_EMOJI = "🛴"
+RELOCATE_EMOJI = "➡️"
 FREE_EMOJI = "✅"
 BUSY_EMOJI = "💬"
 IDLE_EMOJI = "⏰"
 HOISTED_EMOJI = "👋"
 DUCKED_EMOJI = "🦆"
+
+EMOJI_LOG_RELOCATED = RELOCATE_EMOJI
+EMOJI_LOG_RESOLVED = FREE_EMOJI
+EMOJI_LOG_DUCKED = DUCKED_EMOJI
+EMOJI_LOG_BUSIED_FROM_FREE = BUSY_EMOJI
+EMOJI_LOG_BUSIED_FROM_HOISTED = HOISTED_EMOJI
 
 
 class HelpChatChannelEntry:
@@ -33,6 +39,7 @@ class HelpChatServerState:
         channels: typing.List[dict],
         message_with_channel: str,
         message_without_channel: str,
+        log_channel: str = None,
         seconds_until_idle: int = 1800,
         seconds_to_poll: int = 60,
         free_category: str = None,
@@ -53,9 +60,15 @@ class HelpChatServerState:
         idle_format: str = "{emoji}idle-chat-{key}",
         hoisted_format: str = "{emoji}ask-here-{key}",
         ducked_format: str = "{emoji}duck-chat-{key}",
+        emoji_log_relocated: str = EMOJI_LOG_RELOCATED,
+        emoji_log_resolved: str = EMOJI_LOG_RESOLVED,
+        emoji_log_ducked: str = EMOJI_LOG_DUCKED,
+        emoji_log_busied_from_free: str = EMOJI_LOG_BUSIED_FROM_FREE,
+        emoji_log_busied_from_hoisted: str = EMOJI_LOG_BUSIED_FROM_HOISTED,
         resolve_with_reaction: bool = False,
         hoisted_message: str = None,
         auto_poll: bool = True,
+        **kwargs,
     ):
         self.log: logging.Logger = logging.getLogger(f"{ext}:{server.name}")
 
@@ -74,6 +87,10 @@ class HelpChatServerState:
             self.channel_map[channel] = channel_entry
 
         self.channels: typing.List[discord.Channel] = list(self.channel_map.keys())
+
+        self.log_channel: discord.Channel = self.bot.get_channel(
+            log_channel
+        ) if log_channel else None
 
         self.log.info(f"Resolved {len(self.channels)} help channels.")
 
@@ -123,6 +140,12 @@ class HelpChatServerState:
         self.hoisted_format: str = hoisted_format
         self.ducked_format: str = ducked_format
 
+        self.emoji_log_relocated: str = emoji_log_relocated
+        self.emoji_log_resolved: str = emoji_log_resolved
+        self.emoji_log_ducked: str = emoji_log_ducked
+        self.emoji_log_busied_from_free: str = emoji_log_busied_from_free
+        self.emoji_log_busied_from_hoisted: str = emoji_log_busied_from_hoisted
+
         self.resolve_with_reaction: bool = resolve_with_reaction
 
         self.hoisted_message: str = "\n".join(hoisted_message) if isinstance(
@@ -144,6 +167,24 @@ class HelpChatServerState:
             self.start_polling_task()
         else:
             self.log.warning("Auto-polling is DISABLED.")
+
+    async def log_to_channel(
+        self,
+        emoji: str,
+        description: str,
+        message: discord.Message,
+        actor: discord.Member = None,
+        color: str = discord.Embed.Empty,
+    ):
+        if not self.log_channel:
+            return
+        actor = actor or message.author
+        message_link = self.bot.make_message_link(message)
+        em = discord.Embed(
+            color=color,
+            description=f"{emoji} {actor.mention} {description} [(View)]({message_link})",
+        )
+        await self.bot.send_message(self.log_channel, embed=em)
 
     def start_polling_task(self):
         if not self.polling_task or self.polling_task.done():
@@ -176,6 +217,18 @@ class HelpChatServerState:
                 break
             except:
                 self.log.exception("Polling task encountered an error; ignoring...")
+
+    def get_channel_state(self, channel: discord.Channel) -> ChannelState:
+        if self.is_channel_free(channel):
+            return self.free_state
+        if self.is_channel_busy(channel):
+            return self.busy_state
+        if self.is_channel_idle(channel):
+            return self.idle_state
+        if self.is_channel_hoisted(channel):
+            return self.hoisted_state
+        if self.is_channel_ducked(channel):
+            return self.ducked_state
 
     def is_channel(self, channel: discord.Channel, channel_state: ChannelState) -> bool:
         return channel_state.matches(channel)
@@ -329,11 +382,11 @@ class HelpChatServerState:
         # prefer redirecting to hoisted channels over free ones
         to_channel = self.get_random_hoisted_channel() or self.get_random_free_channel()
         if to_channel:
-            await self.bot.mod_log(
-                reactor,
-                f"relocated {author.mention} from {from_channel.mention} to {to_channel.mention}",
+            await self.log_to_channel(
+                emoji=self.emoji_log_relocated,
+                description=f"relocated {author.mention} from {from_channel.mention} to {to_channel.mention}",
                 message=message,
-                icon=":arrow_right:",
+                actor=reactor,
             )
             response = self.message_with_channel.format(
                 author=author,
@@ -342,11 +395,11 @@ class HelpChatServerState:
                 to_channel=to_channel,
             )
         else:
-            await self.bot.mod_log(
-                reactor,
-                f"relocated {author.mention} from {from_channel.mention}",
+            await self.log_to_channel(
+                emoji=self.emoji_log_relocated,
+                description=f"relocated {author.mention} from {from_channel.mention}",
                 message=message,
-                icon=":arrow_right:",
+                actor=reactor,
             )
             response = self.message_without_channel.format(
                 author=author, reactor=reactor, from_channel=from_channel
@@ -422,11 +475,11 @@ class HelpChatServerState:
         ):
             if await self.set_channel_free(channel):
                 await self.bot.add_reaction(message, self.resolve_emoji)
-                await self.bot.mod_log(
-                    reactor,
-                    f"resolved {channel.mention}",
+                await self.log_to_channel(
+                    emoji=self.emoji_log_resolved,
+                    description=f"resolved {channel.mention}",
                     message=message,
-                    icon=":white_check_mark:",
+                    actor=reactor,
                 )
 
     async def on_message(self, message: discord.Message):
@@ -437,32 +490,39 @@ class HelpChatServerState:
             # resolve: only when the message contains exactly the resolve emoji
             if message.content == str(self.resolve_emoji):
                 if await self.set_channel_free(channel):
-                    await self.bot.mod_log(
-                        message.author,
-                        f"resolved {channel.mention}",
+                    await self.log_to_channel(
+                        emoji=self.emoji_log_resolved,
+                        description=f"resolved {channel.mention}",
                         message=message,
-                        icon=":white_check_mark:",
                     )
 
             # quack
             elif message.content == str(self.ducked_emoji):
                 if await self.set_channel_ducked(channel):
-                    await self.bot.mod_log(
-                        message.author,
-                        f"ducked {channel.mention}",
+                    await self.log_to_channel(
+                        emoji=self.emoji_log_ducked,
+                        description=f"ducked {channel.mention}",
                         message=message,
-                        icon=":duck:",
                     )
 
             # otherwise, mark it as busy
             else:
+                # log differently depending on which state the channel was in
+                # only bother logging free -> busy and hoisted -> busy
+                prior_state: ChannelState = self.get_channel_state(channel)
                 if await self.set_channel_busy(channel):
-                    await self.bot.mod_log(
-                        message.author,
-                        f"busied {channel.mention}",
-                        message=message,
-                        icon=":speech_balloon:",
-                    )
+                    if prior_state == self.free_state:
+                        await self.log_to_channel(
+                            emoji=self.emoji_log_busied_from_free,
+                            description=f"re-opened {channel.mention}",
+                            message=message,
+                        )
+                    elif prior_state == self.hoisted_state:
+                        await self.log_to_channel(
+                            emoji=self.emoji_log_busied_from_hoisted,
+                            description=f"asked in {channel.mention}",
+                            message=message,
+                        )
 
     async def poll_channels(self):
         self.log.debug(f"Polling {len(self.channels)} channels...")
