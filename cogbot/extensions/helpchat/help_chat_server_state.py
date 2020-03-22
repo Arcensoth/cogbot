@@ -10,6 +10,8 @@ import discord
 from cogbot.cog_bot import ChannelId, CogBot
 from cogbot.extensions.helpchat.channel_state import ChannelState
 
+PROMPT_COLOR = "00ACED"
+
 RELOCATE_EMOJI = "➡️"
 FREE_EMOJI = "✅"
 BUSY_EMOJI = "💬"
@@ -22,6 +24,7 @@ EMOJI_LOG_RESOLVED = FREE_EMOJI
 EMOJI_LOG_DUCKED = DUCKED_EMOJI
 EMOJI_LOG_BUSIED_FROM_FREE = BUSY_EMOJI
 EMOJI_LOG_BUSIED_FROM_HOISTED = HOISTED_EMOJI
+EMOJI_LOG_REMINDED = "🚨"
 
 
 class HelpChatChannelEntry:
@@ -39,6 +42,7 @@ class HelpChatServerState:
         channels: typing.List[dict],
         message_with_channel: str,
         message_without_channel: str,
+        reminder_message: str = None,
         log_channel: str = None,
         seconds_until_idle: int = 1800,
         seconds_to_poll: int = 60,
@@ -65,8 +69,10 @@ class HelpChatServerState:
         emoji_log_ducked: str = EMOJI_LOG_DUCKED,
         emoji_log_busied_from_free: str = EMOJI_LOG_BUSIED_FROM_FREE,
         emoji_log_busied_from_hoisted: str = EMOJI_LOG_BUSIED_FROM_HOISTED,
+        emoji_log_reminded: str = EMOJI_LOG_REMINDED,
         resolve_with_reaction: bool = False,
         hoisted_message: str = None,
+        prompt_color: str = PROMPT_COLOR,
         auto_poll: bool = True,
         **kwargs,
     ):
@@ -96,13 +102,19 @@ class HelpChatServerState:
 
         self.message_with_channel: str = message_with_channel
         self.message_without_channel: str = message_without_channel
+
+        self.reminder_message: str = reminder_message
+
         self.seconds_until_idle: int = seconds_until_idle
         self.seconds_to_poll: int = seconds_to_poll
+
         self.min_hoisted_channels: int = min_hoisted_channels
         self.max_hoisted_channels: int = max(min_hoisted_channels, max_hoisted_channels)
+
         self.relocate_emoji: typing.Union[str, discord.Emoji] = self.bot.get_emoji(
             self.server, relocate_emoji
         )
+
         self.resolve_emoji: typing.Union[str, discord.Emoji] = self.bot.get_emoji(
             self.server, resolve_emoji
         )
@@ -145,12 +157,15 @@ class HelpChatServerState:
         self.emoji_log_ducked: str = emoji_log_ducked
         self.emoji_log_busied_from_free: str = emoji_log_busied_from_free
         self.emoji_log_busied_from_hoisted: str = emoji_log_busied_from_hoisted
+        self.emoji_log_reminded: str = emoji_log_reminded
 
         self.resolve_with_reaction: bool = resolve_with_reaction
 
         self.hoisted_message: str = "\n".join(hoisted_message) if isinstance(
             hoisted_message, list
         ) else hoisted_message
+
+        self.prompt_color: int = int(f"0x{prompt_color}", base=16)
 
         self.free_state: str = ChannelState(self.free_emoji, self.free_format)
         self.busy_state: str = ChannelState(self.busy_emoji, self.busy_format)
@@ -172,18 +187,21 @@ class HelpChatServerState:
         self,
         emoji: str,
         description: str,
-        message: discord.Message,
+        message: discord.Message = None,
         actor: discord.Member = None,
         color: str = discord.Embed.Empty,
     ):
         if not self.log_channel:
             return
-        actor = actor or message.author
-        message_link = self.bot.make_message_link(message)
-        em = discord.Embed(
-            color=color,
-            description=f"{emoji} {actor.mention} {description} [(View)]({message_link})",
-        )
+        parts = [emoji]
+        actor = actor or (message.author if message else None)
+        if actor:
+            parts.append(actor.mention)
+        parts.append(description)
+        if message:
+            message_link = self.bot.make_message_link(message)
+            parts.append(f"[(View)]({message_link})")
+        em = discord.Embed(color=color, description=" ".join(parts))
         await self.bot.send_message(self.log_channel, embed=em)
 
     def start_polling_task(self):
@@ -373,7 +391,9 @@ class HelpChatServerState:
     async def send_hoisted_message(self, channel: discord.Channel):
         # send hoisted message, if any, in the newly-hoisted channel
         if self.hoisted_message:
-            em = discord.Embed(description=self.hoisted_message, color=0x00ACED)
+            em = discord.Embed(
+                description=self.hoisted_message, color=self.prompt_color
+            )
             await self.bot.send_message(channel, embed=em)
 
     async def redirect(self, message: discord.Message, reactor: discord.Member):
@@ -432,6 +452,27 @@ class HelpChatServerState:
                 await self.set_channel_hoisted(channel_to_hoist)
                 return True
 
+    async def remind_user(self, user: discord.Member, channel: discord.Channel):
+        # send the reminder message, if any
+        if self.reminder_message:
+            reminder_content = self.reminder_message.format(
+                user=user,
+                resolve_emoji=self.resolve_emoji,
+                resolve_emoji_raw=f"`:{self.resolve_emoji.name}:`",
+            )
+            reminder = await self.bot.send_message(channel, content=reminder_content)
+        else:
+            reminder = None
+        # free-up the channel automatically
+        await self.set_channel_free(channel)
+        # create a log entry
+        await self.log_to_channel(
+            emoji=self.emoji_log_reminded,
+            description=f"was reminded in {channel.mention}",
+            message=reminder,
+            actor=user,
+        )
+
     async def sync_hoisted_channels(self):
         # don't do anything unless we care about hoisted channels
         if self.max_hoisted_channels > 0:
@@ -456,7 +497,6 @@ class HelpChatServerState:
         message: discord.Message = reaction.message
         channel: discord.Channel = message.channel
         author: discord.Member = message.author
-
         # relocate: only on the first of a reaction on a fresh human message
         if (
             reaction.emoji == self.relocate_emoji
@@ -465,7 +505,6 @@ class HelpChatServerState:
         ):
             await self.redirect(message, reactor)
             await self.bot.add_reaction(message, self.relocate_emoji)
-
         # resolve: only when enabled and for the last message of a managed channel
         if (
             reaction.emoji == self.resolve_emoji
@@ -484,7 +523,6 @@ class HelpChatServerState:
 
     async def on_message(self, message: discord.Message):
         channel: discord.Channel = message.channel
-
         # only care about managed channels
         if channel in self.channels:
             # resolve: only when the message contains exactly the resolve emoji
@@ -495,7 +533,6 @@ class HelpChatServerState:
                         description=f"resolved {channel.mention}",
                         message=message,
                     )
-
             # quack
             elif message.content == str(self.ducked_emoji):
                 if await self.set_channel_ducked(channel):
@@ -504,7 +541,6 @@ class HelpChatServerState:
                         description=f"ducked {channel.mention}",
                         message=message,
                     )
-
             # otherwise, mark it as busy
             else:
                 # log differently depending on which state the channel was in
@@ -523,6 +559,29 @@ class HelpChatServerState:
                             description=f"asked in {channel.mention}",
                             message=message,
                         )
+
+    async def on_message_delete(self, message: discord.Message):
+        channel: discord.Channel = message.channel
+        # only care about managed channels
+        if channel in self.channels:
+            # only care about busy/idle channels
+            if self.is_channel_busy(channel) or self.is_channel_idle(channel):
+                # do we need to remind the user to resolve the channel?
+                # check if the latest message is the hoisted message prompt
+                # we do this by comparing the color of the embed strip
+                # and, if that matches, the first few characters of text
+                latest_message: discord.Message = await self.bot.get_latest_message(
+                    channel
+                )
+                if latest_message.embeds:
+                    latest_embed: discord.Embed = latest_message.embeds[0]
+                    em_color = latest_embed["color"]
+                    em_description = latest_embed["description"]
+                    if (
+                        em_color == self.prompt_color
+                        and em_description[:20] == self.hoisted_message[:20]
+                    ):
+                        await self.remind_user(message.author, message.channel)
 
     async def poll_channels(self):
         self.log.debug(f"Polling {len(self.channels)} channels...")

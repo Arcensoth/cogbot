@@ -83,6 +83,14 @@ class HelpChat:
             if state and message.author != self.bot.user:
                 await state.on_message(message)
 
+    async def on_message_delete(self, message: discord.Message):
+        # make sure this isn't a DM
+        if message.server:
+            state = self.get_state(message.server)
+            # ignore bot's messages
+            if state and message.author != self.bot.user:
+                await state.on_message_delete(message)
+
     @checks.is_manager()
     @commands.group(pass_context=True, name="helpchat", aliases=["hc"], hidden=True)
     async def cmd_helpchat(self, ctx: Context):
