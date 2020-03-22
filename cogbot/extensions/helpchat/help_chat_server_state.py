@@ -456,13 +456,13 @@ class HelpChatServerState:
 
             # otherwise, mark it as busy
             else:
-                await self.set_channel_busy(channel)
-                await self.bot.mod_log(
-                    message.author,
-                    f"busied {channel.mention}",
-                    message=message,
-                    icon=":speech_balloon:",
-                )
+                if await self.set_channel_busy(channel):
+                    await self.bot.mod_log(
+                        message.author,
+                        f"busied {channel.mention}",
+                        message=message,
+                        icon=":speech_balloon:",
+                    )
 
     async def poll_channels(self):
         self.log.debug(f"Polling {len(self.channels)} channels...")
