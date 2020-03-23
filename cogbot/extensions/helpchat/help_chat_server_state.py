@@ -95,6 +95,7 @@ class HelpChatServerState:
         resolve_with_reaction: bool = False,
         prompt_message: str = None,
         prompt_color: str = PROMPT_COLOR,
+        log_verbose_usernames: bool = False,
         auto_poll: bool = True,
         **kwargs,
     ):
@@ -206,6 +207,8 @@ class HelpChatServerState:
 
         self.prompt_color: int = int(f"0x{prompt_color}", base=16)
 
+        self.log_verbose_usernames: bool = log_verbose_usernames
+
         self.free_state: str = ChannelState(self.free_emoji, self.free_format)
         self.busy_state: str = ChannelState(self.busy_emoji, self.busy_format)
         self.idle_state: str = ChannelState(self.idle_emoji, self.idle_format)
@@ -235,8 +238,7 @@ class HelpChatServerState:
         parts = [emoji]
         actor = actor or (message.author if message else None)
         if actor:
-            parts.append(actor.mention)
-            parts.append(f"({actor})")
+            parts.append(self.log_username(actor))
         parts.append(description)
         if message:
             message_link = self.bot.make_message_link(message)
@@ -373,6 +375,11 @@ class HelpChatServerState:
         if channel_entry:
             return channel_entry.index
 
+    def log_username(self, user: discord.User) -> str:
+        if self.log_verbose_usernames:
+            return f"{user.mention} ({user})"
+        return user.mention
+
     async def set_channel(
         self,
         channel: discord.Channel,
@@ -461,7 +468,7 @@ class HelpChatServerState:
         if to_channel:
             await self.log_to_channel(
                 emoji=self.log_relocated_emoji,
-                description=f"relocated {author.mention} ({author}) from {from_channel.mention} to {to_channel.mention}",
+                description=f"relocated {self.log_username(author)} from {from_channel.mention} to {to_channel.mention}",
                 message=message,
                 actor=reactor,
                 color=self.log_relocated_color,
@@ -475,7 +482,7 @@ class HelpChatServerState:
         else:
             await self.log_to_channel(
                 emoji=self.log_relocated_emoji,
-                description=f"relocated {author.mention} ({author}) from {from_channel.mention}",
+                description=f"relocated {self.log_username(author)} from {from_channel.mention}",
                 message=message,
                 actor=reactor,
                 color=self.log_relocated_color,
@@ -500,7 +507,7 @@ class HelpChatServerState:
         # create a log entry
         await self.log_to_channel(
             emoji=self.log_reminded_emoji,
-            description=f"reminded {author.mention} ({author}) in {channel.mention}",
+            description=f"reminded {self.log_username(author)} in {channel.mention}",
             message=message,
             actor=reactor,
             color=self.log_reminded_color,
