@@ -102,7 +102,7 @@ class HelpChat:
     async def cmd_helpchat_prompt(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
         state = self.get_state(channel.server)
-        await state.send_hoisted_message(channel)
+        await state.send_prompt_message(channel)
 
     @checks.is_manager()
     @cmd_helpchat.command(pass_context=True, name="reload")

@@ -93,7 +93,7 @@ class HelpChatServerState:
         log_busied_from_hoisted_color: str = LOG_BUSIED_FROM_HOISTED_COLOR,
         log_fake_out_color: str = LOG_FAKE_OUT_COLOR,
         resolve_with_reaction: bool = False,
-        hoisted_message: str = None,
+        prompt_message: str = None,
         prompt_color: str = PROMPT_COLOR,
         auto_poll: bool = True,
         **kwargs,
@@ -200,9 +200,9 @@ class HelpChatServerState:
 
         self.resolve_with_reaction: bool = resolve_with_reaction
 
-        self.hoisted_message: str = "\n".join(hoisted_message) if isinstance(
-            hoisted_message, list
-        ) else hoisted_message
+        self.prompt_message: str = "\n".join(prompt_message) if isinstance(
+            prompt_message, list
+        ) else prompt_message
 
         self.prompt_color: int = int(f"0x{prompt_color}", base=16)
 
@@ -418,7 +418,7 @@ class HelpChatServerState:
         # only free and idle channels (not busy) can become hoisted
         if self.is_channel_free(channel) or self.is_channel_idle(channel):
             await self.set_channel(channel, self.hoisted_state, self.hoisted_category)
-            await self.send_hoisted_message(channel)
+            await self.send_prompt_message(channel)
             return True
 
     async def set_channel_ducked(self, channel: discord.Channel) -> bool:
@@ -438,18 +438,16 @@ class HelpChatServerState:
             em_description = latest_embed["description"]
             if (
                 em_color == self.prompt_color
-                and em_description[:20] == self.hoisted_message[:20]
+                and em_description[:20] == self.prompt_message[:20]
             ):
                 return True
 
-    async def send_hoisted_message(self, channel: discord.Channel):
+    async def send_prompt_message(self, channel: discord.Channel):
         # send hoisted message, if any, in the newly-hoisted channel
         # ... but only if it's not already the most recent message
         # (this can happen if someone deletes their message)
-        if self.hoisted_message and not await self.is_channel_prompted(channel):
-            em = discord.Embed(
-                description=self.hoisted_message, color=self.prompt_color
-            )
+        if self.prompt_message and not await self.is_channel_prompted(channel):
+            em = discord.Embed(description=self.prompt_message, color=self.prompt_color)
             await self.bot.send_message(channel, embed=em)
 
     async def relocate(self, message: discord.Message, reactor: discord.Member):
