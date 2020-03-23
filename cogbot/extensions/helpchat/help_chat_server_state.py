@@ -236,6 +236,7 @@ class HelpChatServerState:
         actor = actor or (message.author if message else None)
         if actor:
             parts.append(actor.mention)
+            parts.append(f"({actor})")
         parts.append(description)
         if message:
             message_link = self.bot.make_message_link(message)
@@ -460,7 +461,7 @@ class HelpChatServerState:
         if to_channel:
             await self.log_to_channel(
                 emoji=self.log_relocated_emoji,
-                description=f"relocated {author.mention} from {from_channel.mention} to {to_channel.mention}",
+                description=f"relocated {author.mention} ({author}) from {from_channel.mention} to {to_channel.mention}",
                 message=message,
                 actor=reactor,
                 color=self.log_relocated_color,
@@ -474,7 +475,7 @@ class HelpChatServerState:
         else:
             await self.log_to_channel(
                 emoji=self.log_relocated_emoji,
-                description=f"relocated {author.mention} from {from_channel.mention}",
+                description=f"relocated {author.mention} ({author}) from {from_channel.mention}",
                 message=message,
                 actor=reactor,
                 color=self.log_relocated_color,
@@ -499,7 +500,7 @@ class HelpChatServerState:
         # create a log entry
         await self.log_to_channel(
             emoji=self.log_reminded_emoji,
-            description=f"reminded {author.mention} in {channel.mention}",
+            description=f"reminded {author.mention} ({author}) in {channel.mention}",
             message=message,
             actor=reactor,
             color=self.log_reminded_color,
