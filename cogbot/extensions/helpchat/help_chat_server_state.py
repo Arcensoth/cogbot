@@ -427,9 +427,26 @@ class HelpChatServerState:
             await self.set_channel(channel, self.ducked_state, self.busy_category)
             return True
 
+    async def is_channel_prompted(self, channel: discord.Channel) -> bool:
+        # check if the latest message is the hoisted message prompt
+        # we do this by comparing the color of the embed strip
+        # and, if that matches, the first few characters of text
+        latest_message: discord.Message = await self.bot.get_latest_message(channel)
+        if latest_message.embeds:
+            latest_embed: discord.Embed = latest_message.embeds[0]
+            em_color = latest_embed["color"]
+            em_description = latest_embed["description"]
+            if (
+                em_color == self.prompt_color
+                and em_description[:20] == self.hoisted_message[:20]
+            ):
+                return True
+
     async def send_hoisted_message(self, channel: discord.Channel):
         # send hoisted message, if any, in the newly-hoisted channel
-        if self.hoisted_message:
+        # ... but only if it's not already the most recent message
+        # (this can happen if someone deletes their message)
+        if self.hoisted_message and not await self.is_channel_prompted(channel):
             em = discord.Embed(
                 description=self.hoisted_message, color=self.prompt_color
             )
@@ -625,42 +642,30 @@ class HelpChatServerState:
             # only care about busy/idle channels
             if self.is_channel_busy(channel) or self.is_channel_idle(channel):
                 # do we need to remind the user to resolve the channel?
-                # check if the latest message is the hoisted message prompt
-                # we do this by comparing the color of the embed strip
-                # and, if that matches, the first few characters of text
-                latest_message: discord.Message = await self.bot.get_latest_message(
-                    channel
-                )
-                if latest_message.embeds:
-                    latest_embed: discord.Embed = latest_message.embeds[0]
-                    em_color = latest_embed["color"]
-                    em_description = latest_embed["description"]
-                    if (
-                        em_color == self.prompt_color
-                        and em_description[:20] == self.hoisted_message[:20]
-                    ):
-                        # ping the user with a message, if configured
-                        if self.fake_out_message:
-                            sent_message = await self.bot.send_message(
-                                channel,
-                                content=self.fake_out_message.format(
-                                    user=author,
-                                    resolve_emoji=self.resolve_emoji,
-                                    resolve_emoji_raw=f"`:{self.resolve_emoji.name}:`",
-                                ),
-                            )
-                        else:
-                            sent_message = None
-                        # free-up the channel automatically
-                        await self.set_channel_free(channel)
-                        # create a log entry
-                        await self.log_to_channel(
-                            emoji=self.log_fake_out_emoji,
-                            description=f"faked-out {channel.mention}",
-                            message=sent_message,
-                            actor=author,
-                            color=self.log_fake_out_color,
+                # if the most recent message is now the prompy; probably yes
+                if await self.is_channel_prompted(channel):
+                    # ping the user with a message, if configured
+                    if self.fake_out_message:
+                        sent_message = await self.bot.send_message(
+                            channel,
+                            content=self.fake_out_message.format(
+                                user=author,
+                                resolve_emoji=self.resolve_emoji,
+                                resolve_emoji_raw=f"`:{self.resolve_emoji.name}:`",
+                            ),
                         )
+                    else:
+                        sent_message = None
+                    # free-up the channel automatically
+                    await self.set_channel_free(channel)
+                    # create a log entry
+                    await self.log_to_channel(
+                        emoji=self.log_fake_out_emoji,
+                        description=f"faked-out {channel.mention}",
+                        message=sent_message,
+                        actor=author,
+                        color=self.log_fake_out_color,
+                    )
 
     async def poll_channels(self):
         self.log.debug(f"Polling {len(self.channels)} channels...")
