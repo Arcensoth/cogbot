@@ -10,9 +10,12 @@ import discord
 from cogbot.cog_bot import ChannelId, CogBot
 from cogbot.extensions.helpchat.channel_state import ChannelState
 
-PROMPT_COLOR = "00ACED"
+PROMPT_COLOR = "00aced"
 
 RELOCATE_EMOJI = "➡️"
+RESOLVE_EMOJI = "✅"
+REMIND_EMOJI = "🎗️"
+
 FREE_EMOJI = "✅"
 BUSY_EMOJI = "💬"
 IDLE_EMOJI = "⏰"
@@ -20,18 +23,20 @@ HOISTED_EMOJI = "👋"
 DUCKED_EMOJI = "🦆"
 
 LOG_RELOCATED_EMOJI = RELOCATE_EMOJI
-LOG_RESOLVED_EMOJI = FREE_EMOJI
+LOG_RESOLVED_EMOJI = RESOLVE_EMOJI
+LOG_REMINDED_EMOJI = REMIND_EMOJI
 LOG_DUCKED_EMOJI = DUCKED_EMOJI
 LOG_BUSIED_FROM_FREE_EMOJI = BUSY_EMOJI
 LOG_BUSIED_FROM_HOISTED_EMOJI = HOISTED_EMOJI
-LOG_REMINDED_EMOJI = "🚨"
+LOG_FAKE_OUT_EMOJI = "🚨"
 
 LOG_RELOCATED_COLOR = "3498db"  # discord.Color.blue()
 LOG_RESOLVED_COLOR = "2ecc71"  # discord.Color.green()
+LOG_REMINDED_COLOR = "9b59b6"  # discord.Color.purple()
 LOG_DUCKED_COLOR = "c27c0e"  # discord.Color.dark_gold()
 LOG_BUSIED_FROM_FREE_COLOR = "e67e22"  # discord.Color.orange()
 LOG_BUSIED_FROM_HOISTED_COLOR = "f1c40f"  # discord.Color.gold()
-LOG_REMINDED_COLOR = "e74c3c"  # discord.Color.red()
+LOG_FAKE_OUT_COLOR = "e74c3c"  # discord.Color.red()
 
 
 class HelpChatChannelEntry:
@@ -47,9 +52,10 @@ class HelpChatServerState:
         bot: CogBot,
         server: discord.Server,
         channels: typing.List[dict],
-        message_with_channel: str,
-        message_without_channel: str,
+        relocate_message_with_channel: str,
+        relocate_message_without_channel: str,
         reminder_message: str = None,
+        fake_out_message: str = None,
         log_channel: str = None,
         seconds_until_idle: int = 1800,
         seconds_to_poll: int = 60,
@@ -60,7 +66,8 @@ class HelpChatServerState:
         min_hoisted_channels: int = 0,
         max_hoisted_channels: int = 0,
         relocate_emoji: str = RELOCATE_EMOJI,
-        resolve_emoji: str = FREE_EMOJI,
+        resolve_emoji: str = RESOLVE_EMOJI,
+        remind_emoji: str = REMIND_EMOJI,
         free_emoji: str = FREE_EMOJI,
         busy_emoji: str = BUSY_EMOJI,
         idle_emoji: str = IDLE_EMOJI,
@@ -73,16 +80,18 @@ class HelpChatServerState:
         ducked_format: str = "{emoji}duck-chat-{key}",
         log_relocated_emoji: str = LOG_RELOCATED_EMOJI,
         log_resolved_emoji: str = LOG_RESOLVED_EMOJI,
+        log_reminded_emoji: str = LOG_REMINDED_EMOJI,
         log_ducked_emoji: str = LOG_DUCKED_EMOJI,
         log_busied_from_free_emoji: str = LOG_BUSIED_FROM_FREE_EMOJI,
         log_busied_from_hoisted_emoji: str = LOG_BUSIED_FROM_HOISTED_EMOJI,
-        log_reminded_emoji: str = LOG_REMINDED_EMOJI,
+        log_fake_out_emoji: str = LOG_FAKE_OUT_EMOJI,
         log_relocated_color: str = LOG_RELOCATED_COLOR,
         log_resolved_color: str = LOG_RESOLVED_COLOR,
+        log_reminded_color: str = LOG_REMINDED_COLOR,
         log_ducked_color: str = LOG_DUCKED_COLOR,
         log_busied_from_free_color: str = LOG_BUSIED_FROM_FREE_COLOR,
         log_busied_from_hoisted_color: str = LOG_BUSIED_FROM_HOISTED_COLOR,
-        log_reminded_color: str = LOG_REMINDED_COLOR,
+        log_fake_out_color: str = LOG_FAKE_OUT_COLOR,
         resolve_with_reaction: bool = False,
         hoisted_message: str = None,
         prompt_color: str = PROMPT_COLOR,
@@ -113,10 +122,10 @@ class HelpChatServerState:
 
         self.log.info(f"Resolved {len(self.channels)} help channels.")
 
-        self.message_with_channel: str = message_with_channel
-        self.message_without_channel: str = message_without_channel
-
+        self.relocate_message_with_channel: str = relocate_message_with_channel
+        self.relocate_message_without_channel: str = relocate_message_without_channel
         self.reminder_message: str = reminder_message
+        self.fake_out_message: str = fake_out_message
 
         self.seconds_until_idle: int = seconds_until_idle
         self.seconds_to_poll: int = seconds_to_poll
@@ -130,6 +139,10 @@ class HelpChatServerState:
 
         self.resolve_emoji: typing.Union[str, discord.Emoji] = self.bot.get_emoji(
             self.server, resolve_emoji
+        )
+
+        self.remind_emoji: typing.Union[str, discord.Emoji] = self.bot.get_emoji(
+            self.server, remind_emoji
         )
 
         self.free_category: discord.Channel = self.bot.get_channel(
@@ -167,13 +180,15 @@ class HelpChatServerState:
 
         self.log_relocated_emoji: str = log_relocated_emoji
         self.log_resolved_emoji: str = log_resolved_emoji
+        self.log_reminded_emoji: str = log_reminded_emoji
         self.log_ducked_emoji: str = log_ducked_emoji
         self.log_busied_from_free_emoji: str = log_busied_from_free_emoji
         self.log_busied_from_hoisted_emoji: str = log_busied_from_hoisted_emoji
-        self.log_reminded_emoji: str = log_reminded_emoji
+        self.log_fake_out_emoji: str = log_fake_out_emoji
 
         self.log_relocated_color: str = int(f"0x{log_relocated_color}", base=16)
         self.log_resolved_color: str = int(f"0x{log_resolved_color}", base=16)
+        self.log_reminded_color: str = int(f"0x{log_reminded_color}", base=16)
         self.log_ducked_color: str = int(f"0x{log_ducked_color}", base=16)
         self.log_busied_from_free_color: str = int(
             f"0x{log_busied_from_free_color}", base=16
@@ -181,7 +196,7 @@ class HelpChatServerState:
         self.log_busied_from_hoisted_color: str = int(
             f"0x{log_busied_from_hoisted_color}", base=16
         )
-        self.log_reminded_color: str = int(f"0x{log_reminded_color}", base=16)
+        self.log_fake_out_color: str = int(f"0x{log_fake_out_color}", base=16)
 
         self.resolve_with_reaction: bool = resolve_with_reaction
 
@@ -420,10 +435,12 @@ class HelpChatServerState:
             )
             await self.bot.send_message(channel, embed=em)
 
-    async def redirect(self, message: discord.Message, reactor: discord.Member):
+    async def relocate(self, message: discord.Message, reactor: discord.Member):
         author: discord.Member = message.author
         from_channel: discord.Channel = message.channel
-        # prefer redirecting to hoisted channels over free ones
+        # prefer relocating to hoisted channels over free ones
+        # in theory, the only way a free channel would be chosen is if hoisted
+        # channels are disabled altogether
         to_channel = self.get_random_hoisted_channel() or self.get_random_free_channel()
         if to_channel:
             await self.log_to_channel(
@@ -433,7 +450,7 @@ class HelpChatServerState:
                 actor=reactor,
                 color=self.log_relocated_color,
             )
-            response = self.message_with_channel.format(
+            response = self.relocate_message_with_channel.format(
                 author=author,
                 reactor=reactor,
                 from_channel=from_channel,
@@ -447,10 +464,31 @@ class HelpChatServerState:
                 actor=reactor,
                 color=self.log_relocated_color,
             )
-            response = self.message_without_channel.format(
+            response = self.relocate_message_without_channel.format(
                 author=author, reactor=reactor, from_channel=from_channel
             )
         await self.bot.send_message(message.channel, response)
+
+    async def remind(self, message: discord.Message, reactor: discord.Member):
+        channel: discord.Channel = message.channel
+        author: discord.Member = message.author
+        # send the message
+        await self.bot.send_message(
+            channel,
+            content=self.reminder_message.format(
+                user=author,
+                resolve_emoji=self.resolve_emoji,
+                resolve_emoji_raw=f"`:{self.resolve_emoji.name}:`",
+            ),
+        )
+        # create a log entry
+        await self.log_to_channel(
+            emoji=self.log_reminded_emoji,
+            description=f"reminded {author.mention} in {channel.mention}",
+            message=message,
+            actor=reactor,
+            color=self.log_reminded_color,
+        )
 
     async def try_hoist_channel(self):
         hoisted_channels = list(self.get_hoisted_channels())
@@ -477,28 +515,6 @@ class HelpChatServerState:
             if channel_to_hoist:
                 await self.set_channel_hoisted(channel_to_hoist)
                 return True
-
-    async def remind_user(self, user: discord.Member, channel: discord.Channel):
-        # send the reminder message, if any
-        if self.reminder_message:
-            reminder_content = self.reminder_message.format(
-                user=user,
-                resolve_emoji=self.resolve_emoji,
-                resolve_emoji_raw=f"`:{self.resolve_emoji.name}:`",
-            )
-            reminder = await self.bot.send_message(channel, content=reminder_content)
-        else:
-            reminder = None
-        # free-up the channel automatically
-        await self.set_channel_free(channel)
-        # create a log entry
-        await self.log_to_channel(
-            emoji=self.log_reminded_emoji,
-            description=f"was reminded in {channel.mention}",
-            message=reminder,
-            actor=user,
-            color=self.log_reminded_color,
-        )
 
     async def sync_hoisted_channels(self):
         # don't do anything unless we care about hoisted channels
@@ -530,10 +546,10 @@ class HelpChatServerState:
             and reaction.count == 1
             and author != self.bot.user
         ):
-            await self.redirect(message, reactor)
+            await self.relocate(message, reactor)
             await self.bot.add_reaction(message, self.relocate_emoji)
         # resolve: only when enabled and for the last message of a managed channel
-        if (
+        elif (
             reaction.emoji == self.resolve_emoji
             and self.resolve_with_reaction
             and channel in self.channels
@@ -548,6 +564,15 @@ class HelpChatServerState:
                     actor=reactor,
                     color=self.log_resolved_color,
                 )
+        # remind: on the first reaction to any human message in a managed channel
+        elif (
+            reaction.emoji == self.remind_emoji
+            and reaction.count == 1
+            and author != self.bot.user
+            and channel in self.channels
+        ):
+            await self.remind(message, reactor)
+            await self.bot.add_reaction(message, self.remind_emoji)
 
     async def on_message(self, message: discord.Message):
         channel: discord.Channel = message.channel
@@ -594,6 +619,7 @@ class HelpChatServerState:
 
     async def on_message_delete(self, message: discord.Message):
         channel: discord.Channel = message.channel
+        author: discord.Member = message.author
         # only care about managed channels
         if channel in self.channels:
             # only care about busy/idle channels
@@ -613,7 +639,28 @@ class HelpChatServerState:
                         em_color == self.prompt_color
                         and em_description[:20] == self.hoisted_message[:20]
                     ):
-                        await self.remind_user(message.author, message.channel)
+                        # ping the user with a message, if configured
+                        if self.fake_out_message:
+                            sent_message = await self.bot.send_message(
+                                channel,
+                                content=self.fake_out_message.format(
+                                    user=author,
+                                    resolve_emoji=self.resolve_emoji,
+                                    resolve_emoji_raw=f"`:{self.resolve_emoji.name}:`",
+                                ),
+                            )
+                        else:
+                            sent_message = None
+                        # free-up the channel automatically
+                        await self.set_channel_free(channel)
+                        # create a log entry
+                        await self.log_to_channel(
+                            emoji=self.log_fake_out_emoji,
+                            description=f"faked-out {channel.mention}",
+                            message=sent_message,
+                            actor=author,
+                            color=self.log_fake_out_color,
+                        )
 
     async def poll_channels(self):
         self.log.debug(f"Polling {len(self.channels)} channels...")
