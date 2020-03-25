@@ -110,7 +110,7 @@ class CogBot(commands.Bot):
             content = response.read().decode("utf8")
             data = json.loads(content)
         else:
-            with open(address, encoding='utf-8') as fp:
+            with open(address, encoding="utf-8") as fp:
                 data = json.load(fp)
         return data
 
@@ -279,15 +279,16 @@ class CogBot(commands.Bot):
         return message.id == latest_message.id
 
     async def iter_latest_messages(
-        self, channels: typing.List[discord.Channel]
+        self, channels: typing.List[discord.Channel], limit: int = 1
     ) -> typing.Iterable[discord.Message]:
         for channel in channels:
-            yield await self.get_latest_message(channel)
+            async for message in self.logs_from(channel, limit=limit):
+                yield message
 
     async def get_latest_messages(
-        self, channels: typing.List[discord.Channel]
+        self, channels: typing.List[discord.Channel], limit: int = 1
     ) -> typing.List[discord.Message]:
-        return [m async for m in self.iter_latest_messages(channels)]
+        return [m async for m in self.iter_latest_messages(channels, limit=limit)]
 
     async def on_message(self, message):
         if self.care_about_it(message):

@@ -96,6 +96,7 @@ class HelpChatServerState:
         prompt_message: str = None,
         prompt_color: str = PROMPT_COLOR,
         log_verbose_usernames: bool = False,
+        preemptive_cache_size: int = 10,
         auto_poll: bool = True,
         **kwargs,
     ):
@@ -208,6 +209,8 @@ class HelpChatServerState:
         self.prompt_color: int = int(f"0x{prompt_color}", base=16)
 
         self.log_verbose_usernames: bool = log_verbose_usernames
+
+        self.preemptive_cache_size: bool = preemptive_cache_size
 
         self.free_state: str = ChannelState(self.free_emoji, self.free_format)
         self.busy_state: str = ChannelState(self.busy_emoji, self.busy_format)
@@ -552,12 +555,16 @@ class HelpChatServerState:
                         break
 
     async def on_ready(self):
-        # add the latest message from every channel into the client cache
+        # add the latest x messages from every channel into the client cache
         # so that discord.py will care about any reactions applied to it
-        message_cache = self.bot.connection.messages
-        async for message in self.bot.iter_latest_messages(self.channels):
-            message_cache.append(message)
-        self.log.info(f"Cached {len(message_cache)} latest messages across channels.")
+        # we use this for the resolved and reminder emoji actions
+        messages_to_cache = await self.bot.get_latest_messages(
+            self.channels, limit=self.preemptive_cache_size
+        )
+        self.bot.connection.messages.extend(messages_to_cache)
+        self.log.info(
+            f"Preemptively cached the {self.preemptive_cache_size} most recent messages across {len(self.channels)} managed channels. ({len(messages_to_cache)} total)"
+        )
 
     async def on_reaction(self, reaction: discord.Reaction, reactor: discord.Member):
         message: discord.Message = reaction.message
