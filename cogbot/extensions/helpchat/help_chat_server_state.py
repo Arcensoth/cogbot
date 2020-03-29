@@ -123,7 +123,7 @@ class HelpChatServerState:
             log_channel
         ) if log_channel else None
 
-        self.log.info(f"Resolved {len(self.channels)} help channels.")
+        self.log.info(f"Identified {len(self.channels)} help channels.")
 
         self.relocate_message_with_channel: str = relocate_message_with_channel
         self.relocate_message_without_channel: str = relocate_message_without_channel
