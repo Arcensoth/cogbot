@@ -48,6 +48,7 @@ class CogBotState:
         self.react_to_unknown_commands = raw_state.get(
             "react_to_unknown_commands", False
         )
+        self.allow_dms = raw_state.get('allow_dms', False)
         self.extensions = raw_state.get("extensions", [])
         self.extension_state = raw_state.get("extension_state", {})
 
