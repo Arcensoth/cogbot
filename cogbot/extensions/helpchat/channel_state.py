@@ -8,7 +8,7 @@ class ChannelState:
         self.emoji: str = emoji
         self.name_format: str = name_format
 
-    def format(self, key: str, asker: discord.User = None, first: bool = False) -> str:
+    def format(self, key: str, asker: discord.User = None) -> str:
         return self.emoji + self.name_format.format(
             key=key, asker=asker.display_name if asker else "someone"
         )
