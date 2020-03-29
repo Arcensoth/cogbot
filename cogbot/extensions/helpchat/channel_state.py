@@ -9,7 +9,7 @@ class ChannelState:
         self.name_format: str = name_format
 
     def format(self, key: str = None, first: bool = False) -> str:
-        return self.name_format.format(emoji=self.emoji, key=key)
+        return self.emoji +  self.name_format.format(key=key)
 
     def matches(self, channel: discord.Channel) -> bool:
         return channel.name.startswith(self.emoji)
