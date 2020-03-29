@@ -32,6 +32,11 @@ class CustodianServerState:
             matching_roles = set(reactor.roles).intersection(self.roles)
             if matching_roles:
                 await self.bot.delete_message(reaction.message)
+                await self.bot.mod_log(
+                    reactor,
+                    f"deleted a bot message from {message.channel.mention}",
+                    icon=":wastebasket:",
+                )
 
 
 class Custodian:
