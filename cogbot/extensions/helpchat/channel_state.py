@@ -8,8 +8,10 @@ class ChannelState:
         self.emoji: str = emoji
         self.name_format: str = name_format
 
-    def format(self, key: str = None, first: bool = False) -> str:
-        return self.emoji +  self.name_format.format(key=key)
+    def format(self, key: str, asker: discord.User = None, first: bool = False) -> str:
+        return self.emoji + self.name_format.format(
+            key=key, asker=asker.display_name if asker else "someone"
+        )
 
     def matches(self, channel: discord.Channel) -> bool:
         return channel.name.startswith(self.emoji)

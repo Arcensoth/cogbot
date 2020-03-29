@@ -78,6 +78,7 @@ class HelpChatServerState:
         idle_format: str = "idle-chat-{key}",
         hoisted_format: str = "ask-here-{key}",
         ducked_format: str = "duck-chat-{key}",
+        persist_asker: bool = False,
         log_relocated_emoji: str = LOG_RELOCATED_EMOJI,
         log_resolved_emoji: str = LOG_RESOLVED_EMOJI,
         log_reminded_emoji: str = LOG_REMINDED_EMOJI,
@@ -179,6 +180,8 @@ class HelpChatServerState:
         self.idle_format: str = idle_format
         self.hoisted_format: str = hoisted_format
         self.ducked_format: str = ducked_format
+
+        self.persist_asker: bool = persist_asker
 
         self.log_relocated_emoji: str = log_relocated_emoji
         self.log_resolved_emoji: str = log_resolved_emoji
@@ -383,18 +386,50 @@ class HelpChatServerState:
             return f"{user.mention} ({user})"
         return user.mention
 
+    async def get_asker(self, channel: discord.Channel) -> discord.User:
+        if not self.persist_asker:
+            return
+        if channel.topic:
+            topic_lines = str(channel.topic).splitlines()
+            last_line = topic_lines[-1]
+            try:
+                user = await self.bot.get_user_info(last_line)
+                return user
+            except:
+                pass
+
+    async def set_asker(self, channel: discord.Channel, asker: discord.Member):
+        if not self.persist_asker:
+            return
+        old_asker = await self.get_asker(channel)
+        if old_asker:
+            new_lines = channel.topic.splitlines()[:-1]
+        else:
+            new_lines = channel.topic.splitlines()
+        # new_lines.append(f'[Asker: {asker} <{asker.id}>]')
+        new_lines.append(str(asker.id))
+        new_topic = "\n".join(new_lines)
+        try:
+            await self.bot.edit_channel(channel, topic=new_topic)
+        except Exception:
+            self.log.exception(f"Failed to name channel after asker: {asker}")
+
     async def set_channel(
         self,
         channel: discord.Channel,
         state: ChannelState,
         category: discord.Channel = None,
+        asker: discord.User = None,
     ):
         # remember if the channel was hoisted
         was_hoisted = self.is_channel_hoisted(channel)
+        # if no asker was provided, look it up ourselves
+        if not asker:
+            asker = await self.get_asker(channel)
         # set the new channel name, which doubles as its persistent state
         # also move it to the new category, if supplied
         channel_key = self.get_channel_key(channel)
-        new_name = state.format(channel_key)
+        new_name = state.format(key=channel_key, asker=asker)
         # update the channel-in-question's category (parent)
         await self.bot.edit_channel(channel, name=new_name, category=category)
         # make sure all channel positions are synchronized
@@ -413,10 +448,14 @@ class HelpChatServerState:
             await self.set_channel(channel, self.free_state, self.free_category)
             return True
 
-    async def set_channel_busy(self, channel: discord.Channel) -> bool:
+    async def set_channel_busy(
+        self, channel: discord.Channel, asker: discord.User = None
+    ) -> bool:
         # any channel that's not already busy can become busy
         if not self.is_channel_busy(channel):
-            await self.set_channel(channel, self.busy_state, self.busy_category)
+            await self.set_channel(
+                channel, self.busy_state, self.busy_category, asker=asker
+            )
             return True
 
     async def set_channel_idle(self, channel: discord.Channel) -> bool:
@@ -606,6 +645,7 @@ class HelpChatServerState:
 
     async def on_message(self, message: discord.Message):
         channel: discord.Channel = message.channel
+        author: discord.Member = message.author
         # only care about managed channels
         if channel in self.channels:
             # resolve: only when the message contains exactly the resolve emoji
@@ -628,24 +668,30 @@ class HelpChatServerState:
                     )
             # otherwise, mark it as busy
             else:
-                # log differently depending on which state the channel was in
-                # only bother logging free -> busy and hoisted -> busy
+                # take a different action depending on current channel state
                 prior_state: ChannelState = self.get_channel_state(channel)
-                if await self.set_channel_busy(channel):
-                    if prior_state == self.free_state:
-                        await self.log_to_channel(
-                            emoji=self.log_busied_from_free_emoji,
-                            description=f"re-opened {channel.mention}",
-                            message=message,
-                            color=self.log_busied_from_free_color,
-                        )
-                    elif prior_state == self.hoisted_state:
-                        await self.log_to_channel(
-                            emoji=self.log_busied_from_hoisted_emoji,
-                            description=f"asked in {channel.mention}",
-                            message=message,
-                            color=self.log_busied_from_hoisted_color,
-                        )
+                # if hoisted: update asker, change to busy, and log
+                if prior_state == self.hoisted_state:
+                    await self.set_asker(channel, author)
+                    await self.set_channel_busy(channel, asker=author)
+                    await self.log_to_channel(
+                        emoji=self.log_busied_from_hoisted_emoji,
+                        description=f"asked in {channel.mention}",
+                        message=message,
+                        color=self.log_busied_from_hoisted_color,
+                    )
+                # if free: change to busy and log
+                elif prior_state == self.free_state:
+                    await self.set_channel_busy(channel)
+                    await self.log_to_channel(
+                        emoji=self.log_busied_from_free_emoji,
+                        description=f"re-opened {channel.mention}",
+                        message=message,
+                        color=self.log_busied_from_free_color,
+                    )
+                # otherwise (idle): just change to busy without logging
+                else:
+                    await self.set_channel_busy(channel)
 
     async def on_message_delete(self, message: discord.Message):
         channel: discord.Channel = message.channel

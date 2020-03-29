@@ -98,6 +98,15 @@ class HelpChat:
             await self.bot.react_question(ctx)
 
     @checks.is_manager()
+    @cmd_helpchat.command(pass_context=True, name="asker")
+    async def cmd_helpchat_asker(self, ctx: Context):
+        channel: discord.Channel = ctx.message.channel
+        state = self.get_state(channel.server)
+        asker = await state.get_asker(channel)
+        em = discord.Embed(description=f"{asker.mention}")
+        await self.bot.send_message(channel, embed=em)
+
+    @checks.is_manager()
     @cmd_helpchat.command(pass_context=True, name="prompt")
     async def cmd_helpchat_prompt(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
@@ -162,13 +171,15 @@ class HelpChat:
         pad_name = 24
         pad_position = 8
         pad_key = 8
+        pad_index = 4
         lines = [
             " | ".join(
                 [
                     "name".ljust(pad_name),
                     "position".ljust(pad_position),
-                    "hc-key".ljust(pad_key),
-                    "hc-index",
+                    "key".ljust(pad_key),
+                    "index".ljust(pad_index),
+                    "asker"
                 ]
             ),
             " | ".join(
@@ -176,7 +187,8 @@ class HelpChat:
                     "-" * pad_name,
                     "-" * pad_position,
                     "-" * pad_key,
-                    "-" * len("hc-index"),
+                    "-" * pad_index,
+                    "-" * len("asker"),
                 ]
             ),
         ]
@@ -187,13 +199,15 @@ class HelpChat:
             ch_position = ch.position
             ch_key = state.get_channel_key(ch)
             ch_index = state.get_channel_index(ch)
+            ch_asker = await state.get_asker(ch)
             lines.append(
                 " | ".join(
                     [
                         str(ch_name).ljust(pad_name),
                         str(ch_position).ljust(pad_position),
                         str(ch_key).ljust(pad_key),
-                        str(ch_index),
+                        str(ch_index).ljust(pad_index),
+                        f'{ch_asker} <{ch_asker.id}>' if ch_asker else ''
                     ]
                 )
             )
