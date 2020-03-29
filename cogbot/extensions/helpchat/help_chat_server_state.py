@@ -414,6 +414,18 @@ class HelpChatServerState:
         except Exception:
             self.log.exception(f"Failed to name channel after asker: {asker}")
 
+    async def delete_asker(self, channel: discord.Channel):
+        if not self.persist_asker:
+            return
+        old_asker = await self.get_asker(channel)
+        if old_asker:
+            new_lines = channel.topic.splitlines()[:-1]
+            new_topic = "\n".join(new_lines)
+            try:
+                await self.bot.edit_channel(channel, topic=new_topic)
+            except Exception:
+                self.log.exception(f"Failed to delete asker in channel: {channel}")
+
     async def set_channel(
         self,
         channel: discord.Channel,
@@ -467,6 +479,7 @@ class HelpChatServerState:
     async def set_channel_hoisted(self, channel: discord.Channel) -> bool:
         # only free and idle channels (not busy) can become hoisted
         if self.is_channel_free(channel) or self.is_channel_idle(channel):
+            await self.delete_asker(channel)
             await self.set_channel(channel, self.hoisted_state, self.hoisted_category)
             await self.send_prompt_message(channel)
             return True

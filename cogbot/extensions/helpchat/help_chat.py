@@ -103,8 +103,11 @@ class HelpChat:
         channel: discord.Channel = ctx.message.channel
         state = self.get_state(channel.server)
         asker = await state.get_asker(channel)
-        em = discord.Embed(description=f"{asker.mention}")
-        await self.bot.send_message(channel, embed=em)
+        if asker:
+            em = discord.Embed(description=f"{asker.mention}")
+            await self.bot.send_message(channel, embed=em)
+        else:
+            await self.bot.react_neutral(ctx)
 
     @checks.is_manager()
     @cmd_helpchat.command(pass_context=True, name="prompt")
