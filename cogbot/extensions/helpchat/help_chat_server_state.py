@@ -495,7 +495,7 @@ class HelpChatServerState:
         # we do this by comparing the color of the embed strip
         # and, if that matches, the first few characters of text
         latest_message: discord.Message = await self.bot.get_latest_message(channel)
-        if latest_message.author == self.bot and latest_message.embeds:
+        if latest_message.author == self.bot.user and latest_message.embeds:
             latest_embed: discord.Embed = latest_message.embeds[0]
             em_color = latest_embed["color"]
             em_description = latest_embed["description"]
