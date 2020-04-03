@@ -27,22 +27,27 @@ class HelpChat:
         return self.server_state.get(server.id)
 
     async def on_ready(self):
-        # only ready once
-        if not self.readied:
+        # because on_ready can be called more than once
+        # and because disconnection might invalidate the client cache
+        # (including all existing in-memory objects)
+        if self.readied:
+            log.warning(f'Hook on_ready() was called again. Allowing servers and their channels to be re-identified.')
+        else:
+            log.info(f'Identifying servers and their channels for the first time...')
             self.readied = True
-            # construct server state objects for easier context management
-            for server_key, server_options in self.options.get("servers", {}).items():
-                server = self.bot.get_server_from_key(server_key)
-                if not server:
-                    log.error(f"Skipping unknown server {server_key}.")
-                    continue
-                self.server_options[server.id] = server_options
-                if isinstance(server_options, str):
-                    await self.init_external_server_state(
-                        server, server_key, server_options
-                    )
-                else:
-                    await self.init_server_state(server, server_options)
+        # construct server state objects for easier context management
+        for server_key, server_options in self.options.get("servers", {}).items():
+            server = self.bot.get_server_from_key(server_key)
+            if not server:
+                log.error(f"Skipping unknown server {server_key}.")
+                continue
+            self.server_options[server.id] = server_options
+            if isinstance(server_options, str):
+                await self.init_external_server_state(
+                    server, server_key, server_options
+                )
+            else:
+                await self.init_server_state(server, server_options)
 
     async def init_external_server_state(
         self, server: discord.Server, server_key: str, state_address: str
