@@ -62,8 +62,8 @@ class HelpChat:
 
     async def init_server_state(self, server: discord.Server, server_options: dict):
         state = HelpChatServerState(self.ext, self.bot, server, **server_options)
-        await state.on_ready()
         self.server_state[server.id] = state
+        await state.on_ready()
 
     async def on_reaction_add(
         self, reaction: discord.Reaction, reactor: discord.Member
@@ -149,8 +149,8 @@ class HelpChat:
             new_state = HelpChatServerState(
                 self.ext, self.bot, server, **server_options
             )
-            await new_state.on_ready()
             self.server_state[server.id] = new_state
+            await new_state.on_ready()
             old_state.log.info(f"Successfully created new state object.")
             await self.bot.add_reaction(ctx.message, "👍")
         except:
