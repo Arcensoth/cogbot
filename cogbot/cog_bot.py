@@ -304,11 +304,6 @@ class CogBot(commands.Bot):
                 await super().on_message(message)
 
     async def on_command_error(self, error: CommandError, ctx: Context):
-        log.exception(
-            f"[{ctx.message.server}/{ctx.message.author}] {error.__class__.__name__}: {error.args[0]}",
-            exc_info=error,
-        )
-
         inner_error = error.original if isinstance(error, CommandInvokeError) else error
 
         if isinstance(inner_error, CommandNotFound):
@@ -325,9 +320,17 @@ class CogBot(commands.Bot):
 
         # Keep this one last because some others subclass it.
         elif isinstance(inner_error, CommandError):
+            log.exception(
+                f"[{ctx.message.server}/{ctx.message.author}] Encountered a command error: {error}",
+                exc_info=error,
+            )
             await self.react_failure(ctx)
 
         else:
+            log.exception(
+                f"[{ctx.message.server}/{ctx.message.author}] Encountered an unknown error:",
+                exc_info=error,
+            )
             await self.react_poop(ctx)
 
     async def react_success(self, ctx: Context):
