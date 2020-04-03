@@ -182,34 +182,37 @@ class HelpChat:
             await self.bot.add_reaction(ctx.message, "😬")
 
     @checks.is_staff()
-    @cmd_helpchat.command(pass_context=True, name="channels")
+    @cmd_helpchat.group(pass_context=True, name="channels")
     async def cmd_helpchat_channels(self, ctx: Context):
+        if ctx.invoked_subcommand is None:
+            await self.bot.react_question(ctx)
+
+    @checks.is_staff()
+    @cmd_helpchat_channels.command(pass_context=True, name="list")
+    async def cmd_helpchat_channels_list(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
         state = self.get_state(channel.server)
-        pad_name = 24
-        pad_position = 8
         pad_key = 8
-        pad_index = 4
-        lines = [
-            " | ".join(
-                [
-                    "name".ljust(pad_name),
-                    "position".ljust(pad_position),
-                    "key".ljust(pad_key),
-                    "index".ljust(pad_index),
-                    "asker",
-                ]
-            ),
-            " | ".join(
-                [
-                    "-" * pad_name,
-                    "-" * pad_position,
-                    "-" * pad_key,
-                    "-" * pad_index,
-                    "-" * len("asker"),
-                ]
-            ),
+        pad_index = 8
+        pad_position = 8
+        pad_name = 24
+        header_cells = [
+            "Key".ljust(pad_key),
+            "Index".ljust(pad_index),
+            "Position".ljust(pad_position),
+            "Name".ljust(pad_name),
         ]
+        border_cells = [
+            "-" * pad_key,
+            "-" * pad_index,
+            "-" * pad_position,
+            "-" * pad_name,
+        ]
+        if state.persist_asker:
+            asker_header = "Asker"
+            header_cells.append(asker_header)
+            border_cells.append("-" * len(asker_header))
+        lines = [" | ".join(header_cells), " | ".join(border_cells)]
         channels_by_position = list(state.channels)
         channels_by_position.sort(key=lambda c: c.position)
         for ch in channels_by_position:
@@ -218,17 +221,36 @@ class HelpChat:
             ch_key = state.get_channel_key(ch)
             ch_index = state.get_channel_index(ch)
             ch_asker = await state.get_asker(ch)
-            lines.append(
-                " | ".join(
-                    [
-                        str(ch_name).ljust(pad_name),
-                        str(ch_position).ljust(pad_position),
-                        str(ch_key).ljust(pad_key),
-                        str(ch_index).ljust(pad_index),
-                        f"{ch_asker} <{ch_asker.id}>" if ch_asker else "",
-                    ]
-                )
-            )
+            ch_cells = [
+                str(ch_key).ljust(pad_key),
+                str(ch_index).ljust(pad_index),
+                str(ch_position).ljust(pad_position),
+                str(ch_name).ljust(pad_name),
+            ]
+            if state.persist_asker:
+                ch_cells.append(f"{ch_asker} <{ch_asker.id}>" if ch_asker else "")
+            lines.append(" | ".join(ch_cells))
+        message = "\n".join(("```", *lines, "```"))
+        await self.bot.send_message(channel, message)
+
+    @checks.is_staff()
+    @cmd_helpchat_channels.command(pass_context=True, name="check")
+    async def cmd_helpchat_channels_check(self, ctx: Context):
+        channel: discord.Channel = ctx.message.channel
+        await self.bot.add_reaction(ctx.message, "🤖")
+        state = self.get_state(channel.server)
+        lines = []
+        for cached_ch in state.channels:
+            actual_ch: discord.Channel = self.bot.get_channel(cached_ch.id)
+            # pointing to the same object
+            if cached_ch is actual_ch:
+                lines.append(f"👌 {cached_ch.name}")
+            # different object, same name
+            elif cached_ch.name == actual_ch.name:
+                lines.append(f"🤔 {cached_ch.name}")
+            # different name
+            else:
+                lines.append(f"🤢 {cached_ch.name} is not {actual_ch.name}")
         message = "\n".join(("```", *lines, "```"))
         await self.bot.send_message(channel, message)
 
