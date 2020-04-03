@@ -31,9 +31,19 @@ class HelpChat:
         # and because disconnection might invalidate the client cache
         # (including all existing in-memory objects)
         if self.readied:
-            log.warning(f'Hook on_ready() was called again. Allowing servers and their channels to be re-identified.')
+            log.warning(
+                "Hook on_ready() was called again; re-creating state objects..."
+            )
+            for old_state in self.server_state.values():
+                old_state.log.info(f"Destroying old state object...")
+                if await old_state.destroy():
+                    old_state.log.info(f"Successfully destroyed old state object.")
+                else:
+                    old_state.log.error(
+                        f"Failed to destroy old state object: {old_state}"
+                    )
         else:
-            log.info(f'Identifying servers and their channels for the first time...')
+            log.info(f"Identifying servers and their channels for the first time...")
             self.readied = True
         # construct server state objects for easier context management
         for server_key, server_options in self.options.get("servers", {}).items():
@@ -187,7 +197,7 @@ class HelpChat:
                     "position".ljust(pad_position),
                     "key".ljust(pad_key),
                     "index".ljust(pad_index),
-                    "asker"
+                    "asker",
                 ]
             ),
             " | ".join(
@@ -215,7 +225,7 @@ class HelpChat:
                         str(ch_position).ljust(pad_position),
                         str(ch_key).ljust(pad_key),
                         str(ch_index).ljust(pad_index),
-                        f'{ch_asker} <{ch_asker.id}>' if ch_asker else ''
+                        f"{ch_asker} <{ch_asker.id}>" if ch_asker else "",
                     ]
                 )
             )
