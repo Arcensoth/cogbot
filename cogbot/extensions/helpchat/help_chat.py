@@ -34,11 +34,6 @@ class HelpChat:
             log.warning(
                 "Hook on_ready() was called again; re-creating state objects..."
             )
-
-            # DELETEME
-            log.warning("A" + "H" * 80)
-            return
-
             for old_state in self.server_state.values():
                 old_state.log.info(f"Destroying old state object...")
                 if await old_state.destroy():
@@ -111,13 +106,13 @@ class HelpChat:
             if state and message.author != self.bot.user:
                 await state.on_message_delete(message)
 
-    @checks.is_manager()
+    @checks.is_staff()
     @commands.group(pass_context=True, name="helpchat", aliases=["hc"], hidden=True)
     async def cmd_helpchat(self, ctx: Context):
         if ctx.invoked_subcommand is None:
             await self.bot.react_question(ctx)
 
-    @checks.is_manager()
+    @checks.is_staff()
     @cmd_helpchat.command(pass_context=True, name="asker")
     async def cmd_helpchat_asker(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
@@ -129,14 +124,14 @@ class HelpChat:
         else:
             await self.bot.react_neutral(ctx)
 
-    @checks.is_manager()
+    @checks.is_staff()
     @cmd_helpchat.command(pass_context=True, name="prompt")
     async def cmd_helpchat_prompt(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
         state = self.get_state(channel.server)
         await state.send_prompt_message(channel)
 
-    @checks.is_manager()
+    @checks.is_staff()
     @cmd_helpchat.command(pass_context=True, name="reload")
     async def cmd_helpchat_reload(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
@@ -186,13 +181,13 @@ class HelpChat:
             old_state.log.error(f"Failed to destroy old state object: {old_state}")
             await self.bot.add_reaction(ctx.message, "😬")
 
-    @checks.is_manager()
+    @checks.is_staff()
     @cmd_helpchat.group(pass_context=True, name="channels")
     async def cmd_helpchat_channels(self, ctx: Context):
         if ctx.invoked_subcommand is None:
             await self.bot.react_question(ctx)
 
-    @checks.is_manager()
+    @checks.is_staff()
     @cmd_helpchat_channels.command(pass_context=True, name="list")
     async def cmd_helpchat_channels_list(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
@@ -238,7 +233,7 @@ class HelpChat:
         message = "\n".join(("```", *lines, "```"))
         await self.bot.send_message(channel, message)
 
-    @checks.is_manager()
+    @checks.is_staff()
     @cmd_helpchat_channels.command(pass_context=True, name="check")
     async def cmd_helpchat_channels_check(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
@@ -259,13 +254,13 @@ class HelpChat:
         message = "\n".join(("```", *lines, "```"))
         await self.bot.send_message(channel, message)
 
-    @checks.is_manager()
+    @checks.is_staff()
     @cmd_helpchat.group(pass_context=True, name="poll")
     async def cmd_helpchat_poll(self, ctx: Context):
         if ctx.invoked_subcommand is None:
             await self.bot.react_question(ctx)
 
-    @checks.is_manager()
+    @checks.is_staff()
     @cmd_helpchat_poll.command(pass_context=True, name="status")
     async def cmd_helpchat_poll_status(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
@@ -293,7 +288,7 @@ class HelpChat:
             message = "Auto-polling is disabled on this server."
             await self.bot.send_message(channel, message)
 
-    @checks.is_manager()
+    @checks.is_staff()
     @cmd_helpchat_poll.command(pass_context=True, name="start")
     async def cmd_helpchat_poll_start(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
@@ -303,7 +298,7 @@ class HelpChat:
         else:
             await self.bot.react_neutral(ctx)
 
-    @checks.is_manager()
+    @checks.is_staff()
     @cmd_helpchat_poll.command(pass_context=True, name="stop")
     async def cmd_helpchat_poll_stop(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
@@ -313,7 +308,7 @@ class HelpChat:
         else:
             await self.bot.react_neutral(ctx)
 
-    @checks.is_manager()
+    @checks.is_staff()
     @cmd_helpchat_poll.command(pass_context=True, name="now")
     async def cmd_helpchat_poll_now(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
@@ -321,7 +316,7 @@ class HelpChat:
         await state.poll_channels()
         await self.bot.react_success(ctx)
 
-    @checks.is_manager()
+    @checks.is_staff()
     @cmd_helpchat.command(pass_context=True, name="hoist")
     async def cmd_helpchat_hoist(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
@@ -329,13 +324,13 @@ class HelpChat:
         await state.sync_hoisted_channels()
         await self.bot.react_success(ctx)
 
-    @checks.is_manager()
+    @checks.is_staff()
     @cmd_helpchat.group(pass_context=True, name="set")
     async def cmd_helpchat_set(self, ctx: Context):
         if ctx.invoked_subcommand is None:
             await self.bot.react_question(ctx)
 
-    @checks.is_manager()
+    @checks.is_staff()
     @cmd_helpchat_set.command(pass_context=True, name="free")
     async def cmd_helpchat_set_free(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
@@ -345,7 +340,7 @@ class HelpChat:
             await state.set_channel(channel, state.free_state, state.free_category)
             await self.bot.react_success(ctx)
 
-    @checks.is_manager()
+    @checks.is_staff()
     @cmd_helpchat_set.command(pass_context=True, name="busy")
     async def cmd_helpchat_set_busy(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
@@ -355,7 +350,7 @@ class HelpChat:
             await state.set_channel(channel, state.busy_state, state.busy_category)
             await self.bot.react_success(ctx)
 
-    @checks.is_manager()
+    @checks.is_staff()
     @cmd_helpchat_set.command(pass_context=True, name="idle")
     async def cmd_helpchat_set_idle(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
@@ -365,7 +360,7 @@ class HelpChat:
             await state.set_channel(channel, state.idle_state, state.idle_category)
             await self.bot.react_success(ctx)
 
-    @checks.is_manager()
+    @checks.is_staff()
     @cmd_helpchat_set.command(pass_context=True, name="hoisted")
     async def cmd_helpchat_set_hoisted(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
