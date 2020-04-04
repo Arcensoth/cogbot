@@ -302,7 +302,7 @@ class HelpChat:
         channel: discord.Channel = ctx.message.channel
         await self.bot.add_reaction(ctx.message, "🤖")
         state = self.get_state(channel.server)
-        message = self.get_channels_check_message(state)
+        message = await self.get_channels_check_message(state)
         await self.bot.send_message(channel, message)
 
     @checks.is_staff()
