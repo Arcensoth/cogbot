@@ -231,6 +231,10 @@ class HelpChatServerState:
         else:
             self.log.warning("Auto-polling is DISABLED.")
 
+    @property
+    def polling_task_str(self) -> str:
+        return str(getattr(self.polling_task, "_coro", None))
+
     async def log_to_channel(
         self,
         emoji: str,
@@ -261,10 +265,7 @@ class HelpChatServerState:
             self.polling_task = asyncio.get_event_loop().create_task(
                 self.polling_loop()
             )
-            self.log.info(
-                "Created polling task: "
-                + str(getattr(self.polling_task, "_coro", None))
-            )
+            self.log.info(f"Created polling task: {self.polling_task_str}")
             return True
 
     def stop_polling_task(self):
@@ -279,10 +280,14 @@ class HelpChatServerState:
                 await asyncio.sleep(self.seconds_to_poll)
                 await self.poll_channels()
             except asyncio.CancelledError:
-                self.log.warning("Polling task was cancelled; breaking from loop...")
+                self.log.warning(
+                    f"Polling task {self.polling_task_str} was cancelled; breaking from loop..."
+                )
                 break
             except:
-                self.log.exception("Polling task encountered an error; ignoring...")
+                self.log.exception(
+                    f"Polling task {self.polling_task_str} encountered an error; ignoring..."
+                )
 
     def get_channel_state(self, channel: discord.Channel) -> ChannelState:
         if self.is_channel_free(channel):
@@ -607,7 +612,7 @@ class HelpChatServerState:
                         break
 
     async def on_ready(self):
-        self.log.info('Readying state...')
+        self.log.info("Readying state...")
         # add the latest x messages from every channel into the client cache
         # so that discord.py will care about any reactions applied to it
         # we use this for the resolved and reminder emoji actions
@@ -620,7 +625,7 @@ class HelpChatServerState:
                 f"Preemptively cached the {self.preemptive_cache_size} most recent messages across {len(self.channels)} managed channels. ({len(messages_to_cache)} total)"
             )
         except:
-            self.log.exception('Failed to cache messages preemptively:')
+            self.log.exception("Failed to cache messages preemptively:")
 
     async def on_reaction(self, reaction: discord.Reaction, reactor: discord.Member):
         message: discord.Message = reaction.message
