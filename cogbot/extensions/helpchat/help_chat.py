@@ -71,7 +71,7 @@ class HelpChat:
             old_state.log.info(f"{ctx.message.author} initiated a state reload.")
             await old_state.log_to_channel(
                 emoji="🔄",
-                description=f"initiated a state reload. Stand by... 🤖",
+                description=f"initiated a state reload. Stand by...",
                 message=ctx.message,
                 actor=ctx.message.author,
                 color=discord.Color.blue(),
@@ -81,7 +81,7 @@ class HelpChat:
             old_state.log.info(f"Initiated an automatic state reload.")
             await old_state.log_to_channel(
                 emoji="🔄",
-                description="Initiated an automatic state reload. Stand by... 🤖",
+                description="Initiated an automatic state reload. Stand by...",
                 color=discord.Color.blue(),
             )
         # print channel health check, before reload
@@ -108,7 +108,7 @@ class HelpChat:
             old_state.log.exception(f"Failed to create new state object.")
             await old_state.log_to_channel(
                 emoji="🔥",
-                description="State reload FAILED! Have a nice day! 🤖",
+                description="State reload FAILED! Have a nice day!",
                 color=discord.Color.red(),
             )
             if ctx:
@@ -134,7 +134,7 @@ class HelpChat:
         # let the user know we're done
         await new_state.log_to_channel(
             emoji="🔄",
-            description="State reload complete! Have a nice day! 🤖",
+            description="State reload complete! Have a nice day!",
             color=discord.Color.blue(),
         )
         if ctx:

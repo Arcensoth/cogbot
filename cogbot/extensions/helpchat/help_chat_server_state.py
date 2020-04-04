@@ -626,6 +626,12 @@ class HelpChatServerState:
             )
         except:
             self.log.exception("Failed to cache messages preemptively:")
+        # let people know we're ready
+        await self.log_to_channel(
+            emoji="🤖",
+            description="State initialization complete. Hello world!",
+            color=discord.Color.blue(),
+        )
 
     async def on_reaction(self, reaction: discord.Reaction, reactor: discord.Member):
         message: discord.Message = reaction.message
