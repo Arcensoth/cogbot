@@ -502,10 +502,11 @@ class HelpChatServerState:
         latest_message: discord.Message = await self.bot.get_latest_message(channel)
         if latest_message.author == self.bot.user and latest_message.embeds:
             latest_embed: discord.Embed = latest_message.embeds[0]
-            em_color = latest_embed["color"]
-            em_description = latest_embed["description"]
+            em_color = latest_embed.get("color", None)
+            em_description = latest_embed.get("description", None)
             if (
                 em_color == self.prompt_color
+                and em_description
                 and em_description[:20] == self.prompt_message[:20]
             ):
                 return True
