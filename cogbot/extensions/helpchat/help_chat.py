@@ -26,22 +26,128 @@ class HelpChat:
     def get_state(self, server: discord.Server) -> HelpChatServerState:
         return self.server_state.get(server.id)
 
+    def set_state(self, server: discord.Server, state: HelpChatServerState):
+        self.server_state[server.id] = state
+
+    def remove_state(self, server: discord.Server):
+        del self.server_state[server.id]
+
+    async def create_state(
+        self, server: discord.Server, server_options: dict
+    ) -> HelpChatServerState:
+        state = HelpChatServerState(self.ext, self.bot, server, **server_options)
+        self.set_state(server, state)
+        await state.on_ready()
+        return state
+
+    async def setup_state(self, server: discord.Server) -> HelpChatServerState:
+        server_options = self.server_options[server.id]
+        # if options is just a string, use remote/external location
+        if isinstance(server_options, str):
+            state_address = server_options
+            try:
+                log.info(
+                    f"Loading state data for server {server} from: {state_address}"
+                )
+                actual_server_options = await self.bot.load_json(state_address)
+                log.info(f"Successfully loaded state data for server {server}.")
+            except:
+                log.exception(
+                    f"Failed to load state data for server {server}. Skipping..."
+                )
+                return
+            state = await self.create_state(server, actual_server_options)
+        # otherwise, use embedded/local config
+        else:
+            state = await self.create_state(server, server_options)
+        return state
+
+    async def reload_state(self, server: discord.Server, ctx: Context = None):
+        # remember and remove the old state object
+        old_state = self.get_state(server)
+        self.remove_state(server)
+        # let the user know things are happening
+        if ctx:
+            old_state.log.info(f"{ctx.message.author} initiated a state reload.")
+            await old_state.log_to_channel(
+                emoji="🔄",
+                description=f"initiated a state reload. Stand by... 🤖",
+                message=ctx.message,
+                actor=ctx.message.author,
+                color=discord.Color.blue(),
+            )
+            await self.bot.add_reaction(ctx.message, "🤖")
+        else:
+            old_state.log.info(f"Initiated an automatic state reload.")
+            await old_state.log_to_channel(
+                emoji="🔄",
+                description="Initiated an automatic state reload. Stand by... 🤖",
+                color=discord.Color.blue(),
+            )
+        # print channel health check, before reload
+        await old_state.log_to_channel(
+            emoji="🔄",
+            description="Channel health check, before reload:\n"
+            + await self.get_channels_check_message(old_state),
+            color=discord.Color.blue(),
+        )
+        # create and set the new state object
+        old_state.log.info(f"Creating new state object...")
+        await old_state.log_to_channel(
+            emoji="🔄",
+            description="Setting up new state...",
+            color=discord.Color.blue(),
+        )
+        new_state = None
+        try:
+            new_state = await self.setup_state(server)
+            new_state.log.info(f"Successfully created new state object: {new_state}")
+            if ctx:
+                await self.bot.add_reaction(ctx.message, "👍")
+        except:
+            old_state.log.exception(f"Failed to create new state object.")
+            await old_state.log_to_channel(
+                emoji="🔥",
+                description="State reload FAILED! Have a nice day! 🤖",
+                color=discord.Color.red(),
+            )
+            if ctx:
+                await self.bot.add_reaction(ctx.message, "🔥")
+            return
+        # destroy the old state object
+        new_state.log.info(f"Destroying old state object: {old_state}")
+        if await old_state.destroy():
+            new_state.log.info(f"Successfully destroyed old state object.")
+            if ctx:
+                await self.bot.add_reaction(ctx.message, "😄")
+        else:
+            new_state.log.error(f"Failed to destroy old state object.")
+            if ctx:
+                await self.bot.add_reaction(ctx.message, "😬")
+        # print another channel health check, after reload
+        await new_state.log_to_channel(
+            emoji="🔄",
+            description="Channel health check, after reload:\n"
+            + await self.get_channels_check_message(new_state),
+            color=discord.Color.blue(),
+        )
+        # let the user know we're done
+        await new_state.log_to_channel(
+            emoji="🔄",
+            description="State reload complete! Have a nice day! 🤖",
+            color=discord.Color.blue(),
+        )
+        if ctx:
+            await self.bot.add_reaction(ctx.message, "👌")
+
     async def on_ready(self):
         # because on_ready can be called more than once
         # and because disconnection might invalidate the client cache
         # (including all existing in-memory objects)
         if self.readied:
             log.warning(
-                "Hook on_ready() was called again; re-creating state objects..."
+                "Hook on_ready() was called again; previous state objects will be recreated..."
             )
-            for old_state in self.server_state.values():
-                old_state.log.info(f"Destroying old state object...")
-                if await old_state.destroy():
-                    old_state.log.info(f"Successfully destroyed old state object.")
-                else:
-                    old_state.log.error(
-                        f"Failed to destroy old state object: {old_state}"
-                    )
         else:
             log.info(f"Identifying servers and their channels for the first time...")
             self.readied = True
@@ -52,33 +158,27 @@ class HelpChat:
                 log.error(f"Skipping unknown server {server_key}.")
                 continue
             self.server_options[server.id] = server_options
-            if isinstance(server_options, str):
-                await self.init_external_server_state(
-                    server, server_key, server_options
-                )
+            # if previous state exists, recreate it and log some important things
+            if self.get_state(server):
+                await self.reload_state(server)
+            # otherwise, just setup a new state
+            await self.setup_state(server)
+
+    async def get_channels_check_message(self, state: HelpChatServerState) -> str:
+        lines = []
+        for cached_ch in state.channels:
+            actual_ch: discord.Channel = self.bot.get_channel(cached_ch.id)
+            # pointing to the same object
+            if cached_ch is actual_ch:
+                lines.append(f"👌 {cached_ch.name}")
+            # different object, same name
+            elif cached_ch.name == actual_ch.name:
+                lines.append(f"🤔 {cached_ch.name}")
+            # different name
             else:
-                await self.init_server_state(server, server_options)
-
-    async def init_external_server_state(
-        self, server: discord.Server, server_key: str, state_address: str
-    ):
-        try:
-            log.info(
-                f"Loading state data for server {server_key} from: {state_address}"
-            )
-            server_options = await self.bot.load_json(state_address)
-            log.info(f"Successfully loaded state data for server {server_key}.")
-        except:
-            log.exception(
-                f"Failed to load state data for server {server_key}. Skipping..."
-            )
-            return
-        await self.init_server_state(server, server_options)
-
-    async def init_server_state(self, server: discord.Server, server_options: dict):
-        state = HelpChatServerState(self.ext, self.bot, server, **server_options)
-        self.server_state[server.id] = state
-        await state.on_ready()
+                lines.append(f"🤢 {cached_ch.name} is not {actual_ch.name}")
+        message = "\n".join(("```", *lines, "```"))
+        return message
 
     async def on_reaction_add(
         self, reaction: discord.Reaction, reactor: discord.Member
@@ -113,6 +213,11 @@ class HelpChat:
             await self.bot.react_question(ctx)
 
     @checks.is_staff()
+    @cmd_helpchat.command(pass_context=True, name="onready")
+    async def cmd_helpchat_onready(self, ctx: Context):
+        await self.on_ready()
+
+    @checks.is_staff()
     @cmd_helpchat.command(pass_context=True, name="asker")
     async def cmd_helpchat_asker(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
@@ -136,50 +241,7 @@ class HelpChat:
     async def cmd_helpchat_reload(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
         server: discord.Server = channel.server
-        # remember the old state object
-        old_state = self.get_state(channel.server)
-        # let the user know things are happening
-        old_state.log.info(f"Attempting to reload state...")
-        await self.bot.add_reaction(ctx.message, "🤖")
-        # check if we're even using an external state
-        state_address = self.server_options.get(server.id, None)
-        if not isinstance(state_address, str):
-            old_state.log.warning(f"Attempted to reload non-external state.")
-            await self.bot.react_denied(ctx)
-            return
-        # load server options from the state address
-        server_options = None
-        old_state.log.info(f"Loading state data from: {state_address}")
-        try:
-            server_options = await self.bot.load_json(state_address)
-            old_state.log.info(f"Successfully loaded state data.")
-            await self.bot.add_reaction(ctx.message, "👌")
-        except:
-            old_state.log.exception(f"Failed to load state data.")
-            await self.bot.react_failure(ctx)
-            return
-        # create and set the new state object
-        old_state.log.info(f"Creating new state object...")
-        try:
-            new_state = HelpChatServerState(
-                self.ext, self.bot, server, **server_options
-            )
-            self.server_state[server.id] = new_state
-            await new_state.on_ready()
-            old_state.log.info(f"Successfully created new state object.")
-            await self.bot.add_reaction(ctx.message, "👍")
-        except:
-            old_state.log.exception(f"Failed to create new state object.")
-            await self.bot.react_failure(ctx)
-            return
-        # destroy the old state object
-        old_state.log.info(f"Destroying old state object...")
-        if await old_state.destroy():
-            old_state.log.info(f"Successfully destroyed old state object.")
-            await self.bot.add_reaction(ctx.message, "😄")
-        else:
-            old_state.log.error(f"Failed to destroy old state object: {old_state}")
-            await self.bot.add_reaction(ctx.message, "😬")
+        await self.reload_state(server, ctx)
 
     @checks.is_staff()
     @cmd_helpchat.group(pass_context=True, name="channels")
@@ -239,19 +301,7 @@ class HelpChat:
         channel: discord.Channel = ctx.message.channel
         await self.bot.add_reaction(ctx.message, "🤖")
         state = self.get_state(channel.server)
-        lines = []
-        for cached_ch in state.channels:
-            actual_ch: discord.Channel = self.bot.get_channel(cached_ch.id)
-            # pointing to the same object
-            if cached_ch is actual_ch:
-                lines.append(f"👌 {cached_ch.name}")
-            # different object, same name
-            elif cached_ch.name == actual_ch.name:
-                lines.append(f"🤔 {cached_ch.name}")
-            # different name
-            else:
-                lines.append(f"🤢 {cached_ch.name} is not {actual_ch.name}")
-        message = "\n".join(("```", *lines, "```"))
+        message = self.get_channels_check_message(state)
         await self.bot.send_message(channel, message)
 
     @checks.is_staff()
