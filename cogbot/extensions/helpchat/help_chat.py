@@ -162,7 +162,8 @@ class HelpChat:
             if self.get_state(server):
                 await self.reload_state(server)
             # otherwise, just setup a new state
-            await self.setup_state(server)
+            else:
+                await self.setup_state(server)
 
     async def get_channels_check_message(self, state: HelpChatServerState) -> str:
         lines = []
