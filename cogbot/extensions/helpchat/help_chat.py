@@ -228,6 +228,14 @@ class HelpChat:
         await state.send_prompt_message(channel)
 
     @checks.is_staff()
+    @cmd_helpchat.command(pass_context=True, name="sync")
+    async def cmd_helpchat_sync(self, ctx: Context):
+        channel: discord.Channel = ctx.message.channel
+        state = self.get_state(channel.server)
+        await state.sync_all()
+        await self.bot.react_success(ctx)
+
+    @checks.is_staff()
     @cmd_helpchat.command(pass_context=True, name="reload")
     async def cmd_helpchat_reload(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
@@ -355,14 +363,6 @@ class HelpChat:
         channel: discord.Channel = ctx.message.channel
         state = self.get_state(channel.server)
         await state.poll_channels()
-        await self.bot.react_success(ctx)
-
-    @checks.is_staff()
-    @cmd_helpchat.command(pass_context=True, name="hoist")
-    async def cmd_helpchat_hoist(self, ctx: Context):
-        channel: discord.Channel = ctx.message.channel
-        state = self.get_state(channel.server)
-        await state.sync_hoisted_channels()
         await self.bot.react_success(ctx)
 
     @checks.is_staff()

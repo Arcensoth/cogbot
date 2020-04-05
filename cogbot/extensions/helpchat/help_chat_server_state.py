@@ -278,7 +278,7 @@ class HelpChatServerState:
         while not self.bot.is_closed:
             try:
                 await asyncio.sleep(self.seconds_to_poll)
-                await self.poll_channels()
+                await self.poll()
             except asyncio.CancelledError:
                 self.log.warning(
                     f"Polling task {self.polling_task_str} was cancelled; breaking from loop..."
@@ -288,6 +288,10 @@ class HelpChatServerState:
                 self.log.exception(
                     f"Polling task {self.polling_task_str} encountered an error; ignoring..."
                 )
+
+    async def poll(self):
+        self.log.debug(f"Polling {len(self.channels)} channels...")
+        await self.sync_all()
 
     def get_channel_state(self, channel: discord.Channel) -> ChannelState:
         if self.is_channel_free(channel):
@@ -425,6 +429,45 @@ class HelpChatServerState:
             except Exception:
                 self.log.exception(f"Failed to delete asker in channel: {channel}")
 
+    async def sync_channel_positions(self):
+        # go in reverse in case the positions were reverted and will cause cascading
+        for ch in reversed(self.channels):
+            expected_position = (self.get_channel_index(ch) + 1) * 100
+            if expected_position != ch.position:
+                await self.bot.edit_channel(ch, position=expected_position)
+
+    async def sync_idle_channels(self):
+        for channel in self.channels:
+            # only busy channels can become idle
+            if self.is_channel_busy(channel):
+                latest_message = await self.bot.get_latest_message(channel)
+                # if there's no latest message, then... free it up?
+                if not latest_message:
+                    await self.set_channel_free(channel)
+                    continue
+                now: datetime = datetime.utcnow()
+                latest: datetime = latest_message.timestamp
+                then: datetime = latest + self.delta_until_idle
+                if now > then:
+                    await self.set_channel_idle(channel)
+
+    async def sync_hoisted_channels(self):
+        # don't do anything unless we care about hoisted channels
+        if self.max_hoisted_channels > 0:
+            hoisted_channels = list(self.get_hoisted_channels())
+            num_hoisted_channels = len(hoisted_channels)
+            delta = self.max_hoisted_channels - num_hoisted_channels
+            # recycle channels to top-off the hoisted ones
+            if delta > 0:
+                for i in range(delta):
+                    if not await self.try_hoist_channel():
+                        break
+
+    async def sync_all(self):
+        await self.sync_channel_positions()
+        await self.sync_idle_channels()
+        await self.sync_hoisted_channels()
+
     async def set_channel(
         self,
         channel: discord.Channel,
@@ -441,12 +484,6 @@ class HelpChatServerState:
         new_name = state.format(key=channel_key, asker=asker)
         # update the channel-in-question's category (parent)
         await self.bot.edit_channel(channel, name=new_name, category=category)
-        # make sure all channel positions are synchronized
-        # go in reverse in case the positions were reverted and will cause cascading
-        for ch in reversed(self.channels):
-            expected_position = (self.get_channel_index(ch) + 1) * 100
-            if expected_position != ch.position:
-                await self.bot.edit_channel(ch, position=expected_position)
         # always sync hoisted channels
         await self.sync_hoisted_channels()
 
@@ -594,18 +631,6 @@ class HelpChatServerState:
                 await self.set_channel_hoisted(channel_to_hoist)
                 return True
 
-    async def sync_hoisted_channels(self):
-        # don't do anything unless we care about hoisted channels
-        if self.max_hoisted_channels > 0:
-            hoisted_channels = list(self.get_hoisted_channels())
-            num_hoisted_channels = len(hoisted_channels)
-            delta = self.max_hoisted_channels - num_hoisted_channels
-            # recycle channels to top-off the hoisted ones
-            if delta > 0:
-                for i in range(delta):
-                    if not await self.try_hoist_channel():
-                        break
-
     async def on_ready(self):
         self.log.info("Readying state...")
         # add the latest x messages from every channel into the client cache
@@ -621,8 +646,8 @@ class HelpChatServerState:
             )
         except:
             self.log.exception("Failed to cache messages preemptively:")
-        # poll right away
-        await self.poll_channels()
+        # sync everything, immediately
+        await self.sync_all()
         # let people know we're ready
         self.log.info("Help-chat initialization complete!")
         await self.log_to_channel(
@@ -752,24 +777,6 @@ class HelpChatServerState:
                         actor=author,
                         color=self.log_fake_out_color,
                     )
-
-    async def poll_channels(self):
-        self.log.debug(f"Polling {len(self.channels)} channels...")
-        for channel in self.channels:
-            # only busy channels can become idle
-            if self.is_channel_busy(channel):
-                latest_message = await self.bot.get_latest_message(channel)
-                # if there's no latest message, then... free it up?
-                if not latest_message:
-                    await self.set_channel_free(channel)
-                    continue
-                now: datetime = datetime.utcnow()
-                latest: datetime = latest_message.timestamp
-                then: datetime = latest + self.delta_until_idle
-                if now > then:
-                    await self.set_channel_idle(channel)
-        # might as well sync hoisted channels just in case
-        await self.sync_hoisted_channels()
 
     async def destroy(self) -> bool:
         return self.stop_polling_task()
