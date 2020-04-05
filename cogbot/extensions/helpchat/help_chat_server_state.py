@@ -589,7 +589,7 @@ class HelpChatServerState:
                 # warn if we hit a race condition
                 if not await self.set_channel_hoisted(channel_to_hoist):
                     self.log.warning("Tried to hoist a channel that wasn't free/idle!")
-                    return False
+                    return True
                 return True
             # otherwise, if we're just trying to top-off, hoist the oldest free channel
             channel_to_hoist = await self.get_oldest_free_channel()
