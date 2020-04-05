@@ -66,7 +66,7 @@ class HelpChat:
         # remember and remove the old state object
         old_state = self.get_state(server)
         self.remove_state(server)
-        # let the user know things are happening
+        # let people know things are happening
         if ctx:
             old_state.log.info(f"{ctx.message.author} initiated a reload.")
             await old_state.log_to_channel(
@@ -84,20 +84,8 @@ class HelpChat:
                 description="Initiated an automatic reload. Stand by...",
                 color=discord.Color.blue(),
             )
-        # print channel health check, before reload
-        # await old_state.log_to_channel(
-        #     emoji="🔄",
-        #     description="Channel health check, before reload:\n"
-        #     + await self.get_channels_check_message(old_state),
-        #     color=discord.Color.blue(),
-        # )
         # create and set the new state object
         old_state.log.info(f"Creating new state object...")
-        # await old_state.log_to_channel(
-        #     emoji="🔄",
-        #     description="Setting up new state...",
-        #     color=discord.Color.blue(),
-        # )
         new_state = None
         try:
             new_state = await self.setup_state(server)
@@ -124,19 +112,7 @@ class HelpChat:
             new_state.log.error(f"Failed to destroy old state object.")
             if ctx:
                 await self.bot.add_reaction(ctx.message, "😬")
-        # print another channel health check, after reload
-        # await new_state.log_to_channel(
-        #     emoji="🔄",
-        #     description="Channel health check, after reload:\n"
-        #     + await self.get_channels_check_message(new_state),
-        #     color=discord.Color.blue(),
-        # )
         # let the user know we're done
-        # await new_state.log_to_channel(
-        #     emoji="🔄",
-        #     description="Reload complete! Have a nice day!",
-        #     color=discord.Color.blue(),
-        # )
         if ctx:
             await self.bot.add_reaction(ctx.message, "👌")
 
