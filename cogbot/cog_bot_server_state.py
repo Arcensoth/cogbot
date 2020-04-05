@@ -27,18 +27,23 @@ class CogBotServerState:
 
     async def mod_log(
         self,
-        member: discord.Member,
-        content: str,
+        member: discord.Member = None,
+        content: str = None,
         message: discord.Message = None,
         icon: str = None,
         color: int = None,
+        show_timestamp: bool = True,
     ):
         if self.log_channel:
             icon = icon or ":arrow_right:"
             color = color or discord.Embed.Empty
 
-            timestamp = datetime.utcnow()
-            description = f"{member.mention} {content}"
+            description_parts = []
+            if member:
+                description_parts.append(str(member.mention))
+            if content:
+                description_parts.append(content)
+            description = " ".join(description_parts)
 
             if message:
                 message_link = self.bot.make_message_link(message)
@@ -46,15 +51,18 @@ class CogBotServerState:
             else:
                 description = " ".join((icon, description))
 
-            em = discord.Embed(
-                timestamp=timestamp, description=description, color=color
-            )
+            if show_timestamp:
+                em = discord.Embed(
+                    timestamp=datetime.utcnow(), description=description, color=color
+                )
+            else:
+                em = discord.Embed(description=description, color=color)
 
-            if message:
+            if member and message:
                 em.set_footer(
                     text=f"{member} in #{message.channel}", icon_url=member.avatar_url
                 )
-            else:
+            elif member:
                 em.set_footer(text=f"{member}", icon_url=member.avatar_url)
 
             await self.bot.send_message(self.log_channel, embed=em)

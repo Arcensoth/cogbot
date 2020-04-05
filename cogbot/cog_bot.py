@@ -194,18 +194,27 @@ class CogBot(commands.Bot):
 
     async def mod_log(
         self,
-        member: discord.Member,
-        content: str,
+        member: discord.Member = None,
+        content: str = None,
         message: discord.Message = None,
         icon: str = None,
         color: int = None,
+        show_timestamp: bool = True,
+        server: discord.Server = None,
     ):
-        if isinstance(member, discord.Member):
-            state = self.get_server_state(member.server)
-            if state:
-                await state.mod_log(
-                    member, content, message=message, icon=icon, color=color
-                )
+        try:
+            actual_server = server or member.server
+            state = self.get_server_state(actual_server)
+            await state.mod_log(
+                member=member,
+                content=content,
+                message=message,
+                icon=icon,
+                color=color,
+                show_timestamp=show_timestamp,
+            )
+        except:
+            log.exception("Failed to mod log:")
 
     def as_member_of(self, server: discord.Server) -> discord.Member:
         return server.get_member(self.user.id)
