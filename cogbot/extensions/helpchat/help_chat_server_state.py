@@ -624,7 +624,10 @@ class HelpChatServerState:
             )
         except:
             self.log.exception("Failed to cache messages preemptively:")
+        # poll right away
+        await self.poll_channels()
         # let people know we're ready
+        self.log.info("Help-chat initialization complete!")
         await self.log_to_channel(
             emoji="👍",
             description="Help-chat initialization complete!",
