@@ -68,36 +68,36 @@ class HelpChat:
         self.remove_state(server)
         # let the user know things are happening
         if ctx:
-            old_state.log.info(f"{ctx.message.author} initiated a state reload.")
+            old_state.log.info(f"{ctx.message.author} initiated a reload.")
             await old_state.log_to_channel(
                 emoji="🔄",
-                description=f"initiated a state reload. Stand by...",
+                description=f"initiated a reload. Stand by...",
                 message=ctx.message,
                 actor=ctx.message.author,
                 color=discord.Color.blue(),
             )
             await self.bot.add_reaction(ctx.message, "🤖")
         else:
-            old_state.log.info(f"Initiated an automatic state reload.")
+            old_state.log.info(f"Initiated an automatic reload.")
             await old_state.log_to_channel(
                 emoji="🔄",
-                description="Initiated an automatic state reload. Stand by...",
+                description="Initiated an automatic reload. Stand by...",
                 color=discord.Color.blue(),
             )
         # print channel health check, before reload
-        await old_state.log_to_channel(
-            emoji="🔄",
-            description="Channel health check, before reload:\n"
-            + await self.get_channels_check_message(old_state),
-            color=discord.Color.blue(),
-        )
+        # await old_state.log_to_channel(
+        #     emoji="🔄",
+        #     description="Channel health check, before reload:\n"
+        #     + await self.get_channels_check_message(old_state),
+        #     color=discord.Color.blue(),
+        # )
         # create and set the new state object
         old_state.log.info(f"Creating new state object...")
-        await old_state.log_to_channel(
-            emoji="🔄",
-            description="Setting up new state...",
-            color=discord.Color.blue(),
-        )
+        # await old_state.log_to_channel(
+        #     emoji="🔄",
+        #     description="Setting up new state...",
+        #     color=discord.Color.blue(),
+        # )
         new_state = None
         try:
             new_state = await self.setup_state(server)
@@ -108,7 +108,7 @@ class HelpChat:
             old_state.log.exception(f"Failed to create new state object.")
             await old_state.log_to_channel(
                 emoji="🔥",
-                description="State reload FAILED! Have a nice day!",
+                description="Reload FAILED! Uh oh!",
                 color=discord.Color.red(),
             )
             if ctx:
@@ -125,18 +125,18 @@ class HelpChat:
             if ctx:
                 await self.bot.add_reaction(ctx.message, "😬")
         # print another channel health check, after reload
-        await new_state.log_to_channel(
-            emoji="🔄",
-            description="Channel health check, after reload:\n"
-            + await self.get_channels_check_message(new_state),
-            color=discord.Color.blue(),
-        )
+        # await new_state.log_to_channel(
+        #     emoji="🔄",
+        #     description="Channel health check, after reload:\n"
+        #     + await self.get_channels_check_message(new_state),
+        #     color=discord.Color.blue(),
+        # )
         # let the user know we're done
-        await new_state.log_to_channel(
-            emoji="🔄",
-            description="State reload complete! Have a nice day!",
-            color=discord.Color.blue(),
-        )
+        # await new_state.log_to_channel(
+        #     emoji="🔄",
+        #     description="Reload complete! Have a nice day!",
+        #     color=discord.Color.blue(),
+        # )
         if ctx:
             await self.bot.add_reaction(ctx.message, "👌")
 
@@ -149,8 +149,8 @@ class HelpChat:
                 "Hook on_ready() was called again; previous state objects will be recreated..."
             )
         else:
-            log.info(f"Identifying servers and their channels for the first time...")
             self.readied = True
+            log.info(f"Identifying servers and their channels for the first time...")
         # construct server state objects for easier context management
         for server_key, server_options in self.options.get("servers", {}).items():
             server = self.bot.get_server_from_key(server_key)
@@ -158,11 +158,25 @@ class HelpChat:
                 log.error(f"Skipping unknown server {server_key}.")
                 continue
             self.server_options[server.id] = server_options
-            # if previous state exists, recreate it and log some important things
+            # if previous state exists, reload it
             if self.get_state(server):
+                await self.bot.mod_log(
+                    content=f"Reconnect detected. Reloading help-chats...",
+                    icon=":zap:",
+                    color=discord.Color.orange(),
+                    show_timestamp=False,
+                    server=server,
+                )
                 await self.reload_state(server)
             # otherwise, just setup a new state
             else:
+                await self.bot.mod_log(
+                    content=f"Boot-up detected. Initializing help-chats...",
+                    icon=":bulb:",
+                    color=discord.Color.orange(),
+                    show_timestamp=False,
+                    server=server,
+                )
                 await self.setup_state(server)
 
     async def get_channels_check_message(self, state: HelpChatServerState) -> str:
