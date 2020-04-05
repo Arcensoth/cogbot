@@ -438,8 +438,6 @@ class HelpChatServerState:
         category: discord.Channel = None,
         asker: discord.User = None,
     ):
-        # remember if the channel was hoisted
-        was_hoisted = self.is_channel_hoisted(channel)
         # if no asker was provided, look it up ourselves
         if not asker:
             asker = await self.get_asker(channel)
@@ -455,9 +453,8 @@ class HelpChatServerState:
             expected_position = (self.get_channel_index(ch) + 1) * 100
             if expected_position != ch.position:
                 await self.bot.edit_channel(ch, position=expected_position)
-        # sync hoisted channels if this change is relevant to them
-        if was_hoisted or self.is_channel_hoisted(channel):
-            await self.sync_hoisted_channels()
+        # always sync hoisted channels
+        await self.sync_hoisted_channels()
 
     async def set_channel_free(self, channel: discord.Channel) -> bool:
         # only busy and idle (not hoisted) channels can become free
