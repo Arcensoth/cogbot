@@ -487,40 +487,48 @@ class HelpChatServerState:
         # always sync hoisted channels
         await self.sync_hoisted_channels()
 
-    async def set_channel_free(self, channel: discord.Channel) -> bool:
+    async def set_channel_free(
+        self, channel: discord.Channel, force: bool = False
+    ) -> bool:
         # only busy and idle (not hoisted) channels can become free
-        if self.is_channel_busy(channel) or self.is_channel_idle(channel):
+        if force or self.is_channel_busy(channel) or self.is_channel_idle(channel):
             await self.set_channel(channel, self.free_state, self.free_category)
             return True
 
     async def set_channel_busy(
-        self, channel: discord.Channel, asker: discord.User = None
+        self, channel: discord.Channel, force: bool = False, asker: discord.User = None
     ) -> bool:
         # any channel that's not already busy can become busy
-        if not self.is_channel_busy(channel):
+        if force or not self.is_channel_busy(channel):
             await self.set_channel(
                 channel, self.busy_state, self.busy_category, asker=asker
             )
             return True
 
-    async def set_channel_idle(self, channel: discord.Channel) -> bool:
+    async def set_channel_idle(
+        self, channel: discord.Channel, force: bool = False
+    ) -> bool:
         # only busy channels can become idle
-        if self.is_channel_busy(channel):
+        if force or self.is_channel_busy(channel):
             await self.set_channel(channel, self.idle_state, self.idle_category)
             return True
 
-    async def set_channel_hoisted(self, channel: discord.Channel) -> bool:
+    async def set_channel_hoisted(
+        self, channel: discord.Channel, force: bool = False
+    ) -> bool:
         # only free and idle channels (not busy) can become hoisted
-        if self.is_channel_free(channel) or self.is_channel_idle(channel):
+        if force or self.is_channel_free(channel) or self.is_channel_idle(channel):
             if self.persist_asker:
                 await self.delete_asker(channel)
             await self.set_channel(channel, self.hoisted_state, self.hoisted_category)
             await self.send_prompt_message(channel)
             return True
 
-    async def set_channel_ducked(self, channel: discord.Channel) -> bool:
+    async def set_channel_ducked(
+        self, channel: discord.Channel, force: bool = False
+    ) -> bool:
         # any channel that's not already ducked can be ducked
-        if not self.is_channel_ducked(channel):
+        if force or not self.is_channel_ducked(channel):
             await self.set_channel(channel, self.ducked_state, self.busy_category)
             return True
 

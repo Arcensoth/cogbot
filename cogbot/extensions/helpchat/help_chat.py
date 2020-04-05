@@ -9,6 +9,7 @@ from discord.ext.commands import Context
 
 from cogbot import checks
 from cogbot.cog_bot import CogBot, ServerId
+from cogbot.extensions.helpchat.channel_state import ChannelState
 from cogbot.extensions.helpchat.help_chat_server_state import HelpChatServerState
 
 log = logging.getLogger(__name__)
@@ -115,6 +116,20 @@ class HelpChat:
         # let the user know we're done
         if ctx:
             await self.bot.add_reaction(ctx.message, "👌")
+
+    async def set_channel(
+        self, ctx: Context, channel: discord.Channel, method: typing.Callable
+    ):
+        channel: discord.Channel = channel or ctx.message.channel
+        state = self.get_state(channel.server)
+        if channel in state.channels:
+            if channel == ctx.message.channel:
+                await self.bot.add_reaction(ctx.message, "🕛")
+                await asyncio.sleep(2)
+            await method(channel, force=True)
+            await self.bot.react_success(ctx)
+        else:
+            await self.bot.react_neutral(ctx)
 
     async def on_ready(self):
         # because on_ready can be called more than once
@@ -372,43 +387,33 @@ class HelpChat:
             await self.bot.react_question(ctx)
 
     @checks.is_staff()
-    @cmd_helpchat_set.command(pass_context=True, name="free")
-    async def cmd_helpchat_set_free(self, ctx: Context):
-        channel: discord.Channel = ctx.message.channel
-        state = self.get_state(channel.server)
-        if channel in state.channels:
-            await asyncio.sleep(1)
-            await state.set_channel(channel, state.free_state, state.free_category)
-            await self.bot.react_success(ctx)
+    @cmd_helpchat_set.command(pass_context=True, name="free", aliases=["resolved"])
+    async def cmd_helpchat_set_free(
+        self, ctx: Context, channel: discord.Channel = None
+    ):
+        state = self.get_state(ctx.message.server)
+        await self.set_channel(ctx, channel, state.set_channel_free)
 
     @checks.is_staff()
     @cmd_helpchat_set.command(pass_context=True, name="busy")
-    async def cmd_helpchat_set_busy(self, ctx: Context):
-        channel: discord.Channel = ctx.message.channel
-        state = self.get_state(channel.server)
-        if channel in state.channels:
-            await asyncio.sleep(1)
-            await state.set_channel(channel, state.busy_state, state.busy_category)
-            await self.bot.react_success(ctx)
+    async def cmd_helpchat_set_busy(
+        self, ctx: Context, channel: discord.Channel = None
+    ):
+        state = self.get_state(ctx.message.server)
+        await self.set_channel(ctx, channel, state.set_channel_busy)
 
     @checks.is_staff()
     @cmd_helpchat_set.command(pass_context=True, name="idle")
-    async def cmd_helpchat_set_idle(self, ctx: Context):
-        channel: discord.Channel = ctx.message.channel
-        state = self.get_state(channel.server)
-        if channel in state.channels:
-            await asyncio.sleep(1)
-            await state.set_channel(channel, state.idle_state, state.idle_category)
-            await self.bot.react_success(ctx)
+    async def cmd_helpchat_set_idle(
+        self, ctx: Context, channel: discord.Channel = None
+    ):
+        state = self.get_state(ctx.message.server)
+        await self.set_channel(ctx, channel, state.set_channel_idle)
 
     @checks.is_staff()
-    @cmd_helpchat_set.command(pass_context=True, name="hoisted")
-    async def cmd_helpchat_set_hoisted(self, ctx: Context):
-        channel: discord.Channel = ctx.message.channel
-        state = self.get_state(channel.server)
-        if channel in state.channels:
-            await asyncio.sleep(1)
-            await state.set_channel(
-                channel, state.hoisted_state, state.hoisted_category
-            )
-            await self.bot.react_success(ctx)
+    @cmd_helpchat_set.command(pass_context=True, name="hoisted", aliases=["ask-here"])
+    async def cmd_helpchat_set_hoisted(
+        self, ctx: Context, channel: discord.Channel = None
+    ):
+        state = self.get_state(ctx.message.server)
+        await self.set_channel(ctx, channel, state.set_channel_hoisted)
