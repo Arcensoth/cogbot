@@ -261,9 +261,18 @@ class CogBot(commands.Bot):
             if message.content.startswith(prefix):
                 return True
 
+    def is_quotation(self, message: discord.Message) -> bool:
+        # separate initial condition as an optimization
+        return message.content.startswith(">") and message.content.startswith(
+            ("> ", ">>> ")
+        )
+
     def care_about_it(self, message: discord.Message) -> bool:
         # ignore bot's own messages
         if message.author != self.user:
+            # ignore quotations
+            if self.is_quotation(message):
+                return False
             # must start with one of the command prefixes
             if self.is_command(message):
                 return True
