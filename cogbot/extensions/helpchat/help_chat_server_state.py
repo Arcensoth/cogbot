@@ -438,8 +438,8 @@ class HelpChatServerState:
         category: discord.Channel = None,
         asker: discord.User = None,
     ):
-        # if no asker was provided, look it up ourselves
-        if not asker:
+        # if no asker was provided, and we care, look it up ourselves
+        if self.persist_asker and not asker:
             asker = await self.get_asker(channel)
         # set the new channel name, which doubles as its persistent state
         # also move it to the new category, if supplied
