@@ -392,8 +392,6 @@ class HelpChatServerState:
         return user.mention
 
     async def get_asker(self, channel: discord.Channel) -> discord.User:
-        if not self.persist_asker:
-            return
         if channel.topic:
             topic_lines = str(channel.topic).splitlines()
             last_line = topic_lines[-1]
@@ -404,8 +402,6 @@ class HelpChatServerState:
                 pass
 
     async def set_asker(self, channel: discord.Channel, asker: discord.Member):
-        if not self.persist_asker:
-            return
         old_asker = await self.get_asker(channel)
         if old_asker:
             new_lines = channel.topic.splitlines()[:-1]
@@ -420,8 +416,6 @@ class HelpChatServerState:
             self.log.exception(f"Failed to name channel after asker: {asker}")
 
     async def delete_asker(self, channel: discord.Channel):
-        if not self.persist_asker:
-            return
         old_asker = await self.get_asker(channel)
         if old_asker:
             new_lines = channel.topic.splitlines()[:-1]
@@ -481,7 +475,8 @@ class HelpChatServerState:
     async def set_channel_hoisted(self, channel: discord.Channel) -> bool:
         # only free and idle channels (not busy) can become hoisted
         if self.is_channel_free(channel) or self.is_channel_idle(channel):
-            await self.delete_asker(channel)
+            if self.persist_asker:
+                await self.delete_asker(channel)
             await self.set_channel(channel, self.hoisted_state, self.hoisted_category)
             await self.send_prompt_message(channel)
             return True
@@ -701,7 +696,8 @@ class HelpChatServerState:
                 prior_state: ChannelState = self.get_channel_state(channel)
                 # if hoisted: update asker, change to busy, and log
                 if prior_state == self.hoisted_state:
-                    await self.set_asker(channel, author)
+                    if self.persist_asker:
+                        await self.set_asker(channel, author)
                     await self.set_channel_busy(channel, asker=author)
                     await self.log_to_channel(
                         emoji=self.log_busied_from_hoisted_emoji,
