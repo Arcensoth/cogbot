@@ -56,7 +56,7 @@ class HelpChatServerState:
         relocate_message_without_channel: str,
         reminder_message: str = None,
         fake_out_message: str = None,
-        channel_description: str = '',
+        channel_description: str = "",
         log_channel: str = None,
         seconds_until_idle: int = 1800,
         seconds_to_poll: int = 60,
@@ -412,7 +412,7 @@ class HelpChatServerState:
                 pass
 
     async def set_asker(self, channel: discord.Channel, asker: discord.Member):
-        new_lines = self.channel_description.split('\n')
+        new_lines = self.channel_description.split("\n")
         new_lines.append(str(asker.id))
         new_topic = "\n".join(new_lines)
         try:
