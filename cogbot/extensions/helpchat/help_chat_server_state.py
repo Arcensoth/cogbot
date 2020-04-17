@@ -56,6 +56,7 @@ class HelpChatServerState:
         relocate_message_without_channel: str,
         reminder_message: str = None,
         fake_out_message: str = None,
+        channel_description: str = '',
         log_channel: str = None,
         seconds_until_idle: int = 1800,
         seconds_to_poll: int = 60,
@@ -129,6 +130,7 @@ class HelpChatServerState:
         self.relocate_message_without_channel: str = relocate_message_without_channel
         self.reminder_message: str = reminder_message
         self.fake_out_message: str = fake_out_message
+        self.channel_description: str = channel_description
 
         self.seconds_until_idle: int = seconds_until_idle
         self.seconds_to_poll: int = seconds_to_poll
@@ -406,12 +408,7 @@ class HelpChatServerState:
                 pass
 
     async def set_asker(self, channel: discord.Channel, asker: discord.Member):
-        old_asker = await self.get_asker(channel)
-        if old_asker:
-            new_lines = channel.topic.splitlines()[:-1]
-        else:
-            new_lines = channel.topic.splitlines()
-        # new_lines.append(f'[Asker: {asker} <{asker.id}>]')
+        new_lines = self.channel_description.split('\n')
         new_lines.append(str(asker.id))
         new_topic = "\n".join(new_lines)
         try:
@@ -422,10 +419,8 @@ class HelpChatServerState:
     async def delete_asker(self, channel: discord.Channel):
         old_asker = await self.get_asker(channel)
         if old_asker:
-            new_lines = channel.topic.splitlines()[:-1]
-            new_topic = "\n".join(new_lines)
             try:
-                await self.bot.edit_channel(channel, topic=new_topic)
+                await self.bot.edit_channel(channel, topic=self.channel_description)
             except Exception:
                 self.log.exception(f"Failed to delete asker in channel: {channel}")
 
