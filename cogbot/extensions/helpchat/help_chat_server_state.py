@@ -237,6 +237,10 @@ class HelpChatServerState:
     def polling_task_str(self) -> str:
         return str(getattr(self.polling_task, "_coro", None))
 
+    @property
+    def num_hoisted_channels(self) -> int:
+        return len(list(self.get_hoisted_channels()))
+
     async def log_to_channel(
         self,
         emoji: str,
@@ -449,9 +453,7 @@ class HelpChatServerState:
     async def sync_hoisted_channels(self):
         # don't do anything unless we care about hoisted channels
         if self.max_hoisted_channels > 0:
-            hoisted_channels = list(self.get_hoisted_channels())
-            num_hoisted_channels = len(hoisted_channels)
-            delta = self.max_hoisted_channels - num_hoisted_channels
+            delta = self.max_hoisted_channels - self.num_hoisted_channels
             # recycle channels to top-off the hoisted ones
             if delta > 0:
                 for i in range(delta):
@@ -512,7 +514,12 @@ class HelpChatServerState:
         self, channel: discord.Channel, force: bool = False
     ) -> bool:
         # only free and idle channels (not busy) can become hoisted
-        if force or self.is_channel_free(channel) or self.is_channel_idle(channel):
+        # and only if we're under the max amount
+        # ... unless we're forcing (e.g. with a command)
+        if force or (
+            (self.num_hoisted_channels < self.max_hoisted_channels)
+            and (self.is_channel_free(channel) or self.is_channel_idle(channel))
+        ):
             if self.persist_asker:
                 await self.delete_asker(channel)
             await self.set_channel(channel, self.hoisted_state, self.hoisted_category)
@@ -607,32 +614,23 @@ class HelpChatServerState:
         )
 
     async def try_hoist_channel(self):
-        hoisted_channels = list(self.get_hoisted_channels())
-        num_hoisted_channels = len(hoisted_channels)
         # if we've hit the max, don't hoist any more channels
-        if num_hoisted_channels < self.max_hoisted_channels:
-            # if we're under the min, hoist the oldest free channel
-            if num_hoisted_channels < self.min_hoisted_channels:
-                channel_to_hoist = await self.get_oldest_free_channel()
-                # if there's no free channels available to hoist, grab the oldest idle one
-                if not channel_to_hoist:
-                    channel_to_hoist = await self.get_oldest_idle_channel()
-                # warn if we ran out of channels
-                if not (channel_to_hoist):
-                    self.log.warning("No channels available to hoist!")
-                    return False
-                # warn if we hit a race condition
-                if not await self.set_channel_hoisted(channel_to_hoist):
-                    self.log.warning(
-                        f"Tried to hoist a channel that wasn't free/idle: {channel_to_hoist}"
-                    )
-                    return True
-                return True
-            # otherwise, if we're just trying to top-off, hoist the oldest free channel
+        if self.num_hoisted_channels < self.max_hoisted_channels:
+            # always try to get the oldest free channel first
             channel_to_hoist = await self.get_oldest_free_channel()
+            # if there weren't any available, but we're under the min...
+            if (not channel_to_hoist) and (
+                self.num_hoisted_channels < self.min_hoisted_channels
+            ):
+                # ... then try to get an idle one instead
+                channel_to_hoist = await self.get_oldest_idle_channel()
+                # warn if we can't replenish min channels
+                if not channel_to_hoist:
+                    self.log.warning(
+                        f"No channels available to replenish the minimum amount of {self.min_hoisted_channels}!"
+                    )
             if channel_to_hoist:
-                await self.set_channel_hoisted(channel_to_hoist)
-                return True
+                return await self.set_channel_hoisted(channel_to_hoist)
 
     async def on_ready(self):
         self.log.info("Readying state...")
