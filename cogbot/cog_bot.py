@@ -336,9 +336,10 @@ class CogBot(commands.Bot):
         async for message in self.logs_from(channel, limit=1):
             return message
 
-    async def is_latest_message(self, message: discord.Message) -> bool:
-        latest_message = await self.get_latest_message(message.channel)
-        return message.id == latest_message.id
+    async def is_latest_message(self, message: discord.Message, limit: int = 1) -> bool:
+        async for m in self.logs_from(message.channel, limit=limit):
+            if message.id == m.id:
+                return True
 
     async def iter_latest_messages(
         self, channels: typing.List[discord.Channel], limit: int = 1

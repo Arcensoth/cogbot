@@ -674,7 +674,9 @@ class HelpChatServerState:
             reaction.emoji == self.resolve_emoji
             and self.resolve_with_reaction
             and channel in self.channels
-            and await self.bot.is_latest_message(message)
+            and await self.bot.is_latest_message(
+                message, limit=self.preemptive_cache_size
+            )
         ):
             if await self.set_channel_free(channel):
                 await self.bot.add_reaction(message, self.resolve_emoji)
