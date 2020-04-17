@@ -395,13 +395,13 @@ class HelpChatServerState:
             return f"{user.mention} ({user})"
         return user.mention
 
-    async def get_asker(self, channel: discord.Channel) -> discord.User:
+    async def get_asker(self, channel: discord.Channel) -> discord.Member:
         if channel.topic:
             topic_lines = str(channel.topic).splitlines()
             last_line = topic_lines[-1]
             try:
-                user = await self.bot.get_user_info(last_line)
-                return user
+                member = channel.server.get_member(last_line)
+                return member
             except:
                 pass
 
