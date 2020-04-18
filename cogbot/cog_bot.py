@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 # https://gist.github.com/Alex-Just/e86110836f3f93fe7932290526529cd1#gistcomment-3208085
 # https://en.wikipedia.org/wiki/Unicode_block
 EMOJI_PATTERN = re.compile(
-    "(["
+    "["
     "\U0001F1E0-\U0001F1FF"  # flags (iOS)
     "\U0001F300-\U0001F5FF"  # symbols & pictographs
     "\U0001F600-\U0001F64F"  # emoticons
@@ -35,9 +35,9 @@ EMOJI_PATTERN = re.compile(
     "\U0001FA70-\U0001FAFF"  # Symbols and Pictographs Extended-A
     "\U00002702-\U000027B0"  # Dingbats
     "\U000024C2-\U0001F251"
-    "]|"
+    "]+|"
     r"\<\:\w+\:\d+\>"  # discord custom emoji
-    ")+",
+    "",
     flags=re.UNICODE,
 )
 
