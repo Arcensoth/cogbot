@@ -35,6 +35,7 @@ EMOJI_PATTERN = re.compile(
     "\U0001FA70-\U0001FAFF"  # Symbols and Pictographs Extended-A
     "\U00002702-\U000027B0"  # Dingbats
     "\U000024C2-\U0001F251"
+    "\U0000200d"  # magic joiner
     "]+|"
     r"\<\:\w+\:\d+\>"  # discord custom emoji
     "",
