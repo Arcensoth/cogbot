@@ -255,7 +255,7 @@ class CogBot(commands.Bot):
                     yield emoji
                 except:
                     pass
-            else:
+            elif emoji:
                 yield emoji
 
     def get_emojis(

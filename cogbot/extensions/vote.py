@@ -19,7 +19,10 @@ class Vote:
         message: discord.Message = ctx.message
         emojis = self.bot.get_emojis(message) or DEFAULT_EMOJI
         for emoji in emojis[:10]:
-            await self.bot.add_reaction(message, emoji)
+            try:
+                await self.bot.add_reaction(message, emoji)
+            except:
+                pass
 
 
 def setup(bot):
