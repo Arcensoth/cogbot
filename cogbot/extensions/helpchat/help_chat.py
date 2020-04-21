@@ -377,7 +377,7 @@ class HelpChat:
     async def cmd_helpchat_poll_now(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
         state = self.get_state(channel.server)
-        await state.poll_channels()
+        await state.poll()
         await self.bot.react_success(ctx)
 
     @checks.is_staff()
