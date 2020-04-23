@@ -85,6 +85,7 @@ class HelpChatServerState:
         ducked_format: str = "duck-chat-{key}",
         persist_asker: bool = False,
         renamed_asker_role: str = None,
+        role_that_can_rename: str = None,
         log_relocated_emoji: str = LOG_RELOCATED_EMOJI,
         log_rename_emoji: str = LOG_RENAMED_EMOJI,
         log_resolved_emoji: str = LOG_RESOLVED_EMOJI,
@@ -201,6 +202,12 @@ class HelpChatServerState:
         )
 
         self.log.info(f"Identified renamed asker role: {self.renamed_asker_role}")
+
+        self.role_that_can_rename: discord.Role = self.bot.get_role(
+            self.server, role_that_can_rename
+        )
+
+        self.log.info(f"Identified role that can rename: {self.role_that_can_rename}")
 
         self.log_relocated_emoji: str = log_relocated_emoji
         self.log_rename_emoji: str = log_rename_emoji
@@ -648,13 +655,24 @@ class HelpChatServerState:
             color=self.log_reminded_color,
         )
 
-    async def flag_renamed_asker(self, channel: discord.Channel) -> bool:
-        if self.persist_asker:
+    async def flag_channel_name(
+        self, channel: discord.Channel, actor: discord.Member
+    ) -> bool:
+        # 1. must have asker's enabled
+        # 2. must have enabled renamed_asker_role and role_that_can_rename
+        # 3. actor must have role_that_can_rename (permission)
+        # 4. asker must be recorded and not have role_that_can_rename (immunity)
+        if (
+            self.persist_asker
+            and self.renamed_asker_role
+            and self.role_that_can_rename
+            and self.role_that_can_rename in actor.roles
+        ):
             asker = await self.get_asker(channel)
-            if self.renamed_asker_role:
+            if asker and self.role_that_can_rename not in asker.roles:
                 await self.bot.add_roles(asker, self.renamed_asker_role)
-            await self.reset_channel(channel)
-            return True
+                await self.reset_channel(channel)
+                return True
 
     async def try_hoist_channel(self):
         # if we've hit the max, don't hoist any more channels
@@ -718,12 +736,13 @@ class HelpChatServerState:
             and reaction.count == 1
             and author != self.bot.user
         ):
-            if await self.flag_renamed_asker(channel):
+            if await self.flag_channel_name(channel, reactor):
                 await self.bot.add_reaction(message, self.rename_emoji)
                 await self.log_to_channel(
                     emoji=self.log_rename_emoji,
                     description=f"renamed {channel.mention}",
                     message=message,
+                    actor=reactor,
                     color=self.log_renamed_color,
                 )
         # resolve: only when enabled and for the last message of a managed channel
@@ -770,7 +789,7 @@ class HelpChatServerState:
                     )
             # rename: only when the message contains exactly the rename emoji
             elif message.content == str(self.rename_emoji):
-                if await self.flag_renamed_asker(channel):
+                if await self.flag_channel_name(channel, author):
                     await self.log_to_channel(
                         emoji=self.log_rename_emoji,
                         description=f"renamed {channel.mention}",
