@@ -13,6 +13,7 @@ from cogbot.extensions.helpchat.channel_state import ChannelState
 PROMPT_COLOR = "00aced"
 
 RELOCATE_EMOJI = "➡️"
+RENAME_EMOJI = "📛"
 RESOLVE_EMOJI = "✅"
 REMIND_EMOJI = "🎗️"
 
@@ -23,6 +24,7 @@ HOISTED_EMOJI = "👋"
 DUCKED_EMOJI = "🦆"
 
 LOG_RELOCATED_EMOJI = RELOCATE_EMOJI
+LOG_RENAMED_EMOJI = RENAME_EMOJI
 LOG_RESOLVED_EMOJI = RESOLVE_EMOJI
 LOG_REMINDED_EMOJI = REMIND_EMOJI
 LOG_DUCKED_EMOJI = DUCKED_EMOJI
@@ -30,13 +32,14 @@ LOG_BUSIED_FROM_FREE_EMOJI = BUSY_EMOJI
 LOG_BUSIED_FROM_HOISTED_EMOJI = HOISTED_EMOJI
 LOG_FAKE_OUT_EMOJI = "🚨"
 
-LOG_RELOCATED_COLOR = "3498db"  # discord.Color.blue()
-LOG_RESOLVED_COLOR = "2ecc71"  # discord.Color.green()
-LOG_REMINDED_COLOR = "9b59b6"  # discord.Color.purple()
-LOG_DUCKED_COLOR = "c27c0e"  # discord.Color.dark_gold()
-LOG_BUSIED_FROM_FREE_COLOR = "e67e22"  # discord.Color.orange()
-LOG_BUSIED_FROM_HOISTED_COLOR = "f1c40f"  # discord.Color.gold()
-LOG_FAKE_OUT_COLOR = "e74c3c"  # discord.Color.red()
+LOG_RELOCATED_COLOR = "3498db"  # blue
+LOG_RENAMED_COLOR = "e74c3c"  # red
+LOG_RESOLVED_COLOR = "2ecc71"  # green
+LOG_REMINDED_COLOR = "9b59b6"  # purple
+LOG_DUCKED_COLOR = "c27c0e"  # dark_gold
+LOG_BUSIED_FROM_FREE_COLOR = "e67e22"  # orange
+LOG_BUSIED_FROM_HOISTED_COLOR = "f1c40f"  # gold
+LOG_FAKE_OUT_COLOR = "e67e22"  # orange
 
 
 class HelpChatChannelEntry:
@@ -67,6 +70,7 @@ class HelpChatServerState:
         min_hoisted_channels: int = 0,
         max_hoisted_channels: int = 0,
         relocate_emoji: str = RELOCATE_EMOJI,
+        rename_emoji: str = RENAME_EMOJI,
         resolve_emoji: str = RESOLVE_EMOJI,
         remind_emoji: str = REMIND_EMOJI,
         free_emoji: str = FREE_EMOJI,
@@ -80,7 +84,9 @@ class HelpChatServerState:
         hoisted_format: str = "ask-here-{key}",
         ducked_format: str = "duck-chat-{key}",
         persist_asker: bool = False,
+        renamed_asker_role: str = None,
         log_relocated_emoji: str = LOG_RELOCATED_EMOJI,
+        log_rename_emoji: str = LOG_RENAMED_EMOJI,
         log_resolved_emoji: str = LOG_RESOLVED_EMOJI,
         log_reminded_emoji: str = LOG_REMINDED_EMOJI,
         log_ducked_emoji: str = LOG_DUCKED_EMOJI,
@@ -88,6 +94,7 @@ class HelpChatServerState:
         log_busied_from_hoisted_emoji: str = LOG_BUSIED_FROM_HOISTED_EMOJI,
         log_fake_out_emoji: str = LOG_FAKE_OUT_EMOJI,
         log_relocated_color: str = LOG_RELOCATED_COLOR,
+        log_renamed_color: str = LOG_RENAMED_COLOR,
         log_resolved_color: str = LOG_RESOLVED_COLOR,
         log_reminded_color: str = LOG_REMINDED_COLOR,
         log_ducked_color: str = LOG_DUCKED_COLOR,
@@ -142,6 +149,10 @@ class HelpChatServerState:
             self.server, relocate_emoji
         )
 
+        self.rename_emoji: typing.Union[str, discord.Emoji] = self.bot.get_emoji(
+            self.server, rename_emoji
+        )
+
         self.resolve_emoji: typing.Union[str, discord.Emoji] = self.bot.get_emoji(
             self.server, resolve_emoji
         )
@@ -166,10 +177,10 @@ class HelpChatServerState:
             hoisted_category
         ) if hoisted_category else None
 
-        self.log.info(f"Resolved free category: {self.free_category}")
-        self.log.info(f"Resolved busy category: {self.busy_category}")
-        self.log.info(f"Resolved idle category: {self.idle_category}")
-        self.log.info(f"Resolved hoisted category: {self.hoisted_category}")
+        self.log.info(f"Identified free category: {self.free_category}")
+        self.log.info(f"Identified busy category: {self.busy_category}")
+        self.log.info(f"Identified idle category: {self.idle_category}")
+        self.log.info(f"Identified hoisted category: {self.hoisted_category}")
 
         self.free_emoji: str = free_emoji
         self.busy_emoji: str = busy_emoji
@@ -185,7 +196,14 @@ class HelpChatServerState:
 
         self.persist_asker: bool = persist_asker
 
+        self.renamed_asker_role: discord.Role = self.bot.get_role(
+            self.server, renamed_asker_role
+        )
+
+        self.log.info(f"Identified renamed asker role: {self.renamed_asker_role}")
+
         self.log_relocated_emoji: str = log_relocated_emoji
+        self.log_rename_emoji: str = log_rename_emoji
         self.log_resolved_emoji: str = log_resolved_emoji
         self.log_reminded_emoji: str = log_reminded_emoji
         self.log_ducked_emoji: str = log_ducked_emoji
@@ -194,6 +212,7 @@ class HelpChatServerState:
         self.log_fake_out_emoji: str = log_fake_out_emoji
 
         self.log_relocated_color: str = int(f"0x{log_relocated_color}", base=16)
+        self.log_renamed_color: str = int(f"0x{log_renamed_color}", base=16)
         self.log_resolved_color: str = int(f"0x{log_resolved_color}", base=16)
         self.log_reminded_color: str = int(f"0x{log_reminded_color}", base=16)
         self.log_ducked_color: str = int(f"0x{log_ducked_color}", base=16)
@@ -217,11 +236,21 @@ class HelpChatServerState:
 
         self.preemptive_cache_size: bool = preemptive_cache_size
 
-        self.free_state: str = ChannelState(self.free_emoji, self.free_format)
-        self.busy_state: str = ChannelState(self.busy_emoji, self.busy_format)
-        self.idle_state: str = ChannelState(self.idle_emoji, self.idle_format)
-        self.hoisted_state: str = ChannelState(self.hoisted_emoji, self.hoisted_format)
-        self.ducked_state: str = ChannelState(self.ducked_emoji, self.ducked_format)
+        self.free_state: ChannelState = ChannelState(
+            self.free_emoji, self.free_format, self.free_category
+        )
+        self.busy_state: ChannelState = ChannelState(
+            self.busy_emoji, self.busy_format, self.busy_category
+        )
+        self.idle_state: ChannelState = ChannelState(
+            self.idle_emoji, self.idle_format, self.idle_category
+        )
+        self.hoisted_state: ChannelState = ChannelState(
+            self.hoisted_emoji, self.hoisted_format, self.hoisted_category
+        )
+        self.ducked_state: ChannelState = ChannelState(
+            self.ducked_emoji, self.ducked_format, self.busy_category
+        )
 
         self.auto_poll: bool = auto_poll
 
@@ -466,21 +495,21 @@ class HelpChatServerState:
         await self.sync_hoisted_channels()
 
     async def set_channel(
-        self,
-        channel: discord.Channel,
-        state: ChannelState,
-        category: discord.Channel = None,
-        asker: discord.User = None,
+        self, channel: discord.Channel, state: ChannelState, asker: discord.User = None
     ):
         # if no asker was provided, and we care, look it up ourselves
         if self.persist_asker and not asker:
             asker = await self.get_asker(channel)
         # set the new channel name, which doubles as its persistent state
         # also move it to the new category, if supplied
+        # use the asker, if available, unless they're being ignored
         channel_key = self.get_channel_key(channel)
-        new_name = state.format(key=channel_key, asker=asker)
+        if asker and self.renamed_asker_role in asker.roles:
+            new_name = state.format(key=channel_key)
+        else:
+            new_name = state.format(key=channel_key, asker=asker)
         # update the channel-in-question's category (parent)
-        await self.bot.edit_channel(channel, name=new_name, category=category)
+        await self.bot.edit_channel(channel, name=new_name, category=state.category)
         # always sync hoisted channels
         await self.sync_hoisted_channels()
 
@@ -489,7 +518,7 @@ class HelpChatServerState:
     ) -> bool:
         # only busy and idle (not hoisted) channels can become free
         if force or self.is_channel_busy(channel) or self.is_channel_idle(channel):
-            await self.set_channel(channel, self.free_state, self.free_category)
+            await self.set_channel(channel, self.free_state)
             return True
 
     async def set_channel_busy(
@@ -497,9 +526,7 @@ class HelpChatServerState:
     ) -> bool:
         # any channel that's not already busy can become busy
         if force or not self.is_channel_busy(channel):
-            await self.set_channel(
-                channel, self.busy_state, self.busy_category, asker=asker
-            )
+            await self.set_channel(channel, self.busy_state, asker=asker)
             return True
 
     async def set_channel_idle(
@@ -507,7 +534,7 @@ class HelpChatServerState:
     ) -> bool:
         # only busy channels can become idle
         if force or self.is_channel_busy(channel):
-            await self.set_channel(channel, self.idle_state, self.idle_category)
+            await self.set_channel(channel, self.idle_state)
             return True
 
     async def set_channel_hoisted(
@@ -522,7 +549,7 @@ class HelpChatServerState:
         ):
             if self.persist_asker:
                 await self.delete_asker(channel)
-            await self.set_channel(channel, self.hoisted_state, self.hoisted_category)
+            await self.set_channel(channel, self.hoisted_state)
             await self.send_prompt_message(channel)
             return True
 
@@ -531,8 +558,16 @@ class HelpChatServerState:
     ) -> bool:
         # any channel that's not already ducked can be ducked
         if force or not self.is_channel_ducked(channel):
-            await self.set_channel(channel, self.ducked_state, self.busy_category)
+            await self.set_channel(channel, self.ducked_state)
             return True
+
+    async def reset_channel(self, channel: discord.Channel):
+        state = self.get_channel_state(channel)
+        await self.set_channel(channel, state)
+
+    async def reset_all(self):
+        for channel in self.channels:
+            await self.reset_channel(channel)
 
     async def is_channel_prompted(self, channel: discord.Channel) -> bool:
         # check if the latest message is the hoisted message prompt
@@ -613,6 +648,14 @@ class HelpChatServerState:
             color=self.log_reminded_color,
         )
 
+    async def flag_renamed_asker(self, channel: discord.Channel) -> bool:
+        if self.persist_asker:
+            asker = await self.get_asker(channel)
+            if self.renamed_asker_role:
+                await self.bot.add_roles(asker, self.renamed_asker_role)
+            await self.reset_channel(channel)
+            return True
+
     async def try_hoist_channel(self):
         # if we've hit the max, don't hoist any more channels
         if self.num_hoisted_channels < self.max_hoisted_channels:
@@ -669,6 +712,20 @@ class HelpChatServerState:
         ):
             await self.relocate(message, reactor)
             await self.bot.add_reaction(message, self.relocate_emoji)
+        # rename: only on the first of a reaction on a fresh human message
+        elif (
+            reaction.emoji == self.rename_emoji
+            and reaction.count == 1
+            and author != self.bot.user
+        ):
+            if await self.flag_renamed_asker(channel):
+                await self.bot.add_reaction(message, self.rename_emoji)
+                await self.log_to_channel(
+                    emoji=self.log_rename_emoji,
+                    description=f"renamed {channel.mention}",
+                    message=message,
+                    color=self.log_renamed_color,
+                )
         # resolve: only when enabled and for the last message of a managed channel
         elif (
             reaction.emoji == self.resolve_emoji
@@ -710,6 +767,15 @@ class HelpChatServerState:
                         description=f"resolved {channel.mention}",
                         message=message,
                         color=self.log_resolved_color,
+                    )
+            # rename: only when the message contains exactly the rename emoji
+            elif message.content == str(self.rename_emoji):
+                if await self.flag_renamed_asker(channel):
+                    await self.log_to_channel(
+                        emoji=self.log_rename_emoji,
+                        description=f"renamed {channel.mention}",
+                        message=message,
+                        color=self.log_renamed_color,
                     )
             # quack
             elif message.content == str(self.ducked_emoji):
