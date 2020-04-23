@@ -251,6 +251,14 @@ class HelpChat:
         await self.bot.react_success(ctx)
 
     @checks.is_staff()
+    @cmd_helpchat.command(pass_context=True, name="reset")
+    async def cmd_helpchat_reset(self, ctx: Context):
+        channel: discord.Channel = ctx.message.channel
+        state = self.get_state(channel.server)
+        await state.reset_all()
+        await self.bot.react_success(ctx)
+
+    @checks.is_staff()
     @cmd_helpchat.command(pass_context=True, name="reload")
     async def cmd_helpchat_reload(self, ctx: Context):
         channel: discord.Channel = ctx.message.channel
