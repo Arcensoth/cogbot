@@ -186,6 +186,9 @@ class CogBot(commands.Bot):
             if role.id == role_id:
                 return role
 
+    def color_from_hex(self, color: str) -> discord.Color:
+        return discord.Color(int(f"0x{color[1:]}", base=16))
+
     async def edit_channel(
         self,
         channel: discord.Channel,
