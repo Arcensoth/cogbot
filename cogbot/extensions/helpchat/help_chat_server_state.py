@@ -10,7 +10,7 @@ import discord
 from cogbot.cog_bot import ChannelId, CogBot
 from cogbot.extensions.helpchat.channel_state import ChannelState
 
-PROMPT_COLOR = "00aced"
+PROMPT_COLOR = "#00ACED"
 
 RELOCATE_EMOJI = "➡️"
 RENAME_EMOJI = "📛"
@@ -28,18 +28,18 @@ LOG_RENAMED_EMOJI = RENAME_EMOJI
 LOG_RESOLVED_EMOJI = RESOLVE_EMOJI
 LOG_REMINDED_EMOJI = REMIND_EMOJI
 LOG_DUCKED_EMOJI = DUCKED_EMOJI
-LOG_BUSIED_FROM_FREE_EMOJI = BUSY_EMOJI
 LOG_BUSIED_FROM_HOISTED_EMOJI = HOISTED_EMOJI
-LOG_FAKE_OUT_EMOJI = "🚨"
+LOG_BUSIED_FROM_FREE_EMOJI = "🙊"
+LOG_FAKE_OUT_EMOJI = "🙈"
 
-LOG_RELOCATED_COLOR = "3498db"  # blue
-LOG_RENAMED_COLOR = "e74c3c"  # red
-LOG_RESOLVED_COLOR = "2ecc71"  # green
-LOG_REMINDED_COLOR = "9b59b6"  # purple
-LOG_DUCKED_COLOR = "c27c0e"  # dark_gold
-LOG_BUSIED_FROM_FREE_COLOR = "e67e22"  # orange
-LOG_BUSIED_FROM_HOISTED_COLOR = "f1c40f"  # gold
-LOG_FAKE_OUT_COLOR = "e67e22"  # orange
+LOG_RELOCATED_COLOR = "#3B88C3"
+LOG_RENAMED_COLOR = "#DD2E44"
+LOG_RESOLVED_COLOR = "#77B255"
+LOG_REMINDED_COLOR = "#9B59B6"
+LOG_DUCKED_COLOR = "#C77538"
+LOG_BUSIED_FROM_HOISTED_COLOR = "#FFDC5D"
+LOG_BUSIED_FROM_FREE_COLOR = "#BF6952"
+LOG_FAKE_OUT_COLOR = "#BF6952"
 
 
 class HelpChatChannelEntry:
@@ -211,18 +211,18 @@ class HelpChatServerState:
         self.log_busied_from_hoisted_emoji: str = log_busied_from_hoisted_emoji
         self.log_fake_out_emoji: str = log_fake_out_emoji
 
-        self.log_relocated_color: str = int(f"0x{log_relocated_color}", base=16)
-        self.log_renamed_color: str = int(f"0x{log_renamed_color}", base=16)
-        self.log_resolved_color: str = int(f"0x{log_resolved_color}", base=16)
-        self.log_reminded_color: str = int(f"0x{log_reminded_color}", base=16)
-        self.log_ducked_color: str = int(f"0x{log_ducked_color}", base=16)
-        self.log_busied_from_free_color: str = int(
-            f"0x{log_busied_from_free_color}", base=16
+        self.log_relocated_color: str = self.bot.color_from_hex(log_relocated_color)
+        self.log_renamed_color: str = self.bot.color_from_hex(log_renamed_color)
+        self.log_resolved_color: str = self.bot.color_from_hex(log_resolved_color)
+        self.log_reminded_color: str = self.bot.color_from_hex(log_reminded_color)
+        self.log_ducked_color: str = self.bot.color_from_hex(log_ducked_color)
+        self.log_busied_from_free_color: str = self.bot.color_from_hex(
+            log_busied_from_free_color
         )
-        self.log_busied_from_hoisted_color: str = int(
-            f"0x{log_busied_from_hoisted_color}", base=16
+        self.log_busied_from_hoisted_color: str = self.bot.color_from_hex(
+            log_busied_from_hoisted_color
         )
-        self.log_fake_out_color: str = int(f"0x{log_fake_out_color}", base=16)
+        self.log_fake_out_color: str = self.bot.color_from_hex(log_fake_out_color)
 
         self.resolve_with_reaction: bool = resolve_with_reaction
 
@@ -230,7 +230,7 @@ class HelpChatServerState:
             prompt_message, list
         ) else prompt_message
 
-        self.prompt_color: int = int(f"0x{prompt_color}", base=16)
+        self.prompt_color: int = self.bot.color_from_hex(prompt_color)
 
         self.log_verbose_usernames: bool = log_verbose_usernames
 
@@ -697,7 +697,7 @@ class HelpChatServerState:
         await self.log_to_channel(
             emoji="👍",
             description="Help-chat initialization complete!",
-            color=discord.Color.blue(),
+            color=self.bot.color_from_hex("#272A2D"),
         )
 
     async def on_reaction(self, reaction: discord.Reaction, reactor: discord.Member):

@@ -23,6 +23,7 @@ class HelpChat:
         self.server_options: typing.Dict[ServerId, typing.Any] = {}
         self.ext = ext
         self.readied = False
+        self.embed_color = self.bot.color_from_hex("#272A2D")
 
     def get_state(self, server: discord.Server) -> HelpChatServerState:
         return self.server_state.get(server.id)
@@ -75,7 +76,7 @@ class HelpChat:
                 description=f"initiated a reload. Stand by...",
                 message=ctx.message,
                 actor=ctx.message.author,
-                color=discord.Color.blue(),
+                color=self.embed_color,
             )
             await self.bot.add_reaction(ctx.message, "🤖")
         else:
@@ -83,7 +84,7 @@ class HelpChat:
             await old_state.log_to_channel(
                 emoji="🔄",
                 description="Initiated an automatic reload. Stand by...",
-                color=discord.Color.blue(),
+                color=self.embed_color,
             )
         # create and set the new state object
         old_state.log.info(f"Creating new state object...")
@@ -96,9 +97,7 @@ class HelpChat:
         except:
             old_state.log.exception(f"Failed to create new state object.")
             await old_state.log_to_channel(
-                emoji="🔥",
-                description="Reload FAILED! Uh oh!",
-                color=discord.Color.red(),
+                emoji="🔥", description="Reload FAILED! Uh oh!", color=self.embed_color
             )
             if ctx:
                 await self.bot.add_reaction(ctx.message, "🔥")
@@ -154,7 +153,7 @@ class HelpChat:
                 await self.bot.mod_log(
                     content=f"Reconnect detected. Reloading help-chats...",
                     icon=":zap:",
-                    color=discord.Color.orange(),
+                    color=self.embed_color,
                     show_timestamp=False,
                     server=server,
                 )
@@ -164,7 +163,7 @@ class HelpChat:
                 await self.bot.mod_log(
                     content=f"Boot-up detected. Initializing help-chats...",
                     icon=":bulb:",
-                    color=discord.Color.orange(),
+                    color=self.embed_color,
                     show_timestamp=False,
                     server=server,
                 )
