@@ -130,6 +130,14 @@ class HelpChat:
         else:
             await self.bot.react_neutral(ctx)
 
+    async def set_all_channels(
+        self, ctx: Context, state: HelpChatServerState, method: typing.Callable
+    ):
+        await self.bot.add_reaction(ctx.message, "🤖")
+        for channel in state.channels:
+            await method(channel, force=True)
+        await self.bot.react_success(ctx)
+
     async def on_ready(self):
         # because on_ready can be called more than once
         # and because disconnection might invalidate the client cache
@@ -394,12 +402,12 @@ class HelpChat:
             await self.bot.react_question(ctx)
 
     @checks.is_staff()
-    @cmd_helpchat_set.command(pass_context=True, name="answered", aliases=["resolved"])
-    async def cmd_helpchat_set_answered(
+    @cmd_helpchat_set.command(pass_context=True, name="hoisted", aliases=["ask-here"])
+    async def cmd_helpchat_set_hoisted(
         self, ctx: Context, channel: discord.Channel = None
     ):
         state = self.get_state(ctx.message.server)
-        await self.set_channel(ctx, channel, state.set_channel_answered)
+        await self.set_channel(ctx, channel, state.set_channel_hoisted)
 
     @checks.is_staff()
     @cmd_helpchat_set.command(pass_context=True, name="busy")
@@ -418,12 +426,12 @@ class HelpChat:
         await self.set_channel(ctx, channel, state.set_channel_idle)
 
     @checks.is_staff()
-    @cmd_helpchat_set.command(pass_context=True, name="hoisted", aliases=["ask-here"])
-    async def cmd_helpchat_set_hoisted(
+    @cmd_helpchat_set.command(pass_context=True, name="answered", aliases=["resolved"])
+    async def cmd_helpchat_set_answered(
         self, ctx: Context, channel: discord.Channel = None
     ):
         state = self.get_state(ctx.message.server)
-        await self.set_channel(ctx, channel, state.set_channel_hoisted)
+        await self.set_channel(ctx, channel, state.set_channel_answered)
 
     @checks.is_staff()
     @cmd_helpchat.group(pass_context=True, name="setall")
@@ -433,32 +441,28 @@ class HelpChat:
 
     @checks.is_staff()
     @cmd_helpchat_setall.command(
-        pass_context=True, name="answered", aliases=["resolved"]
+        pass_context=True, name="hoisted", aliases=["ask-here"]
     )
-    async def cmd_helpchat_setall_answered(self, ctx: Context):
+    async def cmd_helpchat_setall_hoisted(self, ctx: Context):
         state = self.get_state(ctx.message.server)
-        for channel in state.channels:
-            await self.set_channel(ctx, channel, state.set_channel_answered)
+        await self.set_all_channels(ctx, state, state.set_channel_hoisted)
 
     @checks.is_staff()
     @cmd_helpchat_setall.command(pass_context=True, name="busy")
     async def cmd_helpchat_setall_busy(self, ctx: Context):
         state = self.get_state(ctx.message.server)
-        for channel in state.channels:
-            await self.set_channel(ctx, channel, state.set_channel_busy)
+        await self.set_all_channels(ctx, state, state.set_channel_busy)
 
     @checks.is_staff()
     @cmd_helpchat_setall.command(pass_context=True, name="idle")
     async def cmd_helpchat_setall_idle(self, ctx: Context):
         state = self.get_state(ctx.message.server)
-        for channel in state.channels:
-            await self.set_channel(ctx, channel, state.set_channel_idle)
+        await self.set_all_channels(ctx, state, state.set_channel_idle)
 
     @checks.is_staff()
     @cmd_helpchat_setall.command(
-        pass_context=True, name="hoisted", aliases=["ask-here"]
+        pass_context=True, name="answered", aliases=["resolved"]
     )
-    async def cmd_helpchat_setall_hoisted(self, ctx: Context):
+    async def cmd_helpchat_setall_answered(self, ctx: Context):
         state = self.get_state(ctx.message.server)
-        for channel in state.channels:
-            await self.set_channel(ctx, channel, state.set_channel_hoisted)
+        await self.set_all_channels(ctx, state, state.set_channel_answered)
