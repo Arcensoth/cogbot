@@ -394,7 +394,9 @@ class HelpChat:
             await self.bot.react_question(ctx)
 
     @checks.is_staff()
-    @cmd_helpchat_set.command(pass_context=True, name="free", aliases=["resolved"])
+    @cmd_helpchat_set.command(
+        pass_context=True, name="free", aliases=["resolved", "answered"]
+    )
     async def cmd_helpchat_set_free(
         self, ctx: Context, channel: discord.Channel = None
     ):
@@ -424,3 +426,41 @@ class HelpChat:
     ):
         state = self.get_state(ctx.message.server)
         await self.set_channel(ctx, channel, state.set_channel_hoisted)
+
+    @checks.is_staff()
+    @cmd_helpchat.group(pass_context=True, name="setall")
+    async def cmd_helpchat_setall(self, ctx: Context):
+        if ctx.invoked_subcommand is None:
+            await self.bot.react_question(ctx)
+
+    @checks.is_staff()
+    @cmd_helpchat_setall.command(
+        pass_context=True, name="free", aliases=["resolved", "answered"]
+    )
+    async def cmd_helpchat_setall_free(self, ctx: Context):
+        state = self.get_state(ctx.message.server)
+        for channel in state.channels:
+            await self.set_channel(ctx, channel, state.set_channel_free)
+
+    @checks.is_staff()
+    @cmd_helpchat_setall.command(pass_context=True, name="busy")
+    async def cmd_helpchat_setall_busy(self, ctx: Context):
+        state = self.get_state(ctx.message.server)
+        for channel in state.channels:
+            await self.set_channel(ctx, channel, state.set_channel_busy)
+
+    @checks.is_staff()
+    @cmd_helpchat_setall.command(pass_context=True, name="idle")
+    async def cmd_helpchat_setall_idle(self, ctx: Context):
+        state = self.get_state(ctx.message.server)
+        for channel in state.channels:
+            await self.set_channel(ctx, channel, state.set_channel_idle)
+
+    @checks.is_staff()
+    @cmd_helpchat_setall.command(
+        pass_context=True, name="hoisted", aliases=["ask-here"]
+    )
+    async def cmd_helpchat_setall_hoisted(self, ctx: Context):
+        state = self.get_state(ctx.message.server)
+        for channel in state.channels:
+            await self.set_channel(ctx, channel, state.set_channel_hoisted)
