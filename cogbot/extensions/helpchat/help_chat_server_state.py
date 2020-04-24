@@ -649,12 +649,11 @@ class HelpChatServerState:
             latest_embed: discord.Embed = latest_message.embeds[0]
             em_color = latest_embed.get("color", None)
             em_description = latest_embed.get("description", None)
-            if (
-                em_color == self.prompt_color
+            return (
+                em_color == self.prompt_color.value
                 and em_description
                 and em_description[:20] == self.prompt_message[:20]
-            ):
-                return True
+            )
 
     async def send_prompt_message(self, channel: discord.Channel):
         # send hoisted message, if any, in the newly-hoisted channel
