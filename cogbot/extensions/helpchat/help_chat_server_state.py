@@ -29,7 +29,7 @@ HOISTED_NAME = "ask-here-{key}"
 BUSY_NAME = "busy-question-{key}"
 IDLE_NAME = "idle-question-{key}"
 ANSWERED_NAME = "answered-question-{key}"
-DUCKED_NAME = "ducked-question-{key}"
+DUCKED_NAME = "duck-session-{key}"
 
 HOISTED_DESCRIPTION = (
     "Have a question? This channel does not have an ongoing discussion. Ask here!"
