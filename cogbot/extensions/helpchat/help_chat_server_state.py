@@ -600,6 +600,28 @@ class HelpChatServerState:
             em = discord.Embed(description=self.prompt_message, color=self.prompt_color)
             await self.bot.send_message(channel, embed=em)
 
+    async def maybe_duck_channel(
+        self, channel: discord.Channel, message: discord.Message
+    ):
+        author: discord.Member = message.author
+        # if askers are enabled, then the asker must also be the ducker
+        if self.persist_asker:
+            asker = await self.get_asker(channel)
+            if asker.id != author.id:
+                return False
+        # the last 10 messages in the channel must all be from the ducker
+        async for m in self.bot.iter_latest_messages(channels=[channel], limit=10):
+            if author.id != m.author.id:
+                return False
+        # if we get here, we can duck the channel
+        if await self.set_channel_ducked(channel):
+            await self.log_to_channel(
+                emoji=self.log_ducked_emoji,
+                description=f"ducked {channel.mention}",
+                message=message,
+                color=self.log_ducked_color,
+            )
+
     async def relocate(self, message: discord.Message, reactor: discord.Member):
         author: discord.Member = message.author
         from_channel: discord.Channel = message.channel
@@ -798,13 +820,7 @@ class HelpChatServerState:
                     )
             # quack
             elif message.content == str(self.ducked_emoji):
-                if await self.set_channel_ducked(channel):
-                    await self.log_to_channel(
-                        emoji=self.log_ducked_emoji,
-                        description=f"ducked {channel.mention}",
-                        message=message,
-                        color=self.log_ducked_color,
-                    )
+                await self.maybe_duck_channel(channel, message)
             # otherwise, mark it as busy
             else:
                 # take a different action depending on current channel state
