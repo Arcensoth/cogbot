@@ -128,6 +128,7 @@ class HelpChatServerState:
         persist_asker: bool = False,
         renamed_asker_role: str = None,
         role_that_can_rename: str = None,
+        ignored_role: str = None,
         log_relocated_emoji: str = LOG_RELOCATED_EMOJI,
         log_renamed_emoji: str = LOG_RENAMED_EMOJI,
         log_restored_emoji: str = LOG_RESTORED_EMOJI,
@@ -260,6 +261,10 @@ class HelpChatServerState:
         )
 
         self.log.info(f"Identified role that can rename: {self.role_that_can_rename}")
+
+        self.ignored_role: discord.Role = self.bot.get_role(self.server, ignored_role)
+
+        self.log.info(f"Identified ignored role: {self.ignored_role}")
 
         self.log_relocated_emoji: str = log_relocated_emoji
         self.log_renamed_emoji: str = log_renamed_emoji
@@ -690,6 +695,9 @@ class HelpChatServerState:
             asker = await self.get_asker(channel)
             if asker.id != author.id:
                 return False
+        # if askers are not enabled, then make sure to short-circuit ignored users
+        elif self.ignored_role in author.roles:
+            return False
         # the last 10 messages in the channel must all be from the ducker
         async for m in self.bot.iter_latest_messages(channels=[channel], limit=10):
             if author.id != m.author.id:
@@ -848,6 +856,8 @@ class HelpChatServerState:
             and reaction.count == 1
             and author != self.bot.user
         ):
+            if self.ignored_role in reactor.roles:
+                return
             await self.relocate(message, reactor)
             await self.bot.add_reaction(message, self.relocate_emoji)
         # rename: only on the first of a reaction on a fresh human message
@@ -856,6 +866,8 @@ class HelpChatServerState:
             and reaction.count == 1
             and author != self.bot.user
         ):
+            if self.ignored_role in reactor.roles:
+                return
             affected_asker = await self.rename_asker(channel, reactor)
             if affected_asker:
                 await self.bot.add_reaction(message, self.rename_emoji)
@@ -872,6 +884,8 @@ class HelpChatServerState:
             and reaction.count == 1
             and author != self.bot.user
         ):
+            if self.ignored_role in reactor.roles:
+                return
             affected_asker = await self.restore_asker(channel, reactor)
             if affected_asker:
                 await self.bot.add_reaction(message, self.restore_emoji)
@@ -891,6 +905,15 @@ class HelpChatServerState:
                 message, limit=self.preemptive_cache_size
             )
         ):
+            # ignored users cannot resolve, unless it's their own channel
+            if self.ignored_role in reactor.roles:
+                # short-circuit if askers are not enabled
+                if not self.persist_asker:
+                    return
+                # short-circuit if the reactor is not the asker
+                asker = await self.get_asker(channel)
+                if reactor.id != asker.id:
+                    return
             if await self.set_channel_answered(channel):
                 await self.bot.add_reaction(message, self.resolve_emoji)
                 await self.log_to_channel(
@@ -907,6 +930,8 @@ class HelpChatServerState:
             and author != self.bot.user
             and channel in self.channels
         ):
+            if self.ignored_role in reactor.roles:
+                return
             await self.remind(message, reactor)
             await self.bot.add_reaction(message, self.remind_emoji)
 
@@ -917,6 +942,15 @@ class HelpChatServerState:
         if channel in self.channels:
             # resolve: only when the message contains exactly the resolve emoji
             if message.content == str(self.resolve_emoji):
+                # ignored users cannot resolve, unless it's their own channel
+                if self.ignored_role in author.roles:
+                    # short-circuit if askers are not enabled
+                    if not self.persist_asker:
+                        return
+                    # short-circuit if the author is not the asker
+                    asker = await self.get_asker(channel)
+                    if author.id != asker.id:
+                        return
                 if await self.set_channel_answered(channel):
                     await self.log_to_channel(
                         emoji=self.log_resolved_emoji,
@@ -926,6 +960,8 @@ class HelpChatServerState:
                     )
             # rename: only when the message contains exactly the rename emoji
             elif message.content == str(self.rename_emoji):
+                if self.ignored_role in author.roles:
+                    return
                 affected_asker = await self.rename_asker(channel, author)
                 if affected_asker:
                     await self.log_to_channel(
@@ -936,6 +972,8 @@ class HelpChatServerState:
                     )
             # restore: only when the message contains exactly the restore emoji
             elif message.content == str(self.restore_emoji):
+                if self.ignored_role in author.roles:
+                    return
                 affected_asker = await self.restore_asker(channel, author)
                 if affected_asker:
                     await self.log_to_channel(
