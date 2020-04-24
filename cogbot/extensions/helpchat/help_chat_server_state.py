@@ -926,12 +926,23 @@ class HelpChatServerState:
                     )
             # rename: only when the message contains exactly the rename emoji
             elif message.content == str(self.rename_emoji):
-                if await self.rename_asker(channel, author):
+                affected_asker = await self.rename_asker(channel, author)
+                if affected_asker:
                     await self.log_to_channel(
                         emoji=self.log_renamed_emoji,
-                        description=f"renamed {channel.mention}",
+                        description=f"renamed {channel.mention} from {affected_asker.mention}",
                         message=message,
                         color=self.log_renamed_color,
+                    )
+            # restore: only when the message contains exactly the restore emoji
+            elif message.content == str(self.restore_emoji):
+                affected_asker = await self.restore_asker(channel, author)
+                if affected_asker:
+                    await self.log_to_channel(
+                        emoji=self.log_restored_emoji,
+                        description=f"restored {channel.mention} to {affected_asker.mention}",
+                        message=message,
+                        color=self.log_restored_color,
                     )
             # quack
             elif message.content == str(self.ducked_emoji):
