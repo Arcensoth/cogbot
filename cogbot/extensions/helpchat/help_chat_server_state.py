@@ -10,18 +10,46 @@ import discord
 from cogbot.cog_bot import ChannelId, CogBot
 from cogbot.extensions.helpchat.channel_state import ChannelState
 
-PROMPT_COLOR = "#00ACED"
+SECONDS_UNTIL_IDLE = 1800
+SECONDS_TO_POLL = 60
+PREEMPTIVE_CACHE_SIZE = 10
 
 RELOCATE_EMOJI = "➡️"
 RENAME_EMOJI = "📛"
 RESOLVE_EMOJI = "✅"
 REMIND_EMOJI = "🎗️"
 
-FREE_EMOJI = "✅"
+HOISTED_EMOJI = "👋"
 BUSY_EMOJI = "💬"
 IDLE_EMOJI = "⏰"
-HOISTED_EMOJI = "👋"
+ANSWERED_EMOJI = "✅"
 DUCKED_EMOJI = "🦆"
+
+HOISTED_NAME = "ask-here-{key}"
+BUSY_NAME = "busy-question-{key}"
+IDLE_NAME = "idle-question-{key}"
+ANSWERED_NAME = "answered-question-{key}"
+DUCKED_NAME = "ducked-question-{key}"
+
+HOISTED_DESCRIPTION = (
+    "Have a question? This channel does not have an ongoing discussion. Ask here!"
+)
+BUSY_DESCRIPTION = (
+    "A question has been asked in this channel and discussion is ongoing."
+    " New questions should go in another channel."
+)
+IDLE_DESCRIPTION = (
+    "A question has been asked in this channel but discussion has gone idle."
+    " New questions should still go in another channel."
+)
+ANSWERED_DESCRIPTION = (
+    "A question has been asked in this channel and an answer has been given."
+    " New questions should still go in another channel."
+)
+DUCKED_DESCRIPTION = (
+    "A question has been asked in this channel and the asker appears to be"
+    " talking themselves through a solution."
+)
 
 LOG_RELOCATED_EMOJI = RELOCATE_EMOJI
 LOG_RENAMED_EMOJI = RENAME_EMOJI
@@ -29,7 +57,7 @@ LOG_RESOLVED_EMOJI = RESOLVE_EMOJI
 LOG_REMINDED_EMOJI = REMIND_EMOJI
 LOG_DUCKED_EMOJI = DUCKED_EMOJI
 LOG_BUSIED_FROM_HOISTED_EMOJI = HOISTED_EMOJI
-LOG_BUSIED_FROM_FREE_EMOJI = "🙊"
+LOG_BUSIED_FROM_ANSWERED_EMOJI = "🙊"
 LOG_FAKE_OUT_EMOJI = "🙈"
 
 LOG_RELOCATED_COLOR = "#3B88C3"
@@ -38,8 +66,10 @@ LOG_RESOLVED_COLOR = "#77B255"
 LOG_REMINDED_COLOR = "#9B59B6"
 LOG_DUCKED_COLOR = "#C77538"
 LOG_BUSIED_FROM_HOISTED_COLOR = "#FFDC5D"
-LOG_BUSIED_FROM_FREE_COLOR = "#BF6952"
+LOG_BUSIED_FROM_ANSWERED_COLOR = "#BF6952"
 LOG_FAKE_OUT_COLOR = "#BF6952"
+
+PROMPT_COLOR = "#00ACED"
 
 
 class HelpChatChannelEntry:
@@ -59,30 +89,35 @@ class HelpChatServerState:
         relocate_message_without_channel: str,
         reminder_message: str = None,
         fake_out_message: str = None,
-        channel_description: str = "",
         log_channel: str = None,
-        seconds_until_idle: int = 1800,
-        seconds_to_poll: int = 60,
-        free_category: str = None,
+        seconds_until_idle: int = SECONDS_UNTIL_IDLE,
+        seconds_to_poll: int = SECONDS_TO_POLL,
+        preemptive_cache_size: int = PREEMPTIVE_CACHE_SIZE,
+        hoisted_category: str = None,
         busy_category: str = None,
         idle_category: str = None,
-        hoisted_category: str = None,
+        answered_category: str = None,
         min_hoisted_channels: int = 0,
         max_hoisted_channels: int = 0,
         relocate_emoji: str = RELOCATE_EMOJI,
         rename_emoji: str = RENAME_EMOJI,
         resolve_emoji: str = RESOLVE_EMOJI,
         remind_emoji: str = REMIND_EMOJI,
-        free_emoji: str = FREE_EMOJI,
+        hoisted_emoji: str = HOISTED_EMOJI,
         busy_emoji: str = BUSY_EMOJI,
         idle_emoji: str = IDLE_EMOJI,
-        hoisted_emoji: str = HOISTED_EMOJI,
+        answered_emoji: str = ANSWERED_EMOJI,
         ducked_emoji: str = DUCKED_EMOJI,
-        free_format: str = "free-chat-{key}",
-        busy_format: str = "busy-chat-{key}",
-        idle_format: str = "idle-chat-{key}",
-        hoisted_format: str = "ask-here-{key}",
-        ducked_format: str = "duck-chat-{key}",
+        answered_name: str = ANSWERED_NAME,
+        busy_name: str = BUSY_NAME,
+        idle_name: str = IDLE_NAME,
+        hoisted_name: str = HOISTED_NAME,
+        ducked_name: str = DUCKED_NAME,
+        answered_description: str = ANSWERED_DESCRIPTION,
+        busy_description: str = BUSY_DESCRIPTION,
+        idle_description: str = IDLE_DESCRIPTION,
+        hoisted_description: str = HOISTED_DESCRIPTION,
+        ducked_description: str = DUCKED_DESCRIPTION,
         persist_asker: bool = False,
         renamed_asker_role: str = None,
         role_that_can_rename: str = None,
@@ -91,22 +126,21 @@ class HelpChatServerState:
         log_resolved_emoji: str = LOG_RESOLVED_EMOJI,
         log_reminded_emoji: str = LOG_REMINDED_EMOJI,
         log_ducked_emoji: str = LOG_DUCKED_EMOJI,
-        log_busied_from_free_emoji: str = LOG_BUSIED_FROM_FREE_EMOJI,
         log_busied_from_hoisted_emoji: str = LOG_BUSIED_FROM_HOISTED_EMOJI,
+        log_busied_from_answered_emoji: str = LOG_BUSIED_FROM_ANSWERED_EMOJI,
         log_fake_out_emoji: str = LOG_FAKE_OUT_EMOJI,
         log_relocated_color: str = LOG_RELOCATED_COLOR,
         log_renamed_color: str = LOG_RENAMED_COLOR,
         log_resolved_color: str = LOG_RESOLVED_COLOR,
         log_reminded_color: str = LOG_REMINDED_COLOR,
         log_ducked_color: str = LOG_DUCKED_COLOR,
-        log_busied_from_free_color: str = LOG_BUSIED_FROM_FREE_COLOR,
         log_busied_from_hoisted_color: str = LOG_BUSIED_FROM_HOISTED_COLOR,
+        log_busied_from_answered_color: str = LOG_BUSIED_FROM_ANSWERED_COLOR,
         log_fake_out_color: str = LOG_FAKE_OUT_COLOR,
         resolve_with_reaction: bool = False,
         prompt_message: str = None,
         prompt_color: str = PROMPT_COLOR,
         log_verbose_usernames: bool = False,
-        preemptive_cache_size: int = 10,
         auto_poll: bool = True,
         **kwargs,
     ):
@@ -138,7 +172,6 @@ class HelpChatServerState:
         self.relocate_message_without_channel: str = relocate_message_without_channel
         self.reminder_message: str = reminder_message
         self.fake_out_message: str = fake_out_message
-        self.channel_description: str = channel_description
 
         self.seconds_until_idle: int = seconds_until_idle
         self.seconds_to_poll: int = seconds_to_poll
@@ -162,9 +195,9 @@ class HelpChatServerState:
             self.server, remind_emoji
         )
 
-        self.free_category: discord.Channel = self.bot.get_channel(
-            free_category
-        ) if free_category else None
+        self.hoisted_category: discord.Channel = self.bot.get_channel(
+            hoisted_category
+        ) if hoisted_category else None
 
         self.busy_category: discord.Channel = self.bot.get_channel(
             busy_category
@@ -174,26 +207,32 @@ class HelpChatServerState:
             idle_category
         ) if idle_category else None
 
-        self.hoisted_category: discord.Channel = self.bot.get_channel(
-            hoisted_category
-        ) if hoisted_category else None
+        self.answered_category: discord.Channel = self.bot.get_channel(
+            answered_category
+        ) if answered_category else None
 
-        self.log.info(f"Identified free category: {self.free_category}")
+        self.log.info(f"Identified hoisted category: {self.hoisted_category}")
         self.log.info(f"Identified busy category: {self.busy_category}")
         self.log.info(f"Identified idle category: {self.idle_category}")
-        self.log.info(f"Identified hoisted category: {self.hoisted_category}")
+        self.log.info(f"Identified answered category: {self.answered_category}")
 
-        self.free_emoji: str = free_emoji
+        self.hoisted_emoji: str = hoisted_emoji
         self.busy_emoji: str = busy_emoji
         self.idle_emoji: str = idle_emoji
-        self.hoisted_emoji: str = hoisted_emoji
+        self.answered_emoji: str = answered_emoji
         self.ducked_emoji: str = ducked_emoji
 
-        self.free_format: str = free_format
-        self.busy_format: str = busy_format
-        self.idle_format: str = idle_format
-        self.hoisted_format: str = hoisted_format
-        self.ducked_format: str = ducked_format
+        self.hoisted_name: str = hoisted_name
+        self.busy_name: str = busy_name
+        self.idle_name: str = idle_name
+        self.answered_name: str = answered_name
+        self.ducked_name: str = ducked_name
+
+        self.hoisted_description: str = hoisted_description
+        self.busy_description: str = busy_description
+        self.idle_description: str = idle_description
+        self.answered_description: str = answered_description
+        self.ducked_description: str = ducked_description
 
         self.persist_asker: bool = persist_asker
 
@@ -214,8 +253,8 @@ class HelpChatServerState:
         self.log_resolved_emoji: str = log_resolved_emoji
         self.log_reminded_emoji: str = log_reminded_emoji
         self.log_ducked_emoji: str = log_ducked_emoji
-        self.log_busied_from_free_emoji: str = log_busied_from_free_emoji
         self.log_busied_from_hoisted_emoji: str = log_busied_from_hoisted_emoji
+        self.log_busied_from_answered_emoji: str = log_busied_from_answered_emoji
         self.log_fake_out_emoji: str = log_fake_out_emoji
 
         self.log_relocated_color: str = self.bot.color_from_hex(log_relocated_color)
@@ -223,11 +262,11 @@ class HelpChatServerState:
         self.log_resolved_color: str = self.bot.color_from_hex(log_resolved_color)
         self.log_reminded_color: str = self.bot.color_from_hex(log_reminded_color)
         self.log_ducked_color: str = self.bot.color_from_hex(log_ducked_color)
-        self.log_busied_from_free_color: str = self.bot.color_from_hex(
-            log_busied_from_free_color
-        )
         self.log_busied_from_hoisted_color: str = self.bot.color_from_hex(
             log_busied_from_hoisted_color
+        )
+        self.log_busied_from_answered_color: str = self.bot.color_from_hex(
+            log_busied_from_answered_color
         )
         self.log_fake_out_color: str = self.bot.color_from_hex(log_fake_out_color)
 
@@ -243,20 +282,29 @@ class HelpChatServerState:
 
         self.preemptive_cache_size: bool = preemptive_cache_size
 
-        self.free_state: ChannelState = ChannelState(
-            self.free_emoji, self.free_format, self.free_category
+        self.hoisted_state: ChannelState = ChannelState(
+            self.hoisted_emoji,
+            self.hoisted_name,
+            self.hoisted_description,
+            self.hoisted_category,
         )
         self.busy_state: ChannelState = ChannelState(
-            self.busy_emoji, self.busy_format, self.busy_category
+            self.busy_emoji, self.busy_name, self.busy_description, self.busy_category
         )
         self.idle_state: ChannelState = ChannelState(
-            self.idle_emoji, self.idle_format, self.idle_category
+            self.idle_emoji, self.idle_name, self.idle_description, self.idle_category
         )
-        self.hoisted_state: ChannelState = ChannelState(
-            self.hoisted_emoji, self.hoisted_format, self.hoisted_category
+        self.answered_state: ChannelState = ChannelState(
+            self.answered_emoji,
+            self.answered_name,
+            self.answered_description,
+            self.answered_category,
         )
         self.ducked_state: ChannelState = ChannelState(
-            self.ducked_emoji, self.ducked_format, self.busy_category
+            self.ducked_emoji,
+            self.ducked_name,
+            self.ducked_description,
+            self.busy_category,
         )
 
         self.auto_poll: bool = auto_poll
@@ -336,22 +384,22 @@ class HelpChatServerState:
         await self.sync_all()
 
     def get_channel_state(self, channel: discord.Channel) -> ChannelState:
-        if self.is_channel_free(channel):
-            return self.free_state
+        if self.is_channel_hoisted(channel):
+            return self.hoisted_state
         if self.is_channel_busy(channel):
             return self.busy_state
         if self.is_channel_idle(channel):
             return self.idle_state
-        if self.is_channel_hoisted(channel):
-            return self.hoisted_state
+        if self.is_channel_answered(channel):
+            return self.answered_state
         if self.is_channel_ducked(channel):
             return self.ducked_state
 
     def is_channel(self, channel: discord.Channel, channel_state: ChannelState) -> bool:
         return channel_state.matches(channel)
 
-    def is_channel_free(self, channel: discord.Channel) -> bool:
-        return self.is_channel(channel, self.free_state)
+    def is_channel_hoisted(self, channel: discord.Channel) -> bool:
+        return self.is_channel(channel, self.hoisted_state)
 
     def is_channel_busy(self, channel: discord.Channel) -> bool:
         return self.is_channel(channel, self.busy_state) or self.is_channel_ducked(
@@ -361,8 +409,8 @@ class HelpChatServerState:
     def is_channel_idle(self, channel: discord.Channel) -> bool:
         return self.is_channel(channel, self.idle_state)
 
-    def is_channel_hoisted(self, channel: discord.Channel) -> bool:
-        return self.is_channel(channel, self.hoisted_state)
+    def is_channel_answered(self, channel: discord.Channel) -> bool:
+        return self.is_channel(channel, self.answered_state)
 
     def is_channel_ducked(self, channel: discord.Channel) -> bool:
         return self.is_channel(channel, self.ducked_state)
@@ -372,8 +420,8 @@ class HelpChatServerState:
             if self.is_channel(channel, state):
                 yield channel
 
-    def get_free_channels(self) -> discord.Channel:
-        return self.get_channels(self.free_state)
+    def get_hoisted_channels(self) -> discord.Channel:
+        return self.get_channels(self.hoisted_state)
 
     def get_busy_channels(self) -> discord.Channel:
         return self.get_channels(self.busy_state)
@@ -381,8 +429,8 @@ class HelpChatServerState:
     def get_idle_channels(self) -> discord.Channel:
         return self.get_channels(self.idle_state)
 
-    def get_hoisted_channels(self) -> discord.Channel:
-        return self.get_channels(self.hoisted_state)
+    def get_answered_channels(self) -> discord.Channel:
+        return self.get_channels(self.answered_state)
 
     def get_random_channel(self, state: ChannelState) -> discord.Channel:
         channels = list(self.get_channels(state))
@@ -390,8 +438,8 @@ class HelpChatServerState:
             random.shuffle(channels)
             return channels[0]
 
-    def get_random_free_channel(self) -> discord.Channel:
-        return self.get_random_channel(self.free_state)
+    def get_random_hoisted_channel(self) -> discord.Channel:
+        return self.get_random_channel(self.hoisted_state)
 
     def get_random_busy_channel(self) -> discord.Channel:
         return self.get_random_channel(self.busy_state)
@@ -399,8 +447,8 @@ class HelpChatServerState:
     def get_random_idle_channel(self) -> discord.Channel:
         return self.get_random_channel(self.idle_state)
 
-    def get_random_hoisted_channel(self) -> discord.Channel:
-        return self.get_random_channel(self.hoisted_state)
+    def get_random_answered_channel(self) -> discord.Channel:
+        return self.get_random_channel(self.answered_state)
 
     async def get_oldest_channel(self, state: ChannelState) -> discord.Channel:
         channels: typing.List[discord.Channel] = list(self.get_channels(state))
@@ -410,8 +458,8 @@ class HelpChatServerState:
             oldest_channel = latest_messages[0].channel
             return oldest_channel
 
-    async def get_oldest_free_channel(self) -> discord.Channel:
-        return await self.get_oldest_channel(self.free_state)
+    async def get_oldest_hoisted_channel(self) -> discord.Channel:
+        return await self.get_oldest_channel(self.hoisted_state)
 
     async def get_oldest_busy_channel(self) -> discord.Channel:
         return await self.get_oldest_channel(self.busy_state)
@@ -419,8 +467,8 @@ class HelpChatServerState:
     async def get_oldest_idle_channel(self) -> discord.Channel:
         return await self.get_oldest_channel(self.idle_state)
 
-    async def get_oldest_hoisted_channel(self) -> discord.Channel:
-        return await self.get_oldest_channel(self.hoisted_state)
+    async def get_oldest_answered_channel(self) -> discord.Channel:
+        return await self.get_oldest_channel(self.answered_state)
 
     def get_channel_key(self, channel: discord.Channel) -> str:
         channel_entry: HelpChatChannelEntry = self.channel_map.get(channel)
@@ -431,6 +479,18 @@ class HelpChatServerState:
         channel_entry: HelpChatChannelEntry = self.channel_map.get(channel)
         if channel_entry:
             return channel_entry.index
+
+    def build_channel_description(
+        self,
+        channel: discord.Channel,
+        state: ChannelState,
+        asker: discord.Member = None,
+    ) -> str:
+        description = state.format_description(channel, asker)
+        if self.persist_asker and asker:
+            return f"{description}\n\nCurrent asker:\n{asker}"
+        else:
+            return description
 
     def log_username(self, user: discord.User) -> str:
         if self.log_verbose_usernames:
@@ -449,7 +509,8 @@ class HelpChatServerState:
                 self.log.exception(f"Failed to identify asker in {channel}")
 
     async def set_asker(self, channel: discord.Channel, asker: discord.Member):
-        new_topic = f"{self.channel_description}\n\nCurrent asker:\n{asker}"
+        state = self.get_channel_state(channel)
+        new_topic = self.build_channel_description(channel, state, asker=asker)
         try:
             await self.bot.edit_channel(channel, topic=new_topic)
         except Exception:
@@ -458,8 +519,10 @@ class HelpChatServerState:
     async def delete_asker(self, channel: discord.Channel):
         old_asker = await self.get_asker(channel)
         if old_asker:
+            state = self.get_channel_state(channel)
+            description = state.format_description(channel)
             try:
-                await self.bot.edit_channel(channel, topic=self.channel_description)
+                await self.bot.edit_channel(channel, topic=description or "")
             except Exception:
                 self.log.exception(f"Failed to delete asker in {channel}")
 
@@ -475,9 +538,9 @@ class HelpChatServerState:
             # only busy channels can become idle
             if self.is_channel_busy(channel):
                 latest_message = await self.bot.get_latest_message(channel)
-                # if there's no latest message, then... free it up?
+                # if there's no latest message, then... set it as answered?
                 if not latest_message:
-                    await self.set_channel_free(channel)
+                    await self.set_channel_answered(channel)
                     continue
                 now: datetime = datetime.utcnow()
                 latest: datetime = latest_message.timestamp
@@ -503,28 +566,38 @@ class HelpChatServerState:
     async def set_channel(
         self, channel: discord.Channel, state: ChannelState, asker: discord.User = None
     ):
-        # if no asker was provided, and we care, look it up ourselves
+        # if askers are enabled, and one was not provided, find it ourselves
         if self.persist_asker and not asker:
             asker = await self.get_asker(channel)
         # set the new channel name, which doubles as its persistent state
-        # also move it to the new category, if supplied
-        # use the asker, if available, unless they're being ignored
         channel_key = self.get_channel_key(channel)
         if asker and self.renamed_asker_role in asker.roles:
-            new_name = state.format(key=channel_key)
+            new_name = state.format_name(key=channel_key, channel=channel)
         else:
-            new_name = state.format(key=channel_key, asker=asker)
+            new_name = state.format_name(key=channel_key, channel=channel, asker=asker)
+        # determine the new topic based on state
+        new_topic = self.build_channel_description(channel, state, asker=asker)
         # update the channel-in-question's category (parent)
-        await self.bot.edit_channel(channel, name=new_name, category=state.category)
+        await self.bot.edit_channel(
+            channel, name=new_name, topic=new_topic, category=state.category
+        )
         # always sync hoisted channels
         await self.sync_hoisted_channels()
 
-    async def set_channel_free(
+    async def set_channel_hoisted(
         self, channel: discord.Channel, force: bool = False
     ) -> bool:
-        # only busy and idle (not hoisted) channels can become free
-        if force or self.is_channel_busy(channel) or self.is_channel_idle(channel):
-            await self.set_channel(channel, self.free_state)
+        # only idle channels and answered (not busy) channels can become hoisted
+        # and only if we're under the max amount
+        # ... unless we're forcing (e.g. with a command)
+        if force or (
+            (self.num_hoisted_channels < self.max_hoisted_channels)
+            and (self.is_channel_answered(channel) or self.is_channel_idle(channel))
+        ):
+            if self.persist_asker:
+                await self.delete_asker(channel)
+            await self.set_channel(channel, self.hoisted_state)
+            await self.send_prompt_message(channel)
             return True
 
     async def set_channel_busy(
@@ -543,20 +616,12 @@ class HelpChatServerState:
             await self.set_channel(channel, self.idle_state)
             return True
 
-    async def set_channel_hoisted(
+    async def set_channel_answered(
         self, channel: discord.Channel, force: bool = False
     ) -> bool:
-        # only free and idle channels (not busy) can become hoisted
-        # and only if we're under the max amount
-        # ... unless we're forcing (e.g. with a command)
-        if force or (
-            (self.num_hoisted_channels < self.max_hoisted_channels)
-            and (self.is_channel_free(channel) or self.is_channel_idle(channel))
-        ):
-            if self.persist_asker:
-                await self.delete_asker(channel)
-            await self.set_channel(channel, self.hoisted_state)
-            await self.send_prompt_message(channel)
+        # only busy and idle (not hoisted) channels can become answered
+        if force or self.is_channel_busy(channel) or self.is_channel_idle(channel):
+            await self.set_channel(channel, self.answered_state)
             return True
 
     async def set_channel_ducked(
@@ -624,10 +689,12 @@ class HelpChatServerState:
     async def relocate(self, message: discord.Message, reactor: discord.Member):
         author: discord.Member = message.author
         from_channel: discord.Channel = message.channel
-        # prefer relocating to hoisted channels over free ones
-        # in theory, the only way a free channel would be chosen is if hoisted
-        # channels are disabled altogether
-        to_channel = self.get_random_hoisted_channel() or self.get_random_free_channel()
+        # prefer relocating to hoisted channels over answered ones
+        # in theory, the only way an answered channel would be chosen is if
+        # hoisted channels are disabled altogether
+        to_channel = (
+            self.get_random_hoisted_channel() or self.get_random_answered_channel()
+        )
         if to_channel:
             await self.log_to_channel(
                 emoji=self.log_relocated_emoji,
@@ -698,8 +765,8 @@ class HelpChatServerState:
     async def try_hoist_channel(self):
         # if we've hit the max, don't hoist any more channels
         if self.num_hoisted_channels < self.max_hoisted_channels:
-            # always try to get the oldest free channel first
-            channel_to_hoist = await self.get_oldest_free_channel()
+            # always try to get the oldest answered channel first
+            channel_to_hoist = await self.get_oldest_answered_channel()
             # if there weren't any available, but we're under the min...
             if (not channel_to_hoist) and (
                 self.num_hoisted_channels < self.min_hoisted_channels
@@ -775,7 +842,7 @@ class HelpChatServerState:
                 message, limit=self.preemptive_cache_size
             )
         ):
-            if await self.set_channel_free(channel):
+            if await self.set_channel_answered(channel):
                 await self.bot.add_reaction(message, self.resolve_emoji)
                 await self.log_to_channel(
                     emoji=self.log_resolved_emoji,
@@ -801,7 +868,7 @@ class HelpChatServerState:
         if channel in self.channels:
             # resolve: only when the message contains exactly the resolve emoji
             if message.content == str(self.resolve_emoji):
-                if await self.set_channel_free(channel):
+                if await self.set_channel_answered(channel):
                     await self.log_to_channel(
                         emoji=self.log_resolved_emoji,
                         description=f"resolved {channel.mention}",
@@ -826,8 +893,6 @@ class HelpChatServerState:
                 prior_state: ChannelState = self.get_channel_state(channel)
                 # if hoisted: update asker, change to busy, and log
                 if prior_state == self.hoisted_state:
-                    if self.persist_asker:
-                        await self.set_asker(channel, author)
                     await self.set_channel_busy(channel, asker=author)
                     await self.log_to_channel(
                         emoji=self.log_busied_from_hoisted_emoji,
@@ -835,14 +900,14 @@ class HelpChatServerState:
                         message=message,
                         color=self.log_busied_from_hoisted_color,
                     )
-                # if free: change to busy and log
-                elif prior_state == self.free_state:
+                # if answered: change to busy and log
+                elif prior_state == self.answered_state:
                     await self.set_channel_busy(channel)
                     await self.log_to_channel(
-                        emoji=self.log_busied_from_free_emoji,
+                        emoji=self.log_busied_from_answered_emoji,
                         description=f"re-opened {channel.mention}",
                         message=message,
-                        color=self.log_busied_from_free_color,
+                        color=self.log_busied_from_answered_color,
                     )
                 # otherwise (idle): just change to busy without logging
                 else:
@@ -870,8 +935,8 @@ class HelpChatServerState:
                         )
                     else:
                         sent_message = None
-                    # free-up the channel automatically
-                    await self.set_channel_free(channel)
+                    # automatically set the channel as answered
+                    await self.set_channel_answered(channel)
                     # create a log entry
                     await self.log_to_channel(
                         emoji=self.log_fake_out_emoji,

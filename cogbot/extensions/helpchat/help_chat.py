@@ -394,14 +394,12 @@ class HelpChat:
             await self.bot.react_question(ctx)
 
     @checks.is_staff()
-    @cmd_helpchat_set.command(
-        pass_context=True, name="free", aliases=["resolved", "answered"]
-    )
-    async def cmd_helpchat_set_free(
+    @cmd_helpchat_set.command(pass_context=True, name="answered", aliases=["resolved"])
+    async def cmd_helpchat_set_answered(
         self, ctx: Context, channel: discord.Channel = None
     ):
         state = self.get_state(ctx.message.server)
-        await self.set_channel(ctx, channel, state.set_channel_free)
+        await self.set_channel(ctx, channel, state.set_channel_answered)
 
     @checks.is_staff()
     @cmd_helpchat_set.command(pass_context=True, name="busy")
@@ -435,12 +433,12 @@ class HelpChat:
 
     @checks.is_staff()
     @cmd_helpchat_setall.command(
-        pass_context=True, name="free", aliases=["resolved", "answered"]
+        pass_context=True, name="answered", aliases=["resolved"]
     )
-    async def cmd_helpchat_setall_free(self, ctx: Context):
+    async def cmd_helpchat_setall_answered(self, ctx: Context):
         state = self.get_state(ctx.message.server)
         for channel in state.channels:
-            await self.set_channel(ctx, channel, state.set_channel_free)
+            await self.set_channel(ctx, channel, state.set_channel_answered)
 
     @checks.is_staff()
     @cmd_helpchat_setall.command(pass_context=True, name="busy")
