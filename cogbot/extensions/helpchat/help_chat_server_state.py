@@ -438,23 +438,22 @@ class HelpChatServerState:
         return user.mention
 
     async def get_asker(self, channel: discord.Channel) -> discord.Member:
+        server: discord.Server = channel.server
         if channel.topic:
             topic_lines = str(channel.topic).splitlines()
             last_line = topic_lines[-1]
             try:
-                member = channel.server.get_member(last_line)
+                member = server.get_member_named(last_line)
                 return member
-            except:
-                pass
+            except Exception:
+                self.log.exception(f"Failed to identify asker in {channel}")
 
     async def set_asker(self, channel: discord.Channel, asker: discord.Member):
-        new_lines = self.channel_description.split("\n")
-        new_lines.append(str(asker.id))
-        new_topic = "\n".join(new_lines)
+        new_topic = f"{self.channel_description}\n\nCurrent asker:\n{asker}"
         try:
             await self.bot.edit_channel(channel, topic=new_topic)
         except Exception:
-            self.log.exception(f"Failed to name channel after asker: {asker}")
+            self.log.exception(f"Failed to name channel {channel} after asker: {asker}")
 
     async def delete_asker(self, channel: discord.Channel):
         old_asker = await self.get_asker(channel)
@@ -462,7 +461,7 @@ class HelpChatServerState:
             try:
                 await self.bot.edit_channel(channel, topic=self.channel_description)
             except Exception:
-                self.log.exception(f"Failed to delete asker in channel: {channel}")
+                self.log.exception(f"Failed to delete asker in {channel}")
 
     async def sync_channel_positions(self):
         # go in reverse in case the positions were reverted and will cause cascading
