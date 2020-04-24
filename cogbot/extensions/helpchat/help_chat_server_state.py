@@ -17,6 +17,7 @@ PREEMPTIVE_CACHE_SIZE = 10
 
 RELOCATE_EMOJI = "➡️"
 RENAME_EMOJI = "📛"
+RESTORE_EMOJI = "♻️"
 RESOLVE_EMOJI = "✅"
 REMIND_EMOJI = "🎗️"
 
@@ -54,6 +55,7 @@ DUCKED_DESCRIPTION = (
 
 LOG_RELOCATED_EMOJI = RELOCATE_EMOJI
 LOG_RENAMED_EMOJI = RENAME_EMOJI
+LOG_RESTORED_EMOJI = RESTORE_EMOJI
 LOG_RESOLVED_EMOJI = RESOLVE_EMOJI
 LOG_REMINDED_EMOJI = REMIND_EMOJI
 LOG_DUCKED_EMOJI = DUCKED_EMOJI
@@ -63,6 +65,7 @@ LOG_FAKE_OUT_EMOJI = "🙈"
 
 LOG_RELOCATED_COLOR = "#3B88C3"
 LOG_RENAMED_COLOR = "#DD2E44"
+LOG_RESTORED_COLOR = "#3E721D"
 LOG_RESOLVED_COLOR = "#77B255"
 LOG_REMINDED_COLOR = "#9B59B6"
 LOG_DUCKED_COLOR = "#C77538"
@@ -104,6 +107,7 @@ class HelpChatServerState:
         max_hoisted_channels: int = 0,
         relocate_emoji: str = RELOCATE_EMOJI,
         rename_emoji: str = RENAME_EMOJI,
+        restore_emoji: str = RESTORE_EMOJI,
         resolve_emoji: str = RESOLVE_EMOJI,
         remind_emoji: str = REMIND_EMOJI,
         hoisted_emoji: str = HOISTED_EMOJI,
@@ -125,7 +129,8 @@ class HelpChatServerState:
         renamed_asker_role: str = None,
         role_that_can_rename: str = None,
         log_relocated_emoji: str = LOG_RELOCATED_EMOJI,
-        log_rename_emoji: str = LOG_RENAMED_EMOJI,
+        log_renamed_emoji: str = LOG_RENAMED_EMOJI,
+        log_restored_emoji: str = LOG_RESTORED_EMOJI,
         log_resolved_emoji: str = LOG_RESOLVED_EMOJI,
         log_reminded_emoji: str = LOG_REMINDED_EMOJI,
         log_ducked_emoji: str = LOG_DUCKED_EMOJI,
@@ -134,6 +139,7 @@ class HelpChatServerState:
         log_fake_out_emoji: str = LOG_FAKE_OUT_EMOJI,
         log_relocated_color: str = LOG_RELOCATED_COLOR,
         log_renamed_color: str = LOG_RENAMED_COLOR,
+        log_restored_color: str = LOG_RESTORED_COLOR,
         log_resolved_color: str = LOG_RESOLVED_COLOR,
         log_reminded_color: str = LOG_REMINDED_COLOR,
         log_ducked_color: str = LOG_DUCKED_COLOR,
@@ -188,6 +194,10 @@ class HelpChatServerState:
 
         self.rename_emoji: typing.Union[str, discord.Emoji] = self.bot.get_emoji(
             self.server, rename_emoji
+        )
+
+        self.restore_emoji: typing.Union[str, discord.Emoji] = self.bot.get_emoji(
+            self.server, restore_emoji
         )
 
         self.resolve_emoji: typing.Union[str, discord.Emoji] = self.bot.get_emoji(
@@ -252,7 +262,8 @@ class HelpChatServerState:
         self.log.info(f"Identified role that can rename: {self.role_that_can_rename}")
 
         self.log_relocated_emoji: str = log_relocated_emoji
-        self.log_rename_emoji: str = log_rename_emoji
+        self.log_renamed_emoji: str = log_renamed_emoji
+        self.log_restored_emoji: str = log_restored_emoji
         self.log_resolved_emoji: str = log_resolved_emoji
         self.log_reminded_emoji: str = log_reminded_emoji
         self.log_ducked_emoji: str = log_ducked_emoji
@@ -262,6 +273,7 @@ class HelpChatServerState:
 
         self.log_relocated_color: str = self.bot.color_from_hex(log_relocated_color)
         self.log_renamed_color: str = self.bot.color_from_hex(log_renamed_color)
+        self.log_restored_color: str = self.bot.color_from_hex(log_restored_color)
         self.log_resolved_color: str = self.bot.color_from_hex(log_resolved_color)
         self.log_reminded_color: str = self.bot.color_from_hex(log_reminded_color)
         self.log_ducked_color: str = self.bot.color_from_hex(log_ducked_color)
@@ -748,7 +760,7 @@ class HelpChatServerState:
             color=self.log_reminded_color,
         )
 
-    async def flag_channel_name(
+    async def rename_asker(
         self, channel: discord.Channel, actor: discord.Member
     ) -> bool:
         # 1. must have asker's enabled
@@ -764,6 +776,21 @@ class HelpChatServerState:
             asker = await self.get_asker(channel)
             if asker and self.role_that_can_rename not in asker.roles:
                 await self.bot.add_roles(asker, self.renamed_asker_role)
+                await self.reset_channel(channel)
+                return True
+
+    async def restore_asker(
+        self, channel: discord.Channel, actor: discord.Member
+    ) -> bool:
+        if (
+            self.persist_asker
+            and self.renamed_asker_role
+            and self.role_that_can_rename
+            and self.role_that_can_rename in actor.roles
+        ):
+            asker = await self.get_asker(channel)
+            if asker and self.renamed_asker_role in asker.roles:
+                await self.bot.remove_roles(asker, self.renamed_asker_role)
                 await self.reset_channel(channel)
                 return True
 
@@ -829,14 +856,29 @@ class HelpChatServerState:
             and reaction.count == 1
             and author != self.bot.user
         ):
-            if await self.flag_channel_name(channel, reactor):
+            if await self.rename_asker(channel, reactor):
                 await self.bot.add_reaction(message, self.rename_emoji)
                 await self.log_to_channel(
-                    emoji=self.log_rename_emoji,
+                    emoji=self.log_renamed_emoji,
                     description=f"renamed {channel.mention}",
                     message=message,
                     actor=reactor,
                     color=self.log_renamed_color,
+                )
+        # restore: only on the first of a reaction on a fresh human message
+        elif (
+            reaction.emoji == self.restore_emoji
+            and reaction.count == 1
+            and author != self.bot.user
+        ):
+            if await self.restore_asker(channel, reactor):
+                await self.bot.add_reaction(message, self.restore_emoji)
+                await self.log_to_channel(
+                    emoji=self.log_restored_emoji,
+                    description=f"restored {channel.mention}",
+                    message=message,
+                    actor=reactor,
+                    color=self.log_restored_color,
                 )
         # resolve: only when enabled and for the last message of a managed channel
         elif (
@@ -882,9 +924,9 @@ class HelpChatServerState:
                     )
             # rename: only when the message contains exactly the rename emoji
             elif message.content == str(self.rename_emoji):
-                if await self.flag_channel_name(channel, author):
+                if await self.rename_asker(channel, author):
                     await self.log_to_channel(
-                        emoji=self.log_rename_emoji,
+                        emoji=self.log_renamed_emoji,
                         description=f"renamed {channel.mention}",
                         message=message,
                         color=self.log_renamed_color,
