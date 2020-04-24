@@ -2,6 +2,7 @@ import asyncio
 import collections
 import logging
 import random
+import re
 import typing
 from datetime import datetime, timedelta
 
@@ -70,6 +71,8 @@ LOG_BUSIED_FROM_ANSWERED_COLOR = "#BF6952"
 LOG_FAKE_OUT_COLOR = "#BF6952"
 
 PROMPT_COLOR = "#00ACED"
+
+MENTION_PATTERN = re.compile(r"<@\!?(\w+)>")
 
 
 class HelpChatChannelEntry:
@@ -488,7 +491,7 @@ class HelpChatServerState:
     ) -> str:
         description = state.format_description(channel, asker)
         if self.persist_asker and asker:
-            return f"{description}\n\nCurrent asker:\n{asker}"
+            return "\n".join((description, "", "Current asker:", asker.mention))
         else:
             return description
 
@@ -502,11 +505,14 @@ class HelpChatServerState:
         if channel.topic:
             topic_lines = str(channel.topic).splitlines()
             last_line = topic_lines[-1]
-            try:
-                member = server.get_member_named(last_line)
-                return member
-            except Exception:
-                self.log.exception(f"Failed to identify asker in {channel}")
+            mention_match = MENTION_PATTERN.match(last_line)
+            if mention_match:
+                (user_id,) = mention_match.groups()
+                try:
+                    member = server.get_member(user_id)
+                    return member
+                except Exception:
+                    self.log.exception(f"Failed to identify asker in {channel}")
 
     async def set_asker(self, channel: discord.Channel, asker: discord.Member):
         state = self.get_channel_state(channel)
