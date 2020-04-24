@@ -762,7 +762,7 @@ class HelpChatServerState:
 
     async def rename_asker(
         self, channel: discord.Channel, actor: discord.Member
-    ) -> bool:
+    ) -> discord.Member:
         # 1. must have asker's enabled
         # 2. must have enabled renamed_asker_role and role_that_can_rename
         # 3. actor must have role_that_can_rename (permission)
@@ -777,11 +777,11 @@ class HelpChatServerState:
             if asker and self.role_that_can_rename not in asker.roles:
                 await self.bot.add_roles(asker, self.renamed_asker_role)
                 await self.reset_channel(channel)
-                return True
+                return asker
 
     async def restore_asker(
         self, channel: discord.Channel, actor: discord.Member
-    ) -> bool:
+    ) -> discord.Member:
         if (
             self.persist_asker
             and self.renamed_asker_role
@@ -792,7 +792,7 @@ class HelpChatServerState:
             if asker and self.renamed_asker_role in asker.roles:
                 await self.bot.remove_roles(asker, self.renamed_asker_role)
                 await self.reset_channel(channel)
-                return True
+                return asker
 
     async def try_hoist_channel(self):
         # if we've hit the max, don't hoist any more channels
@@ -856,11 +856,12 @@ class HelpChatServerState:
             and reaction.count == 1
             and author != self.bot.user
         ):
-            if await self.rename_asker(channel, reactor):
+            affected_asker = await self.rename_asker(channel, reactor)
+            if affected_asker:
                 await self.bot.add_reaction(message, self.rename_emoji)
                 await self.log_to_channel(
                     emoji=self.log_renamed_emoji,
-                    description=f"renamed {channel.mention}",
+                    description=f"renamed {channel.mention} from {affected_asker.mention}",
                     message=message,
                     actor=reactor,
                     color=self.log_renamed_color,
@@ -871,11 +872,12 @@ class HelpChatServerState:
             and reaction.count == 1
             and author != self.bot.user
         ):
-            if await self.restore_asker(channel, reactor):
+            affected_asker = await self.restore_asker(channel, reactor)
+            if affected_asker:
                 await self.bot.add_reaction(message, self.restore_emoji)
                 await self.log_to_channel(
                     emoji=self.log_restored_emoji,
-                    description=f"restored {channel.mention}",
+                    description=f"restored {channel.mention} to {affected_asker.mention}",
                     message=message,
                     actor=reactor,
                     color=self.log_restored_color,
