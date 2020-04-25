@@ -32,7 +32,8 @@ class HelpChat:
         self.server_state[server.id] = state
 
     def remove_state(self, server: discord.Server):
-        del self.server_state[server.id]
+        if server.id in self.server_state:
+            del self.server_state[server.id]
 
     async def create_state(
         self, server: discord.Server, server_options: dict
@@ -67,6 +68,10 @@ class HelpChat:
     async def reload_state(self, server: discord.Server, ctx: Context = None):
         # remember and remove the old state object
         old_state = self.get_state(server)
+        # if there was no old state (somehow) then just shirt-circuit
+        if not old_state:
+            await self.bot.add_reaction(ctx.message, "😱")
+            return
         self.remove_state(server)
         # let people know things are happening
         if ctx:
