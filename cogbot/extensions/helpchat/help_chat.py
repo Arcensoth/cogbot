@@ -431,6 +431,14 @@ class HelpChat:
         await self.set_channel(ctx, channel, state.set_channel_idle)
 
     @checks.is_staff()
+    @cmd_helpchat_set.command(pass_context=True, name="pending", aliases=["reminded"])
+    async def cmd_helpchat_set_pending(
+        self, ctx: Context, channel: discord.Channel = None
+    ):
+        state = self.get_state(ctx.message.server)
+        await self.set_channel(ctx, channel, state.set_channel_pending)
+
+    @checks.is_staff()
     @cmd_helpchat_set.command(pass_context=True, name="answered", aliases=["resolved"])
     async def cmd_helpchat_set_answered(
         self, ctx: Context, channel: discord.Channel = None
@@ -463,6 +471,14 @@ class HelpChat:
     async def cmd_helpchat_setall_idle(self, ctx: Context):
         state = self.get_state(ctx.message.server)
         await self.set_all_channels(ctx, state, state.set_channel_idle)
+
+    @checks.is_staff()
+    @cmd_helpchat_setall.command(
+        pass_context=True, name="pending", aliases=["reminded"]
+    )
+    async def cmd_helpchat_setall_pending(self, ctx: Context):
+        state = self.get_state(ctx.message.server)
+        await self.set_all_channels(ctx, state, state.set_channel_pending)
 
     @checks.is_staff()
     @cmd_helpchat_setall.command(

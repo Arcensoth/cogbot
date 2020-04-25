@@ -25,13 +25,15 @@ RESOLVE_EMOJI = "✅"
 
 HOISTED_EMOJI = "👋"
 BUSY_EMOJI = "💬"
-IDLE_EMOJI = "⏰"
+IDLE_EMOJI = "🕒"
+PENDING_EMOJI = "⏰"
 ANSWERED_EMOJI = "✅"
 DUCKED_EMOJI = "🦆"
 
 HOISTED_NAME = "ask-here-{key}"
 BUSY_NAME = "busy-question-{key}"
-IDLE_NAME = "busy-question-{key}"
+IDLE_NAME = "idle-question-{key}"
+PENDING_NAME = "pending-question-{key}"
 ANSWERED_NAME = "answered-question-{key}"
 DUCKED_NAME = "duck-session-{key}"
 
@@ -44,6 +46,10 @@ BUSY_DESCRIPTION = (
 )
 IDLE_DESCRIPTION = (
     "A question has been asked in this channel but discussion has gone idle."
+    " New questions should still go in another channel."
+)
+PENDING_DESCRIPTION = (
+    "A question has been asked in this channel and an answer has been proposed."
     " New questions should still go in another channel."
 )
 ANSWERED_DESCRIPTION = (
@@ -113,24 +119,28 @@ class HelpChatServerState:
         hoisted_emoji: str = HOISTED_EMOJI,
         busy_emoji: str = BUSY_EMOJI,
         idle_emoji: str = IDLE_EMOJI,
+        pending_emoji: str = PENDING_EMOJI,
         answered_emoji: str = ANSWERED_EMOJI,
         ducked_emoji: str = DUCKED_EMOJI,
         # state name
         hoisted_name: str = HOISTED_NAME,
         busy_name: str = BUSY_NAME,
         idle_name: str = IDLE_NAME,
+        pending_name: str = PENDING_NAME,
         answered_name: str = ANSWERED_NAME,
         ducked_name: str = DUCKED_NAME,
         # state description
         hoisted_description: str = HOISTED_DESCRIPTION,
         busy_description: str = BUSY_DESCRIPTION,
         idle_description: str = IDLE_DESCRIPTION,
+        pending_description: str = PENDING_DESCRIPTION,
         answered_description: str = ANSWERED_DESCRIPTION,
         ducked_description: str = DUCKED_DESCRIPTION,
         # state category
         hoisted_category: str = None,
         busy_category: str = None,
         idle_category: str = None,
+        pending_category: str = None,
         answered_category: str = None,
         # log emoji
         log_relocated_emoji: str = LOG_RELOCATED_EMOJI,
@@ -234,6 +244,7 @@ class HelpChatServerState:
         self.hoisted_emoji: str = hoisted_emoji
         self.busy_emoji: str = busy_emoji
         self.idle_emoji: str = idle_emoji
+        self.pending_emoji: str = pending_emoji
         self.answered_emoji: str = answered_emoji
         self.ducked_emoji: str = ducked_emoji
 
@@ -241,6 +252,7 @@ class HelpChatServerState:
         self.hoisted_name: str = hoisted_name
         self.busy_name: str = busy_name
         self.idle_name: str = idle_name
+        self.pending_name: str = pending_name
         self.answered_name: str = answered_name
         self.ducked_name: str = ducked_name
 
@@ -248,6 +260,7 @@ class HelpChatServerState:
         self.hoisted_description: str = hoisted_description
         self.busy_description: str = busy_description
         self.idle_description: str = idle_description
+        self.pending_description: str = pending_description
         self.answered_description: str = answered_description
         self.ducked_description: str = ducked_description
 
@@ -268,6 +281,11 @@ class HelpChatServerState:
         ) if idle_category else None
         self.log.info(f"Identified idle category: {self.idle_category}")
 
+        self.pending_category: discord.Channel = self.bot.get_channel(
+            pending_category
+        ) if pending_category else None
+        self.log.info(f"Identified pending category: {self.pending_category}")
+
         self.answered_category: discord.Channel = self.bot.get_channel(
             answered_category
         ) if answered_category else None
@@ -285,6 +303,12 @@ class HelpChatServerState:
         )
         self.idle_state: ChannelState = ChannelState(
             self.idle_emoji, self.idle_name, self.idle_description, self.idle_category
+        )
+        self.pending_state: ChannelState = ChannelState(
+            self.pending_emoji,
+            self.pending_name,
+            self.pending_description,
+            self.pending_category,
         )
         self.answered_state: ChannelState = ChannelState(
             self.answered_emoji,
@@ -425,6 +449,8 @@ class HelpChatServerState:
             return self.busy_state
         if self.is_channel_idle(channel):
             return self.idle_state
+        if self.is_channel_pending(channel):
+            return self.pending_state
         if self.is_channel_answered(channel):
             return self.answered_state
         if self.is_channel_ducked(channel):
@@ -444,6 +470,9 @@ class HelpChatServerState:
 
     def is_channel_idle(self, channel: discord.Channel) -> bool:
         return self.is_channel(channel, self.idle_state)
+
+    def is_channel_pending(self, channel: discord.Channel) -> bool:
+        return self.is_channel(channel, self.pending_state)
 
     def is_channel_answered(self, channel: discord.Channel) -> bool:
         return self.is_channel(channel, self.answered_state)
@@ -465,6 +494,9 @@ class HelpChatServerState:
     def get_idle_channels(self) -> discord.Channel:
         return self.get_channels(self.idle_state)
 
+    def get_pending_channels(self) -> discord.Channel:
+        return self.get_channels(self.pending_state)
+
     def get_answered_channels(self) -> discord.Channel:
         return self.get_channels(self.answered_state)
 
@@ -482,6 +514,9 @@ class HelpChatServerState:
 
     def get_random_idle_channel(self) -> discord.Channel:
         return self.get_random_channel(self.idle_state)
+
+    def get_random_pending_channel(self) -> discord.Channel:
+        return self.get_random_channel(self.pending_state)
 
     def get_random_answered_channel(self) -> discord.Channel:
         return self.get_random_channel(self.answered_state)
@@ -502,6 +537,9 @@ class HelpChatServerState:
 
     async def get_oldest_idle_channel(self) -> discord.Channel:
         return await self.get_oldest_channel(self.idle_state)
+
+    async def get_oldest_pending_channel(self) -> discord.Channel:
+        return await self.get_oldest_channel(self.pending_state)
 
     async def get_oldest_answered_channel(self) -> discord.Channel:
         return await self.get_oldest_channel(self.answered_state)
@@ -629,14 +667,18 @@ class HelpChatServerState:
     async def set_channel_hoisted(
         self, channel: discord.Channel, force: bool = False
     ) -> bool:
-        # All of idle, pending, and answered channels can become hoisted when we
+        # All of answered, pending, and idle channels can become hoisted when we
         # need to top-off the hoisted channels, each with their own priority.
         # ... unless we're forcing (for example, with an admin command).
         # The reason we have more strict checks here is to try and protect from
         # a variety of async race conditions.
         if force or (
             (self.num_hoisted_channels < self.max_hoisted_channels)
-            and (self.is_channel_answered(channel) or self.is_channel_idle(channel))
+            and (
+                self.is_channel_answered(channel)
+                or self.is_channel_pending(channel)
+                or self.is_channel_idle(channel)
+            )
         ):
             # Make sure to clear the asker from newly-hoisted channels.
             if self.persist_asker:
@@ -663,6 +705,14 @@ class HelpChatServerState:
             await self.set_channel(channel, self.idle_state)
             return True
 
+    async def set_channel_pending(
+        self, channel: discord.Channel, force: bool = False
+    ) -> bool:
+        # Both busy and idle channels can become pending.
+        if force or self.is_channel_busy(channel) or self.is_channel_idle(channel):
+            await self.set_channel(channel, self.pending_state)
+            return True
+
     async def set_channel_answered(
         self, channel: discord.Channel, force: bool = False
     ) -> bool:
@@ -673,6 +723,7 @@ class HelpChatServerState:
             force
             or self.is_channel_busy(channel)
             or self.is_channel_idle(channel)
+            or self.is_channel_pending(channel)
         ):
             await self.set_channel(channel, self.answered_state)
             return True
@@ -788,26 +839,31 @@ class HelpChatServerState:
             )
         await self.bot.send_message(message.channel, response)
 
-    async def remind(self, message: discord.Message, reactor: discord.Member):
-        channel: discord.Channel = message.channel
-        author: discord.Member = message.author
-        # send the message
-        await self.bot.send_message(
-            channel,
-            content=self.reminder_message.format(
-                user=author,
-                resolve_emoji=self.resolve_emoji,
-                resolve_emoji_raw=f"`:{self.resolve_emoji.name}:`",
-            ),
-        )
-        # create a log entry
-        await self.log_to_channel(
-            emoji=self.log_reminded_emoji,
-            description=f"reminded {self.log_username(author)} in {channel.mention}",
-            message=message,
-            actor=reactor,
-            color=self.log_reminded_color,
-        )
+    async def remind(self, channel: discord.Channel, member: discord.Member) -> bool:
+        # Attempt to set the channel to pending.
+        if await self.set_channel_pending(channel):
+            # If that works, send the reminder message to the user.
+            await self.bot.send_message(
+                channel,
+                content=self.reminder_message.format(
+                    user=member,
+                    resolve_emoji=self.resolve_emoji,
+                    resolve_emoji_raw=f"`:{self.resolve_emoji.name}:`",
+                ),
+            )
+            return True
+
+    async def remind_asker(
+        self, channel: discord.Channel, actor: discord.Member
+    ) -> discord.Member:
+        # If askers are enabled...
+        if self.persist_asker:
+            asker = await self.get_asker(channel)
+            # And the channel has an asker...
+            if asker:
+                # Then remind the asker.
+                if await self.remind(channel, asker):
+                    return asker
 
     async def rename_asker(
         self, channel: discord.Channel, actor: discord.Member
@@ -844,17 +900,22 @@ class HelpChatServerState:
                 return asker
 
     async def try_hoist_channel(self):
-        # if we've hit the max, don't hoist any more channels
+        # If we've hit the max, don't hoist any more channels.
         if self.num_hoisted_channels < self.max_hoisted_channels:
-            # always try to get the oldest answered channel first
+            # Always try to get the oldest answered channel first.
             channel_to_hoist = await self.get_oldest_answered_channel()
-            # if there weren't any available, but we're under the min...
+            # If there weren't any answered channels available, but we're
+            # under the min, then we'll consider pending and idle channels.
             if (not channel_to_hoist) and (
                 self.num_hoisted_channels < self.min_hoisted_channels
             ):
-                # ... then try to get an idle one instead
-                channel_to_hoist = await self.get_oldest_idle_channel()
-                # warn if we can't replenish min channels
+                # Prioritize pending channels over idle ones, as the former are
+                # more likely to have an acceptable answer.
+                channel_to_hoist = (
+                    await self.get_oldest_pending_channel()
+                    or await self.get_oldest_idle_channel()
+                )
+                # Warn if we can't even replenish min channels.
                 if not channel_to_hoist:
                     self.log.warning(
                         f"No channels available to replenish the minimum amount of {self.min_hoisted_channels}!"
@@ -892,7 +953,7 @@ class HelpChatServerState:
         channel: discord.Channel = message.channel
         author: discord.Member = message.author
         # @@ RELOCATE
-        # On the first reaction to any *human* message in a managed channel.
+        # On the first reaction to a *human* message in *any* channel.
         if (
             reaction.emoji == self.relocate_emoji
             and reaction.count == 1
@@ -902,8 +963,58 @@ class HelpChatServerState:
                 return
             await self.relocate(message, reactor)
             await self.bot.add_reaction(message, self.relocate_emoji)
+        # @@ RESOLVE
+        # On the first reaction to a *recent* message in a *managed* channel.
+        elif (
+            reaction.emoji == self.resolve_emoji
+            and reaction.count == 1
+            and channel in self.channels
+            and await self.bot.is_latest_message(
+                message, limit=self.preemptive_cache_size
+            )
+        ):
+            # Ignored users cannot resolve, unless it's their own channel.
+            if self.ignored_role in reactor.roles:
+                # Short-circuit if askers are not enabled.
+                if not self.persist_asker:
+                    return
+                # Short-circuit if the reactor is not the asker.
+                asker = await self.get_asker(channel)
+                if reactor.id != asker.id:
+                    return
+            # Otherwise, we can attempt to set the channel as answered.
+            if await self.set_channel_answered(channel):
+                await self.bot.add_reaction(message, self.resolve_emoji)
+                await self.log_to_channel(
+                    emoji=self.log_resolved_emoji,
+                    description=f"resolved {channel.mention}",
+                    message=message,
+                    actor=reactor,
+                    color=self.log_resolved_color,
+                )
+        # @@ REMIND
+        # On the first reaction to a *human* message in a *managed* channel.
+        elif (
+            reaction.emoji == self.remind_emoji
+            and reaction.count == 1
+            and author != self.bot.user
+            and channel in self.channels
+        ):
+            if self.ignored_role in reactor.roles:
+                return
+            # With the remind reaction, we can remind *anyone* - not just the
+            # channel asker.
+            if await self.remind(channel, author):
+                await self.bot.add_reaction(message, self.remind_emoji)
+                await self.log_to_channel(
+                    emoji=self.log_reminded_emoji,
+                    description=f"reminded {self.log_username(author)} in {channel.mention}",
+                    message=message,
+                    actor=reactor,
+                    color=self.log_reminded_color,
+                )
         # @@ RENAME
-        # On the first reaction to any message in a managed channel.
+        # On the first reaction to *any* message in a *managed* channel.
         elif (
             reaction.emoji == self.rename_emoji
             and reaction.count == 1
@@ -940,47 +1051,6 @@ class HelpChatServerState:
                     actor=reactor,
                     color=self.log_restored_color,
                 )
-        # @@ RESOLVE
-        # On the first reaction to a *recent* message in a managed channel.
-        elif (
-            reaction.emoji == self.resolve_emoji
-            and reaction.count == 1
-            and channel in self.channels
-            and await self.bot.is_latest_message(
-                message, limit=self.preemptive_cache_size
-            )
-        ):
-            # Ignored users cannot resolve, unless it's their own channel.
-            if self.ignored_role in reactor.roles:
-                # Short-circuit if askers are not enabled.
-                if not self.persist_asker:
-                    return
-                # Short-circuit if the reactor is not the asker.
-                asker = await self.get_asker(channel)
-                if reactor.id != asker.id:
-                    return
-            # Otherwise, we can attempt to set the channel as answered.
-            if await self.set_channel_answered(channel):
-                await self.bot.add_reaction(message, self.resolve_emoji)
-                await self.log_to_channel(
-                    emoji=self.log_resolved_emoji,
-                    description=f"resolved {channel.mention}",
-                    message=message,
-                    actor=reactor,
-                    color=self.log_resolved_color,
-                )
-        # @@ REMIND
-        # On the first reaction to any human message in a managed channel.
-        elif (
-            reaction.emoji == self.remind_emoji
-            and reaction.count == 1
-            and author != self.bot.user
-            and channel in self.channels
-        ):
-            if self.ignored_role in reactor.roles:
-                return
-            await self.remind(message, reactor)
-            await self.bot.add_reaction(message, self.remind_emoji)
 
     async def on_message(self, message: discord.Message):
         channel: discord.Channel = message.channel
@@ -1006,6 +1076,21 @@ class HelpChatServerState:
                         description=f"resolved {channel.mention}",
                         message=message,
                         color=self.log_resolved_color,
+                    )
+            # @@ REMIND
+            elif message.content == str(self.remind_emoji):
+                if self.ignored_role in author.roles:
+                    return
+                # With the remind message, we're automatically targetting the
+                # channel asker.
+                affected_asker = await self.remind_asker(channel, author)
+                if affected_asker:
+                    await self.bot.add_reaction(message, self.remind_emoji)
+                    await self.log_to_channel(
+                        emoji=self.log_reminded_emoji,
+                        description=f"reminded {self.log_username(affected_asker)} in {channel.mention}",
+                        message=message,
+                        color=self.log_reminded_color,
                     )
             # @@ RENAME
             # Only when the message contains exactly the rename emoji.
@@ -1070,7 +1155,7 @@ class HelpChatServerState:
         if channel in self.channels:
             # Furthermore, we only care about busy/idle channels.
             if self.is_channel_busy(channel) or self.is_channel_idle(channel):
-                # Do we need to remind the user to resolve the channel?
+                # Do we need to nag the user about resolving the channel first?
                 # If the most recent message is now the prompt; probably yes.
                 if await self.is_channel_prompted(channel):
                     # Ping the user with a message, if configured.
