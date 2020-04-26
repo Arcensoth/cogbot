@@ -38,27 +38,48 @@ ANSWERED_NAME = "answered-question-{key}"
 DUCKED_NAME = "duck-session-{key}"
 
 HOISTED_DESCRIPTION = (
+    f"**Ask here** \\{HOISTED_EMOJI}"
+    "\n\n"
     "Have a question? This channel does not have an ongoing discussion. Ask here!"
 )
 BUSY_DESCRIPTION = (
+    f"**Busy** \\{BUSY_EMOJI}"
+    "\n\n"
     "A question has been asked in this channel and discussion is ongoing."
-    " New questions should go in another channel."
+    "\n\n"
+    "**New questions should go in an ask-here channel.**"
 )
 IDLE_DESCRIPTION = (
+    f"**Idle** \\{IDLE_EMOJI}"
+    "\n\n"
     "A question has been asked in this channel but discussion has gone idle."
-    " New questions should still go in another channel."
+    " This channel may be reused if there are no answered or pending channels remaining."
+    "\n\n"
+    "**New questions should go in an ask-here channel.**"
 )
 PENDING_DESCRIPTION = (
+    f"**Pending** \\{PENDING_EMOJI}"
+    "\n\n"
     "A question has been asked in this channel and an answer has been proposed."
-    " New questions should still go in another channel."
+    " This channel may be reused if there are no answered channels remaining."
+    "\n\n"
+    "**New questions should go in an ask-here channel.**"
 )
 ANSWERED_DESCRIPTION = (
+    f"**Answered** \\{ANSWERED_EMOJI}"
+    "\n\n"
     "A question has been asked in this channel and an answer has been accepted."
-    " New questions should still go in another channel."
+    " This channel may be reused to replenish the number of hoisted channels."
+    "\n\n"
+    "**New questions should go in an ask-here channel.**"
 )
 DUCKED_DESCRIPTION = (
-    "A question has been asked in this channel and the asker appears to be"
-    " talking themselves through a solution."
+    f"**Ducked** \\{DUCKED_EMOJI}"
+    "\n\n"
+    "A question has been asked in this channel and the asker appears to be talking"
+    " themselves through a solution."
+    "\n\n"
+    "**New questions should go in an ask-here channel.**"
 )
 
 LOG_RELOCATED_EMOJI = RELOCATE_EMOJI
@@ -83,6 +104,12 @@ LOG_FAKE_OUT_COLOR = "#BF6952"
 
 MENTION_PATTERN = re.compile(r"<@\!?(\w+)>")
 
+StringOrStrings = typing.Union[str, typing.List[str]]
+
+
+def flatten_string(s: StringOrStrings) -> str:
+    return "\n".join(s) if isinstance(s, list) else s
+
 
 class HelpChatChannelEntry:
     def __init__(self, key: str, index: int):
@@ -102,7 +129,7 @@ class HelpChatServerState:
         relocate_message_without_channel: str = None,
         reminder_message: str = None,
         fake_out_message: str = None,
-        prompt_message: str = None,
+        prompt_message: StringOrStrings = None,
         prompt_color: str = PROMPT_COLOR,
         seconds_until_idle: int = SECONDS_UNTIL_IDLE,
         seconds_to_poll: int = SECONDS_TO_POLL,
@@ -130,12 +157,12 @@ class HelpChatServerState:
         answered_name: str = ANSWERED_NAME,
         ducked_name: str = DUCKED_NAME,
         # state description
-        hoisted_description: str = HOISTED_DESCRIPTION,
-        busy_description: str = BUSY_DESCRIPTION,
-        idle_description: str = IDLE_DESCRIPTION,
-        pending_description: str = PENDING_DESCRIPTION,
-        answered_description: str = ANSWERED_DESCRIPTION,
-        ducked_description: str = DUCKED_DESCRIPTION,
+        hoisted_description: StringOrStrings = HOISTED_DESCRIPTION,
+        busy_description: StringOrStrings = BUSY_DESCRIPTION,
+        idle_description: StringOrStrings = IDLE_DESCRIPTION,
+        pending_description: StringOrStrings = PENDING_DESCRIPTION,
+        answered_description: StringOrStrings = ANSWERED_DESCRIPTION,
+        ducked_description: StringOrStrings = DUCKED_DESCRIPTION,
         # state category
         hoisted_category: str = None,
         busy_category: str = None,
@@ -209,9 +236,7 @@ class HelpChatServerState:
         self.reminder_message: str = reminder_message
         self.fake_out_message: str = fake_out_message
 
-        self.prompt_message: str = "\n".join(prompt_message) if isinstance(
-            prompt_message, list
-        ) else prompt_message
+        self.prompt_message: str = flatten_string(prompt_message)
 
         self.prompt_color: int = self.bot.color_from_hex(prompt_color)
 
@@ -257,12 +282,12 @@ class HelpChatServerState:
         self.ducked_name: str = ducked_name
 
         # @@ Init channel state descriptions
-        self.hoisted_description: str = hoisted_description
-        self.busy_description: str = busy_description
-        self.idle_description: str = idle_description
-        self.pending_description: str = pending_description
-        self.answered_description: str = answered_description
-        self.ducked_description: str = ducked_description
+        self.hoisted_description: str = flatten_string(hoisted_description)
+        self.busy_description: str = flatten_string(busy_description)
+        self.idle_description: str = flatten_string(idle_description)
+        self.pending_description: str = flatten_string(pending_description)
+        self.answered_description: str = flatten_string(answered_description)
+        self.ducked_description: str = flatten_string(ducked_description)
 
         # @@ Init channel state categories
 
