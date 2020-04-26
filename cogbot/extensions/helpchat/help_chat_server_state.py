@@ -787,6 +787,7 @@ class HelpChatServerState:
                 return False
         # Finally, if we get all the way here, we can duck the channel.
         if await self.set_channel_ducked(channel):
+            await self.bot.add_reaction(message, self.ducked_emoji)
             await self.log_to_channel(
                 emoji=self.log_ducked_emoji,
                 description=f"ducked {channel.mention}",
@@ -1071,6 +1072,7 @@ class HelpChatServerState:
                         return
                 # Otherwise, we can attempt to set the channel as answered.
                 if await self.set_channel_answered(channel):
+                    await self.bot.add_reaction(message, self.resolve_emoji)
                     await self.log_to_channel(
                         emoji=self.log_resolved_emoji,
                         description=f"resolved {channel.mention}",
@@ -1099,6 +1101,7 @@ class HelpChatServerState:
                     return
                 affected_asker = await self.rename_asker(channel, author)
                 if affected_asker:
+                    await self.bot.add_reaction(message, self.rename_emoji)
                     await self.log_to_channel(
                         emoji=self.log_renamed_emoji,
                         description=f"renamed {channel.mention} from {affected_asker.mention}",
@@ -1112,6 +1115,7 @@ class HelpChatServerState:
                     return
                 affected_asker = await self.restore_asker(channel, author)
                 if affected_asker:
+                    await self.bot.add_reaction(message, self.restore_emoji)
                     await self.log_to_channel(
                         emoji=self.log_restored_emoji,
                         description=f"restored {channel.mention} to {affected_asker.mention}",
