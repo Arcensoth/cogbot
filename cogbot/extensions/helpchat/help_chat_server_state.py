@@ -737,7 +737,9 @@ class HelpChatServerState:
             return True
 
     async def reset_channel(self, channel: discord.Channel):
-        state = self.get_channel_state(channel)
+        # Managed channels with an unknown state (perhaps due to outdated
+        # emoji) will be considered answered.
+        state = self.get_channel_state(channel) or self.answered_state
         await self.set_channel(channel, state)
 
     async def reset_all(self):
