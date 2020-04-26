@@ -873,6 +873,7 @@ class HelpChatServerState:
         # 2. must have enabled renamed_asker_role and role_that_can_rename
         # 3. actor must have role_that_can_rename (permission)
         # 4. asker must be recorded and not have role_that_can_rename (immunity)
+        #    ... and also not already have renamed_role
         if (
             self.persist_asker
             and self.renamed_asker_role
@@ -880,7 +881,11 @@ class HelpChatServerState:
             and self.role_that_can_rename in actor.roles
         ):
             asker = await self.get_asker(channel)
-            if asker and self.role_that_can_rename not in asker.roles:
+            if (
+                asker
+                and (self.role_that_can_rename not in asker.roles)
+                and (self.renamed_asker_role not in asker.roles)
+            ):
                 await self.bot.add_roles(asker, self.renamed_asker_role)
                 await self.reset_channel(channel)
                 return asker
