@@ -931,9 +931,9 @@ class HelpChatServerState:
 
     async def on_ready(self):
         self.log.info("Readying state...")
-        # add the latest x messages from every channel into the client cache
-        # so that discord.py will care about any reactions applied to it
-        # we use this for the resolved and reminder emoji actions
+        # Add the latest X messages from every channel into the client cache
+        # so that discord.py will care about any reactions applied to them.
+        # We do this so that emoji actions on recent messages will be seen.
         try:
             messages_to_cache = await self.bot.get_latest_messages(
                 self.channels, limit=self.preemptive_cache_size
@@ -944,9 +944,10 @@ class HelpChatServerState:
             )
         except:
             self.log.exception("Failed to cache messages preemptively:")
-        # sync everything, immediately
+        # Reset and sync all channels.
         await self.sync_all()
-        # let people know we're ready
+        await self.reset_all()
+        # Let people know we're ready.
         self.log.info("Help-chat initialization complete!")
         await self.log_to_channel(
             emoji="👍",
