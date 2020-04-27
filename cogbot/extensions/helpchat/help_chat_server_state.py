@@ -93,6 +93,10 @@ LOG_DUCKED_EMOJI = DUCKED_EMOJI
 LOG_BUSIED_FROM_HOISTED_EMOJI = HOISTED_EMOJI
 LOG_BUSIED_FROM_ANSWERED_EMOJI = "🙊"
 LOG_FAKE_OUT_EMOJI = "🙈"
+LOG_ANSWERED_FROM_PENDING_EMOJI = PENDING_EMOJI
+LOG_HOISTED_FROM_PENDING_EMOJI = PENDING_EMOJI
+LOG_HOISTED_FROM_IDLE_EMOJI = IDLE_EMOJI
+LOG_NO_CHANNELS_TO_HOIST_EMOJI = "🚒"
 
 LOG_RELOCATED_COLOR = "#3B88C3"
 LOG_REASSIGNED_COLOR = "#FFD983"
@@ -104,6 +108,10 @@ LOG_DUCKED_COLOR = "#C77538"
 LOG_BUSIED_FROM_HOISTED_COLOR = "#FFDC5D"
 LOG_BUSIED_FROM_ANSWERED_COLOR = "#BF6952"
 LOG_FAKE_OUT_COLOR = "#BF6952"
+LOG_ANSWERED_FROM_PENDING_COLOR = "#41BEA4"
+LOG_HOISTED_FROM_PENDING_COLOR = "#FFAC33"
+LOG_HOISTED_FROM_IDLE_COLOR = "#FFAC33"
+LOG_NO_CHANNELS_TO_HOIST_COLOR = "#DD2E44"
 
 MENTION_PATTERN = re.compile(r"<@\!?(\w+)>")
 
@@ -184,6 +192,10 @@ class HelpChatServerState:
         log_busied_from_hoisted_emoji: str = LOG_BUSIED_FROM_HOISTED_EMOJI,
         log_busied_from_answered_emoji: str = LOG_BUSIED_FROM_ANSWERED_EMOJI,
         log_fake_out_emoji: str = LOG_FAKE_OUT_EMOJI,
+        log_answered_from_pending_emoji: str = LOG_ANSWERED_FROM_PENDING_EMOJI,
+        log_hoisted_from_pending_emoji: str = LOG_HOISTED_FROM_PENDING_EMOJI,
+        log_hoisted_from_idle_emoji: str = LOG_HOISTED_FROM_IDLE_EMOJI,
+        log_no_channels_to_hoist_emoji: str = LOG_NO_CHANNELS_TO_HOIST_EMOJI,
         # log color
         log_relocated_color: str = LOG_RELOCATED_COLOR,
         log_reassigned_color: str = LOG_REASSIGNED_COLOR,
@@ -195,6 +207,10 @@ class HelpChatServerState:
         log_busied_from_hoisted_color: str = LOG_BUSIED_FROM_HOISTED_COLOR,
         log_busied_from_answered_color: str = LOG_BUSIED_FROM_ANSWERED_COLOR,
         log_fake_out_color: str = LOG_FAKE_OUT_COLOR,
+        log_answered_from_pending_color: str = LOG_ANSWERED_FROM_PENDING_COLOR,
+        log_hoisted_from_pending_color: str = LOG_HOISTED_FROM_PENDING_COLOR,
+        log_hoisted_from_idle_color: str = LOG_HOISTED_FROM_IDLE_COLOR,
+        log_no_channels_to_hoist_color: str = LOG_NO_CHANNELS_TO_HOIST_COLOR,
         # roles
         helper_role: str = None,
         ignored_role: str = None,
@@ -372,6 +388,10 @@ class HelpChatServerState:
         self.log_busied_from_hoisted_emoji: str = log_busied_from_hoisted_emoji
         self.log_busied_from_answered_emoji: str = log_busied_from_answered_emoji
         self.log_fake_out_emoji: str = log_fake_out_emoji
+        self.log_answered_from_pending_emoji: str = log_answered_from_pending_emoji
+        self.log_hoisted_from_pending_emoji: str = log_hoisted_from_pending_emoji
+        self.log_hoisted_from_idle_emoji: str = log_hoisted_from_idle_emoji
+        self.log_no_channels_to_hoist_emoji: str = log_no_channels_to_hoist_emoji
 
         # @@ Init log colors
         self.log_relocated_color: str = self.bot.color_from_hex(log_relocated_color)
@@ -388,6 +408,18 @@ class HelpChatServerState:
             log_busied_from_answered_color
         )
         self.log_fake_out_color: str = self.bot.color_from_hex(log_fake_out_color)
+        self.log_answered_from_pending_color: str = self.bot.color_from_hex(
+            log_answered_from_pending_color
+        )
+        self.log_hoisted_from_pending_color: str = self.bot.color_from_hex(
+            log_hoisted_from_pending_color
+        )
+        self.log_hoisted_from_idle_color: str = self.bot.color_from_hex(
+            log_hoisted_from_idle_color
+        )
+        self.log_no_channels_to_hoist_color: str = self.bot.color_from_hex(
+            log_no_channels_to_hoist_color
+        )
 
         # @@ Identify roles
 
@@ -669,7 +701,12 @@ class HelpChatServerState:
                         await self.set_channel_idle(channel)
                     # Pending channels become answered.
                     elif state == self.pending_state:
-                        await self.set_channel_answered(channel)
+                        if await self.set_channel_answered(channel):
+                            await self.log_to_channel(
+                                emoji=self.log_answered_from_pending_emoji,
+                                description=f"{channel.mention} remained inactive and was automatically resolved",
+                                color=self.log_answered_from_pending_color,
+                            )
 
     async def sync_hoisted_channels(self):
         # Don't do anything unless we care about hoisted channels.
@@ -993,15 +1030,34 @@ class HelpChatServerState:
             ):
                 # Prioritize pending channels over idle ones, as the former are
                 # more likely to have an acceptable answer.
-                channel_to_hoist = (
-                    await self.get_oldest_pending_channel()
-                    or await self.get_oldest_idle_channel()
-                )
-                # Warn if we can't even replenish min channels.
-                if not channel_to_hoist:
-                    self.log.warning(
-                        f"No channels available to replenish the minimum amount of {self.min_hoisted_channels}!"
+                channel_to_hoist = await self.get_oldest_pending_channel()
+                if channel_to_hoist:
+                    # Log when we recycle a pending channel.
+                    await self.log_to_channel(
+                        emoji=self.log_hoisted_from_pending_emoji,
+                        description=f"Pending channel {channel_to_hoist.mention} was hoisted because no answered channels were available",
+                        color=self.log_hoisted_from_pending_color,
                     )
+                else:
+                    channel_to_hoist = await self.get_oldest_idle_channel()
+                    # Or when we recycle an idle channel.
+                    if channel_to_hoist:
+                        await self.log_to_channel(
+                            emoji=self.log_hoisted_from_idle_emoji,
+                            description=f"Idle channel {channel_to_hoist.mention} was hoisted because no answered or pending channels were available",
+                            color=self.log_hoisted_from_idle_color,
+                        )
+                # Warn if we still haven't found a channel to recycle.
+                if not channel_to_hoist:
+                    warning_text = f"No channels available to replenish the minimum amount of {self.min_hoisted_channels} hoisted channels!"
+                    self.log.warning(warning_text)
+                    await self.log_to_channel(
+                        emoji=self.log_no_channels_to_hoist_emoji,
+                        description=warning_text,
+                        color=self.log_no_channels_to_hoist_color,
+                    )
+            # Otherwise, if we're still meeting the min, we're fine even if we
+            # don't have another channel to hoist.
             if channel_to_hoist:
                 return await self.set_channel_hoisted(channel_to_hoist)
 
