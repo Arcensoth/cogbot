@@ -651,8 +651,10 @@ class HelpChatServerState:
 
     async def sync_idle_channels(self):
         for channel in self.channels:
-            # Only busy channels can become idle.
-            if self.is_channel_busy(channel):
+            state = self.get_channel_state(channel)
+            # Busy channels can become idle; and, instead of becoming idle,
+            # pending channels will automatically be assumed answered.
+            if state in (self.busy_state, self.pending_state):
                 latest_message = await self.bot.get_latest_message(channel)
                 # If there's no latest message, then... set it as answered?
                 if not latest_message:
@@ -662,7 +664,12 @@ class HelpChatServerState:
                 latest: datetime = latest_message.timestamp
                 then: datetime = latest + self.delta_until_idle
                 if now > then:
-                    await self.set_channel_idle(channel)
+                    # Busy channels become idle.
+                    if state == self.busy_state:
+                        await self.set_channel_idle(channel)
+                    # Pending channels become answered.
+                    elif state == self.pending_state:
+                        await self.set_channel_answered(channel)
 
     async def sync_hoisted_channels(self):
         # Don't do anything unless we care about hoisted channels.
