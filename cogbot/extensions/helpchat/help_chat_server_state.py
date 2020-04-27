@@ -18,6 +18,7 @@ SECONDS_TO_POLL = 60
 PREEMPTIVE_CACHE_SIZE = 10
 
 RELOCATE_EMOJI = "➡️"
+REASSIGN_EMOJI = "🏷️"
 RENAME_EMOJI = "📛"
 RESTORE_EMOJI = "♻️"
 REMIND_EMOJI = "🎗️"
@@ -83,6 +84,7 @@ DUCKED_DESCRIPTION = (
 )
 
 LOG_RELOCATED_EMOJI = RELOCATE_EMOJI
+LOG_REASSIGNED_EMOJI = REASSIGN_EMOJI
 LOG_RENAMED_EMOJI = RENAME_EMOJI
 LOG_RESTORED_EMOJI = RESTORE_EMOJI
 LOG_REMINDED_EMOJI = REMIND_EMOJI
@@ -93,6 +95,7 @@ LOG_BUSIED_FROM_ANSWERED_EMOJI = "🙊"
 LOG_FAKE_OUT_EMOJI = "🙈"
 
 LOG_RELOCATED_COLOR = "#3B88C3"
+LOG_REASSIGNED_COLOR = "#FFD983"
 LOG_RENAMED_COLOR = "#DD2E44"
 LOG_RESTORED_COLOR = "#3E721D"
 LOG_REMINDED_COLOR = "#9B59B6"
@@ -138,6 +141,7 @@ class HelpChatServerState:
         max_hoisted_channels: int = 0,
         # action emoji
         relocate_emoji: str = RELOCATE_EMOJI,
+        reassign_emoji: str = REASSIGN_EMOJI,
         rename_emoji: str = RENAME_EMOJI,
         restore_emoji: str = RESTORE_EMOJI,
         remind_emoji: str = REMIND_EMOJI,
@@ -171,6 +175,7 @@ class HelpChatServerState:
         answered_category: str = None,
         # log emoji
         log_relocated_emoji: str = LOG_RELOCATED_EMOJI,
+        log_reassigned_emoji: str = LOG_REASSIGNED_EMOJI,
         log_renamed_emoji: str = LOG_RENAMED_EMOJI,
         log_restored_emoji: str = LOG_RESTORED_EMOJI,
         log_reminded_emoji: str = LOG_REMINDED_EMOJI,
@@ -181,6 +186,7 @@ class HelpChatServerState:
         log_fake_out_emoji: str = LOG_FAKE_OUT_EMOJI,
         # log color
         log_relocated_color: str = LOG_RELOCATED_COLOR,
+        log_reassigned_color: str = LOG_REASSIGNED_COLOR,
         log_renamed_color: str = LOG_RENAMED_COLOR,
         log_restored_color: str = LOG_RESTORED_COLOR,
         log_reminded_color: str = LOG_REMINDED_COLOR,
@@ -190,9 +196,9 @@ class HelpChatServerState:
         log_busied_from_answered_color: str = LOG_BUSIED_FROM_ANSWERED_COLOR,
         log_fake_out_color: str = LOG_FAKE_OUT_COLOR,
         # roles
-        renamed_asker_role: str = None,
-        role_that_can_rename: str = None,
+        helper_role: str = None,
         ignored_role: str = None,
+        renamed_role: str = None,
         # toggles
         persist_asker: bool = False,
         log_verbose_usernames: bool = False,
@@ -255,6 +261,9 @@ class HelpChatServerState:
         # @@ Init action emoji
         self.relocate_emoji: typing.Union[str, discord.Emoji] = self.bot.get_emoji(
             self.server, relocate_emoji
+        )
+        self.reassign_emoji: typing.Union[str, discord.Emoji] = self.bot.get_emoji(
+            self.server, reassign_emoji
         )
         self.rename_emoji: typing.Union[str, discord.Emoji] = self.bot.get_emoji(
             self.server, rename_emoji
@@ -354,6 +363,7 @@ class HelpChatServerState:
 
         # @@ Init log emjoi
         self.log_relocated_emoji: str = log_relocated_emoji
+        self.log_reassigned_emoji: str = log_reassigned_emoji
         self.log_renamed_emoji: str = log_renamed_emoji
         self.log_restored_emoji: str = log_restored_emoji
         self.log_resolved_emoji: str = log_resolved_emoji
@@ -365,6 +375,7 @@ class HelpChatServerState:
 
         # @@ Init log colors
         self.log_relocated_color: str = self.bot.color_from_hex(log_relocated_color)
+        self.log_reassigned_color: str = self.bot.color_from_hex(log_reassigned_color)
         self.log_renamed_color: str = self.bot.color_from_hex(log_renamed_color)
         self.log_restored_color: str = self.bot.color_from_hex(log_restored_color)
         self.log_resolved_color: str = self.bot.color_from_hex(log_resolved_color)
@@ -379,18 +390,15 @@ class HelpChatServerState:
         self.log_fake_out_color: str = self.bot.color_from_hex(log_fake_out_color)
 
         # @@ Identify roles
-        self.renamed_asker_role: discord.Role = self.bot.get_role(
-            self.server, renamed_asker_role
-        )
-        self.log.info(f"Identified renamed asker role: {self.renamed_asker_role}")
 
-        self.role_that_can_rename: discord.Role = self.bot.get_role(
-            self.server, role_that_can_rename
-        )
-        self.log.info(f"Identified role that can rename: {self.role_that_can_rename}")
+        self.helper_role: discord.Role = self.bot.get_role(self.server, helper_role)
+        self.log.info(f"Identified helper role: {self.helper_role}")
 
         self.ignored_role: discord.Role = self.bot.get_role(self.server, ignored_role)
         self.log.info(f"Identified ignored role: {self.ignored_role}")
+
+        self.renamed_role: discord.Role = self.bot.get_role(self.server, renamed_role)
+        self.log.info(f"Identified renamed role: {self.renamed_role}")
 
         # @@ Init toggles
         self.persist_asker: bool = persist_asker
@@ -614,21 +622,22 @@ class HelpChatServerState:
                 except Exception:
                     self.log.exception(f"Failed to identify asker in {channel}")
 
-    async def set_asker(self, channel: discord.Channel, asker: discord.Member):
+    async def set_asker(
+        self, channel: discord.Channel, asker: discord.Member
+    ) -> discord.Member:
+        # Just force-set the channel with the new asker.
         state = self.get_channel_state(channel)
-        new_topic = self.build_channel_description(channel, state, asker=asker)
-        try:
-            await self.bot.edit_channel(channel, topic=new_topic)
-        except Exception:
-            self.log.exception(f"Failed to name channel {channel} after asker: {asker}")
+        await self.set_channel(channel, state, asker=asker)
+        return asker
 
-    async def delete_asker(self, channel: discord.Channel):
+    async def delete_asker(self, channel: discord.Channel) -> discord.Member:
         old_asker = await self.get_asker(channel)
         if old_asker:
             state = self.get_channel_state(channel)
             description = state.format_description(channel)
             try:
                 await self.bot.edit_channel(channel, topic=description or "")
+                return old_asker
             except Exception:
                 self.log.exception(f"Failed to delete asker in {channel}")
 
@@ -678,7 +687,7 @@ class HelpChatServerState:
             asker = await self.get_asker(channel)
         # Set the new channel name, which doubles as its persistent state.
         channel_key = self.get_channel_key(channel)
-        if asker and self.renamed_asker_role in asker.roles:
+        if asker and self.renamed_role in asker.roles:
             new_name = state.format_name(key=channel_key, channel=channel)
         else:
             new_name = state.format_name(key=channel_key, channel=channel, asker=asker)
@@ -897,42 +906,71 @@ class HelpChatServerState:
                 if await self.remind(channel, asker):
                     return asker
 
+    async def reassign_asker(
+        self, channel: discord.Channel, new_asker: discord.Member, actor: discord.Member
+    ) -> typing.Tuple[discord.Member, discord.Member]:
+        # Attempt to change the asker of the channel.
+        # 1. Must have askers enabled
+        # 2. Must have a helper role defined
+        # 3. Actor must have the asker role
+        if (
+            self.persist_asker
+            and self.helper_role
+            and (self.helper_role in actor.roles)
+        ):
+            old_asker = await self.get_asker(channel)
+            if await self.set_asker(channel, new_asker):
+                # Return the old asker (if there was one), as well as the new one so
+                # that we at least know that reassignment was successful.
+                return (old_asker, new_asker)
+        return (None, None)
+
     async def rename_asker(
         self, channel: discord.Channel, actor: discord.Member
     ) -> discord.Member:
-        # 1. must have asker's enabled
-        # 2. must have enabled renamed_asker_role and role_that_can_rename
-        # 3. actor must have role_that_can_rename (permission)
-        # 4. asker must be recorded and not have role_that_can_rename (immunity)
-        #    ... and also not already have renamed_role
+        # Attempt to rename the channel and start disregarding the asker's name.
+        # 1. Must have askers enabled
+        # 2. Must have a renamed role defined
+        # 3. Must have a helper role defined
+        # 4. Actor must have the helper role
         if (
             self.persist_asker
-            and self.renamed_asker_role
-            and self.role_that_can_rename
-            and self.role_that_can_rename in actor.roles
+            and self.renamed_role
+            and self.helper_role
+            and (self.helper_role in actor.roles)
         ):
             asker = await self.get_asker(channel)
+            # 5. Asker must exist
+            # 6. Asker must not have the helper role (immunity)
+            # 7. Asker must not already have the renamed role
             if (
                 asker
-                and (self.role_that_can_rename not in asker.roles)
-                and (self.renamed_asker_role not in asker.roles)
+                and (self.helper_role not in asker.roles)
+                and (self.renamed_role not in asker.roles)
             ):
-                await self.bot.add_roles(asker, self.renamed_asker_role)
+                await self.bot.add_roles(asker, self.renamed_role)
                 await self.reset_channel(channel)
                 return asker
 
     async def restore_asker(
         self, channel: discord.Channel, actor: discord.Member
     ) -> discord.Member:
+        # Attempt to restore the channel name and stop disregarding the asker's name.
+        # 1. Must have askers enabled
+        # 2. Must have a renamed role defined
+        # 3. Must have a helper role defined
+        # 4. Actor must have the helper role
         if (
             self.persist_asker
-            and self.renamed_asker_role
-            and self.role_that_can_rename
-            and self.role_that_can_rename in actor.roles
+            and self.renamed_role
+            and self.helper_role
+            and (self.helper_role in actor.roles)
         ):
             asker = await self.get_asker(channel)
-            if asker and self.renamed_asker_role in asker.roles:
-                await self.bot.remove_roles(asker, self.renamed_asker_role)
+            # 5. Asker must exist
+            # 6. Asker must have the renamed role in order to remove it
+            if asker and (self.renamed_role in asker.roles):
+                await self.bot.remove_roles(asker, self.renamed_role)
                 await self.reset_channel(channel)
                 return asker
 
@@ -1001,6 +1039,40 @@ class HelpChatServerState:
                 return
             await self.relocate(message, reactor)
             await self.bot.add_reaction(message, self.relocate_emoji)
+        # @@ REASSIGN
+        # On the first reaction to a *recent human* message in a *managed* channel.
+        elif (
+            reaction.emoji == self.reassign_emoji
+            and reaction.count == 1
+            and author != self.bot.user
+            and channel in self.channels
+            and await self.bot.is_latest_message(
+                message, limit=self.preemptive_cache_size
+            )
+        ):
+            if self.ignored_role in reactor.roles:
+                return
+            old_asker, new_asker = await self.reassign_asker(
+                channel, new_asker=author, actor=reactor
+            )
+            if old_asker:
+                await self.bot.add_reaction(message, self.reassign_emoji)
+                await self.log_to_channel(
+                    emoji=self.log_reassigned_emoji,
+                    description=f"reassigned {channel.mention} from {self.log_username(old_asker)} to {self.log_username(new_asker)}",
+                    message=message,
+                    actor=reactor,
+                    color=self.log_reassigned_color,
+                )
+            elif new_asker:
+                await self.bot.add_reaction(message, self.reassign_emoji)
+                await self.log_to_channel(
+                    emoji=self.log_reassigned_emoji,
+                    description=f"reassigned {channel.mention} to {self.log_username(new_asker)}",
+                    message=message,
+                    actor=reactor,
+                    color=self.log_reassigned_color,
+                )
         # @@ RESOLVE
         # On the first reaction to a *recent* message in a *managed* channel.
         elif (
