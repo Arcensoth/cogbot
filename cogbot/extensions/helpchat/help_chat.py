@@ -249,10 +249,13 @@ class HelpChat:
 
     @checks.is_staff()
     @cmd_helpchat.command(pass_context=True, name="prompt")
-    async def cmd_helpchat_prompt(self, ctx: Context):
-        channel: discord.Channel = ctx.message.channel
+    async def cmd_helpchat_prompt(self, ctx: Context, channel: discord.Channel = None):
+        channel: discord.Channel = channel or ctx.message.channel
         state = self.get_state(channel.server)
-        await state.send_prompt_message(channel)
+        if await state.maybe_send_prompt_message(channel):
+            await self.bot.react_success(ctx)
+        else:
+            await self.bot.react_neutral(ctx)
 
     @checks.is_staff()
     @cmd_helpchat.command(pass_context=True, name="sync")

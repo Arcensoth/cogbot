@@ -843,13 +843,14 @@ class HelpChatServerState:
                 and em_description[:20] == self.prompt_message[:20]
             )
 
-    async def maybe_send_prompt_message(self, channel: discord.Channel):
+    async def maybe_send_prompt_message(self, channel: discord.Channel) -> bool:
         # Send hoisted message, if any, into the newly-hoisted channel - but
         # only if it's not already the most recent message (which can happen if
         # someone fakes-out the channel by deleting their own message).
         if self.prompt_message and not await self.is_channel_prompted(channel):
             em = discord.Embed(description=self.prompt_message, color=self.prompt_color)
             await self.bot.send_message(channel, embed=em)
+            return True
 
     async def maybe_duck_channel(
         self, channel: discord.Channel, message: discord.Message
