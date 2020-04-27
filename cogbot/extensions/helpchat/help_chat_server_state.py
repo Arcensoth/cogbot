@@ -125,10 +125,10 @@ class HelpChatServerState:
         server: discord.Server,
         channels: typing.List[dict],
         log_channel: str = None,
-        relocate_message_with_channel: str = None,
-        relocate_message_without_channel: str = None,
-        reminder_message: str = None,
-        fake_out_message: str = None,
+        relocate_message_with_channel: StringOrStrings = None,
+        relocate_message_without_channel: StringOrStrings = None,
+        reminder_message: StringOrStrings = None,
+        fake_out_message: StringOrStrings = None,
         prompt_message: StringOrStrings = None,
         prompt_color: str = PROMPT_COLOR,
         seconds_until_idle: int = SECONDS_UNTIL_IDLE,
@@ -230,11 +230,15 @@ class HelpChatServerState:
         else:
             self.log.warning(f"No log channel was provided.")
 
-        self.relocate_message_with_channel: str = relocate_message_with_channel
-        self.relocate_message_without_channel: str = relocate_message_without_channel
+        self.relocate_message_with_channel: str = flatten_string(
+            relocate_message_with_channel
+        )
+        self.relocate_message_without_channel: str = flatten_string(
+            relocate_message_without_channel
+        )
 
-        self.reminder_message: str = reminder_message
-        self.fake_out_message: str = fake_out_message
+        self.reminder_message: str = flatten_string(reminder_message)
+        self.fake_out_message: str = flatten_string(fake_out_message)
 
         self.prompt_message: str = flatten_string(prompt_message)
 
