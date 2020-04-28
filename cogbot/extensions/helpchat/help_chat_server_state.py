@@ -1316,8 +1316,14 @@ class HelpChatServerState:
                     color=self.log_busied_from_hoisted_color,
                 )
             # @@ MESSAGE: PENDING
-            # Change to busy and log.
+            # *Maybe* change to busy and log.
             elif prior_state == self.pending_state:
+                # If asker's are enabled, only the asker can cause a change in
+                # state from pending. Short-circuit if it's somebody else.
+                if self.persist_asker:
+                    asker = await self.get_asker(channel)
+                    if author.id != asker.id:
+                        return
                 await self.set_channel_busy(channel)
                 await self.log_to_channel(
                     emoji=self.log_busied_from_pending_emoji,
