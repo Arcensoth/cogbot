@@ -91,6 +91,7 @@ LOG_REMINDED_EMOJI = REMIND_EMOJI
 LOG_RESOLVED_EMOJI = RESOLVE_EMOJI
 LOG_DUCKED_EMOJI = DUCKED_EMOJI
 LOG_BUSIED_FROM_HOISTED_EMOJI = HOISTED_EMOJI
+LOG_BUSIED_FROM_PENDING_EMOJI = '🛎️'
 LOG_BUSIED_FROM_ANSWERED_EMOJI = "🙊"
 LOG_FAKE_OUT_EMOJI = "🙈"
 LOG_ANSWERED_FROM_PENDING_EMOJI = PENDING_EMOJI
@@ -106,6 +107,7 @@ LOG_REMINDED_COLOR = "#9B59B6"
 LOG_RESOLVED_COLOR = "#77B255"
 LOG_DUCKED_COLOR = "#C77538"
 LOG_BUSIED_FROM_HOISTED_COLOR = "#FFDC5D"
+LOG_BUSIED_FROM_PENDING_COLOR = "#FFAC33"
 LOG_BUSIED_FROM_ANSWERED_COLOR = "#BF6952"
 LOG_FAKE_OUT_COLOR = "#BF6952"
 LOG_ANSWERED_FROM_PENDING_COLOR = "#41BEA4"
@@ -190,6 +192,7 @@ class HelpChatServerState:
         log_resolved_emoji: str = LOG_RESOLVED_EMOJI,
         log_ducked_emoji: str = LOG_DUCKED_EMOJI,
         log_busied_from_hoisted_emoji: str = LOG_BUSIED_FROM_HOISTED_EMOJI,
+        log_busied_from_pending_emoji: str = LOG_BUSIED_FROM_PENDING_EMOJI,
         log_busied_from_answered_emoji: str = LOG_BUSIED_FROM_ANSWERED_EMOJI,
         log_fake_out_emoji: str = LOG_FAKE_OUT_EMOJI,
         log_answered_from_pending_emoji: str = LOG_ANSWERED_FROM_PENDING_EMOJI,
@@ -205,6 +208,7 @@ class HelpChatServerState:
         log_resolved_color: str = LOG_RESOLVED_COLOR,
         log_ducked_color: str = LOG_DUCKED_COLOR,
         log_busied_from_hoisted_color: str = LOG_BUSIED_FROM_HOISTED_COLOR,
+        log_busied_from_pending_color: str = LOG_BUSIED_FROM_PENDING_COLOR,
         log_busied_from_answered_color: str = LOG_BUSIED_FROM_ANSWERED_COLOR,
         log_fake_out_color: str = LOG_FAKE_OUT_COLOR,
         log_answered_from_pending_color: str = LOG_ANSWERED_FROM_PENDING_COLOR,
@@ -386,6 +390,7 @@ class HelpChatServerState:
         self.log_reminded_emoji: str = log_reminded_emoji
         self.log_ducked_emoji: str = log_ducked_emoji
         self.log_busied_from_hoisted_emoji: str = log_busied_from_hoisted_emoji
+        self.log_busied_from_pending_emoji: str = log_busied_from_pending_emoji
         self.log_busied_from_answered_emoji: str = log_busied_from_answered_emoji
         self.log_fake_out_emoji: str = log_fake_out_emoji
         self.log_answered_from_pending_emoji: str = log_answered_from_pending_emoji
@@ -403,6 +408,9 @@ class HelpChatServerState:
         self.log_ducked_color: str = self.bot.color_from_hex(log_ducked_color)
         self.log_busied_from_hoisted_color: str = self.bot.color_from_hex(
             log_busied_from_hoisted_color
+        )
+        self.log_busied_from_pending_color: str = self.bot.color_from_hex(
+            log_busied_from_pending_color
         )
         self.log_busied_from_answered_color: str = self.bot.color_from_hex(
             log_busied_from_answered_color
@@ -1312,6 +1320,15 @@ class HelpChatServerState:
                         message=message,
                         color=self.log_busied_from_hoisted_color,
                     )
+                # Pending: change to busy and log.
+                elif prior_state == self.pending_state:
+                    await self.set_channel_busy(channel)
+                    await self.log_to_channel(
+                        emoji=self.log_busied_from_pending_emoji,
+                        description=f"responded in {channel.mention}",
+                        message=message,
+                        color=self.log_busied_from_pending_color,
+                    )
                 # Answered: change to busy and log.
                 elif prior_state == self.answered_state:
                     await self.set_channel_busy(channel)
@@ -1321,7 +1338,7 @@ class HelpChatServerState:
                         message=message,
                         color=self.log_busied_from_answered_color,
                     )
-                # Otherwise (idle/pending): just change to busy without logging.
+                # Otherwise (idle): just change to busy without logging.
                 else:
                     await self.set_channel_busy(channel)
 
