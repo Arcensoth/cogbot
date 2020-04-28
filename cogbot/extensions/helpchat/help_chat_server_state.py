@@ -1112,15 +1112,12 @@ class HelpChatServerState:
             await self.relocate(message, reactor)
             await self.bot.add_reaction(message, self.relocate_emoji)
         # @@ REASSIGN
-        # On the first reaction to a *recent human* message in a *managed* channel.
+        # On the first reaction to a *human* message in a *managed* channel.
         elif (
             reaction.emoji == self.reassign_emoji
             and reaction.count == 1
             and author != self.bot.user
             and channel in self.channels
-            and await self.bot.is_latest_message(
-                message, limit=self.preemptive_cache_size
-            )
         ):
             if self.ignored_role in reactor.roles:
                 return
