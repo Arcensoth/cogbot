@@ -1234,6 +1234,8 @@ class HelpChatServerState:
     async def on_message(self, message: discord.Message):
         channel: discord.Channel = message.channel
         author: discord.Member = message.author
+        # Some actions may vary depending on the prior channel state.
+        prior_state: ChannelState = self.get_channel_state(channel)
         # Unlike with reactions, we only care about managed channels here.
         if channel in self.channels:
             # @@ RESOLVE
@@ -1303,41 +1305,40 @@ class HelpChatServerState:
             # @@ QUACK
             elif message.content == str(self.ducked_emoji):
                 await self.maybe_duck_channel(channel, message)
+            # @@ MESSAGE: HOISTED
+            # Update asker, change to busy, and log.
+            elif prior_state == self.hoisted_state:
+                await self.set_channel_busy(channel, asker=author)
+                await self.log_to_channel(
+                    emoji=self.log_busied_from_hoisted_emoji,
+                    description=f"asked in {channel.mention}",
+                    message=message,
+                    color=self.log_busied_from_hoisted_color,
+                )
+            # @@ MESSAGE: PENDING
+            # Change to busy and log.
+            elif prior_state == self.pending_state:
+                await self.set_channel_busy(channel)
+                await self.log_to_channel(
+                    emoji=self.log_busied_from_pending_emoji,
+                    description=f"responded in {channel.mention}",
+                    message=message,
+                    color=self.log_busied_from_pending_color,
+                )
+            # @@ MESSAGE: ANSWERED
+            # Change to busy and log.
+            elif prior_state == self.answered_state:
+                await self.set_channel_busy(channel)
+                await self.log_to_channel(
+                    emoji=self.log_busied_from_answered_emoji,
+                    description=f"re-opened {channel.mention}",
+                    message=message,
+                    color=self.log_busied_from_answered_color,
+                )
             # @@ ANYTHING ELSE
-            # Any other message will attempt to mark the channel as busy.
+            # Just change to busy without logging.
             else:
-                # Take a different action depending on current channel state.
-                prior_state: ChannelState = self.get_channel_state(channel)
-                # Hoisted: update asker, change to busy, and log.
-                if prior_state == self.hoisted_state:
-                    await self.set_channel_busy(channel, asker=author)
-                    await self.log_to_channel(
-                        emoji=self.log_busied_from_hoisted_emoji,
-                        description=f"asked in {channel.mention}",
-                        message=message,
-                        color=self.log_busied_from_hoisted_color,
-                    )
-                # Pending: change to busy and log.
-                elif prior_state == self.pending_state:
-                    await self.set_channel_busy(channel)
-                    await self.log_to_channel(
-                        emoji=self.log_busied_from_pending_emoji,
-                        description=f"responded in {channel.mention}",
-                        message=message,
-                        color=self.log_busied_from_pending_color,
-                    )
-                # Answered: change to busy and log.
-                elif prior_state == self.answered_state:
-                    await self.set_channel_busy(channel)
-                    await self.log_to_channel(
-                        emoji=self.log_busied_from_answered_emoji,
-                        description=f"re-opened {channel.mention}",
-                        message=message,
-                        color=self.log_busied_from_answered_color,
-                    )
-                # Otherwise (idle): just change to busy without logging.
-                else:
-                    await self.set_channel_busy(channel)
+                await self.set_channel_busy(channel)
 
     async def on_message_delete(self, message: discord.Message):
         channel: discord.Channel = message.channel
