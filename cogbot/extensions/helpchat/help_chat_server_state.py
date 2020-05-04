@@ -732,11 +732,20 @@ class HelpChatServerState:
         await self.sync_hoisted_channels()
 
     async def set_channel(
-        self, channel: discord.Channel, state: ChannelState, asker: discord.User = None
+        self,
+        channel: discord.Channel,
+        state: ChannelState,
+        asker: typing.Union[discord.User, False] = None,
     ):
-        # If askers are enabled, and one was not provided, find them ourselves.
+        # If askers are enabled, and one was not provided...
         if self.persist_asker and not asker:
-            asker = await self.get_asker(channel)
+            # Clear the asker if requested.
+            if asker is False:
+                await self.delete_asker(channel)
+                asker = None
+            # Otherwise find the asker ourselves.
+            else:
+                asker = await self.get_asker(channel)
         # Set the new channel name, which doubles as its persistent state.
         channel_key = self.get_channel_key(channel)
         if asker and self.renamed_role in asker.roles:
@@ -770,12 +779,9 @@ class HelpChatServerState:
                 or self.is_channel_idle(channel)
             )
         ):
-            # Make sure to clear the asker from newly-hoisted channels.
-            if self.persist_asker:
-                await self.delete_asker(channel)
-            # Actually hoist the channel.
-            await self.set_channel(channel, self.hoisted_state)
-            # And then attempt to send the prompt message.
+            # Hoist the channel and clear the asker.
+            await self.set_channel(channel, self.hoisted_state, asker=False)
+            # Attempt to send the prompt message.
             await self.maybe_send_prompt_message(channel)
             return True
 
