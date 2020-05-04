@@ -735,7 +735,7 @@ class HelpChatServerState:
         self,
         channel: discord.Channel,
         state: ChannelState,
-        asker: typing.Union[discord.User, False] = None,
+        asker: typing.Union[discord.User, bool] = None,
     ):
         # If askers are enabled, and one was not provided...
         if self.persist_asker and not asker:
