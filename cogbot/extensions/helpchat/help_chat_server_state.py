@@ -779,10 +779,10 @@ class HelpChatServerState:
                 or self.is_channel_idle(channel)
             )
         ):
-            # Hoist the channel and clear the asker.
-            await self.set_channel(channel, self.hoisted_state, asker=False)
             # Attempt to send the prompt message.
             await self.maybe_send_prompt_message(channel)
+            # Hoist the channel and clear the asker.
+            await self.set_channel(channel, self.hoisted_state, asker=False)
             return True
 
     async def set_channel_busy(
