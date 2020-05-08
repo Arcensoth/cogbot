@@ -760,8 +760,6 @@ class HelpChatServerState:
         await self.bot.edit_channel(
             channel, name=new_name, topic=new_topic, category=new_category
         )
-        # Always sync hoisted channels afterwards.
-        await self.sync_hoisted_channels()
 
     async def set_channel_hoisted(
         self, channel: discord.Channel, force: bool = False
@@ -791,6 +789,7 @@ class HelpChatServerState:
         # Any channel that's not already busy can become busy.
         if force or not self.is_channel_busy(channel):
             await self.set_channel(channel, self.busy_state, asker=asker)
+            await self.sync_hoisted_channels()
             return True
 
     async def set_channel_idle(
@@ -827,8 +826,8 @@ class HelpChatServerState:
     async def set_channel_ducked(
         self, channel: discord.Channel, force: bool = False
     ) -> bool:
-        # Any channel that's not already ducked can become ducked.
-        if force or not self.is_channel_ducked(channel):
+        # Only busy channels can become ducked.
+        if force or self.is_channel_busy(channel):
             await self.set_channel(channel, self.ducked_state)
             return True
 
