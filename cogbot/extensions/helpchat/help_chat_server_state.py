@@ -648,8 +648,8 @@ class HelpChatServerState:
     async def get_hoistable_channel(self, state: ChannelState) -> discord.Channel:
         # Go from oldest channel to newest, based on the timestap of the latest
         # message. Take the first channel that has passed its update threshold,
-        # so that we can be reasonably sure it has the capacity to transition
-        # states twice in quick succession.
+        # plus some, so that we can be reasonably sure it has the capacity to
+        # transition states twice in quick succession.
         channels: typing.List[discord.Channel] = list(self.get_channels(state))
         latest_messages = await self.bot.get_latest_messages(channels)
         now = datetime.utcnow()
@@ -875,8 +875,6 @@ class HelpChatServerState:
                 or self.is_channel_idle(channel)
             )
         ):
-            # Attempt to send the prompt message.
-            await self.maybe_send_prompt_message(channel)
             # Hoist the channel and clear the asker.
             await self.set_channel(
                 channel,
@@ -884,6 +882,9 @@ class HelpChatServerState:
                 ignore_throttling=ignore_throttling,
                 clear_asker=True,
             )
+            # Attempt to send the prompt message. We do this after, because we
+            # can't be certain the channel actually became hoisted.
+            await self.maybe_send_prompt_message(channel)
             return True
 
     async def set_channel_busy(
@@ -921,7 +922,10 @@ class HelpChatServerState:
             return True
 
     async def set_channel_answered(
-        self, channel: discord.Channel, force: bool = False
+        self,
+        channel: discord.Channel,
+        force: bool = False,
+        ignore_throttling: bool = False,
     ) -> bool:
         # All of busy, idle, and pending channels can become answered.
         # Note that hoisted channels cannot go directly to answered, as this
@@ -932,7 +936,9 @@ class HelpChatServerState:
             or self.is_channel_idle(channel)
             or self.is_channel_pending(channel)
         ):
-            await self.set_channel(channel, self.answered_state)
+            await self.set_channel(
+                channel, self.answered_state, ignore_throttling=ignore_throttling
+            )
             return True
 
     async def set_channel_ducked(
@@ -1011,6 +1017,13 @@ class HelpChatServerState:
                     color=self.log_ducked_color,
                 )
         except ChannelUpdateTooSoon:
+            await self.notify_throttling(message)
+
+    async def notify_throttling(
+        self, message: discord.Message = None, react: bool = True
+    ):
+        # TODO Can we send a message every X minutes? (requires in-memory cache)
+        if react:
             await self.bot.add_reaction(message, self.rate_limit_emoji)
 
     async def relocate(self, message: discord.Message, reactor: discord.Member):
@@ -1188,7 +1201,7 @@ class HelpChatServerState:
                     color=self.log_reassigned_color,
                 )
         except ChannelUpdateTooSoon:
-            await self.bot.add_reaction(message, self.rate_limit_emoji)
+            await self.notify_throttling(message)
 
     async def do_resolve(
         self, channel: discord.Channel, message: discord.Message, actor: discord.Member
@@ -1204,7 +1217,7 @@ class HelpChatServerState:
                 return
         # Otherwise, we can attempt to set the channel as answered.
         try:
-            if await self.set_channel_answered(channel):
+            if await self.set_channel_answered(channel, ignore_throttling=True):
                 await self.bot.add_reaction(message, self.resolve_emoji)
                 await self.log_to_channel(
                     emoji=self.log_resolved_emoji,
@@ -1214,7 +1227,7 @@ class HelpChatServerState:
                     color=self.log_resolved_color,
                 )
         except ChannelUpdateTooSoon:
-            await self.bot.add_reaction(message, self.rate_limit_emoji)
+            await self.notify_throttling(message)
 
     async def do_remind(
         self, channel: discord.Channel, message: discord.Message, actor: discord.Member
@@ -1233,7 +1246,7 @@ class HelpChatServerState:
                     color=self.log_reminded_color,
                 )
         except ChannelUpdateTooSoon:
-            await self.bot.add_reaction(message, self.rate_limit_emoji)
+            await self.notify_throttling(message)
 
     async def do_rename(
         self, channel: discord.Channel, message: discord.Message, actor: discord.Member
@@ -1252,7 +1265,7 @@ class HelpChatServerState:
                     color=self.log_renamed_color,
                 )
         except ChannelUpdateTooSoon:
-            await self.bot.add_reaction(message, self.rate_limit_emoji)
+            await self.notify_throttling(message)
 
     async def do_restore(
         self, channel: discord.Channel, message: discord.Message, actor: discord.Member
@@ -1271,7 +1284,7 @@ class HelpChatServerState:
                     color=self.log_restored_color,
                 )
         except ChannelUpdateTooSoon:
-            await self.bot.add_reaction(message, self.rate_limit_emoji)
+            await self.notify_throttling(message)
 
     async def try_hoist_channel(self):
         # If we've hit the max, don't hoist any more channels.
@@ -1445,7 +1458,7 @@ class HelpChatServerState:
                         color=self.log_busied_from_hoisted_color,
                     )
                 except ChannelUpdateTooSoon:
-                    await self.bot.add_reaction(message, self.rate_limit_emoji)
+                    await self.notify_throttling(message)
             # @@ MESSAGE: PENDING
             # *Maybe* change to busy and log.
             elif prior_state == self.pending_state:
@@ -1456,7 +1469,7 @@ class HelpChatServerState:
                     if author.id != asker.id:
                         return
                 try:
-                    await self.set_channel_busy(channel, ignore_throttling=True)
+                    await self.set_channel_busy(channel)
                     await self.log_to_channel(
                         emoji=self.log_busied_from_pending_emoji,
                         description=f"responded in {channel.mention}",
@@ -1464,12 +1477,14 @@ class HelpChatServerState:
                         color=self.log_busied_from_pending_color,
                     )
                 except ChannelUpdateTooSoon:
-                    await self.bot.add_reaction(message, self.rate_limit_emoji)
+                    await self.notify_throttling(message, react=False)
             # @@ MESSAGE: ANSWERED
             # Change to busy and log.
             elif prior_state == self.answered_state:
                 try:
-                    await self.set_channel_busy(channel, ignore_throttling=True)
+                    # Don't ignore throttling here, because we want to ignore it
+                    # on resolving instead.
+                    await self.set_channel_busy(channel)
                     await self.log_to_channel(
                         emoji=self.log_busied_from_answered_emoji,
                         description=f"re-opened {channel.mention}",
@@ -1477,14 +1492,14 @@ class HelpChatServerState:
                         color=self.log_busied_from_answered_color,
                     )
                 except ChannelUpdateTooSoon:
-                    await self.bot.add_reaction(message, self.rate_limit_emoji)
+                    await self.notify_throttling(message, react=False)
             # @@ ANYTHING ELSE
             # Just change to busy without logging.
             else:
                 try:
-                    await self.set_channel_busy(channel, ignore_throttling=True)
+                    await self.set_channel_busy(channel)
                 except ChannelUpdateTooSoon:
-                    await self.bot.add_reaction(message, self.rate_limit_emoji)
+                    await self.notify_throttling(message, react=False)
 
     async def on_message_delete(self, message: discord.Message):
         channel: discord.Channel = message.channel
