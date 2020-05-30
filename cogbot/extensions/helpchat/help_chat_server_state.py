@@ -13,9 +13,15 @@ from cogbot.extensions.helpchat.channel_state import ChannelState
 
 PROMPT_COLOR = "#00ACED"
 
+# 10 minutes by default allows room for a channel to transition out of busy, and
+# immediately back in to busy, without being rate-limited.
+SECONDS_TO_THROTTLE = 600
+
 SECONDS_UNTIL_IDLE = 1800
 SECONDS_TO_POLL = 60
 PREEMPTIVE_CACHE_SIZE = 10
+
+RATE_LIMIT_EMOJI = "⏳"
 
 RELOCATE_EMOJI = "➡️"
 REASSIGN_EMOJI = "🏷️"
@@ -115,6 +121,10 @@ LOG_HOISTED_FROM_PENDING_COLOR = "#FFAC33"
 LOG_HOISTED_FROM_IDLE_COLOR = "#FFAC33"
 LOG_NO_CHANNELS_TO_HOIST_COLOR = "#DD2E44"
 
+CHANNEL_TOPIC_TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
+CHANNEL_TOPIC_TIMESTAMP_PREFIX = "Last update: "
+CHANNEL_TOPIC_ASKER_PREFIX = "Current asker: "
+
 MENTION_PATTERN = re.compile(r"<@\!?(\w+)>")
 
 StringOrStrings = typing.Union[str, typing.List[str]]
@@ -122,6 +132,11 @@ StringOrStrings = typing.Union[str, typing.List[str]]
 
 def flatten_string(s: StringOrStrings) -> str:
     return "\n".join(s) if isinstance(s, list) else s
+
+
+class ChannelUpdateTooSoon(Exception):
+    def __init__(self, next_update: datetime):
+        self.next_update = next_update
 
 
 class HelpChatChannelEntry:
@@ -144,11 +159,13 @@ class HelpChatServerState:
         fake_out_message: StringOrStrings = None,
         prompt_message: StringOrStrings = None,
         prompt_color: str = PROMPT_COLOR,
+        second_to_throttle: int = SECONDS_TO_THROTTLE,
         seconds_until_idle: int = SECONDS_UNTIL_IDLE,
         seconds_to_poll: int = SECONDS_TO_POLL,
         preemptive_cache_size: int = PREEMPTIVE_CACHE_SIZE,
         min_hoisted_channels: int = 0,
         max_hoisted_channels: int = 0,
+        rate_limit_emoji: str = RATE_LIMIT_EMOJI,
         # action emoji
         relocate_emoji: str = RELOCATE_EMOJI,
         reassign_emoji: str = REASSIGN_EMOJI,
@@ -270,6 +287,9 @@ class HelpChatServerState:
 
         self.prompt_color: int = self.bot.color_from_hex(prompt_color)
 
+        self.second_to_throttle: int = second_to_throttle
+        self.channel_update_delta = timedelta(seconds=self.second_to_throttle)
+
         self.seconds_until_idle: int = seconds_until_idle
         self.seconds_to_poll: int = seconds_to_poll
 
@@ -277,6 +297,10 @@ class HelpChatServerState:
 
         self.min_hoisted_channels: int = min_hoisted_channels
         self.max_hoisted_channels: int = max(min_hoisted_channels, max_hoisted_channels)
+
+        self.rate_limit_emoji: typing.Union[str, discord.Emoji] = self.bot.get_emoji(
+            self.server, rate_limit_emoji
+        )
 
         # @@ Init action emoji
         self.relocate_emoji: typing.Union[str, discord.Emoji] = self.bot.get_emoji(
@@ -621,6 +645,37 @@ class HelpChatServerState:
     async def get_oldest_answered_channel(self) -> discord.Channel:
         return await self.get_oldest_channel(self.answered_state)
 
+    async def get_hoistable_channel(self, state: ChannelState) -> discord.Channel:
+        # Go from oldest channel to newest, based on the timestap of the latest
+        # message. Take the first channel that has passed its update threshold,
+        # so that we can be reasonably sure it has the capacity to transition
+        # states twice in quick succession.
+        channels: typing.List[discord.Channel] = list(self.get_channels(state))
+        latest_messages = await self.bot.get_latest_messages(channels)
+        now = datetime.utcnow()
+        if latest_messages:
+            latest_messages.sort(key=lambda message: message.timestamp)
+            for message in latest_messages:
+                channel = message.channel
+                last_update = self.get_last_update_timestamp(channel)
+                # If the channel does not have a last update recorded, just use
+                # the timestamp of the latest message as a fall-back.
+                if not last_update:
+                    last_update = message.timestamp
+                can_hoist_at = last_update + self.channel_update_delta
+                can_hoist_now = can_hoist_at < now
+                if can_hoist_now:
+                    return channel
+
+    async def get_hoistable_idle_channel(self) -> discord.Channel:
+        return await self.get_hoistable_channel(self.idle_state)
+
+    async def get_hoistable_pending_channel(self) -> discord.Channel:
+        return await self.get_hoistable_channel(self.pending_state)
+
+    async def get_hoistable_answered_channel(self) -> discord.Channel:
+        return await self.get_hoistable_channel(self.answered_state)
+
     def get_channel_key(self, channel: discord.Channel) -> str:
         channel_entry: HelpChatChannelEntry = self.channel_map.get(channel)
         if channel_entry:
@@ -635,32 +690,68 @@ class HelpChatServerState:
         self,
         channel: discord.Channel,
         state: ChannelState,
+        timestamp: datetime,
         asker: discord.Member = None,
     ) -> str:
+        timestamp_str = timestamp.strftime(CHANNEL_TOPIC_TIMESTAMP_FORMAT)
         description = state.format_description(channel, asker)
+        # store the last update timestamp
+        description += f"\n\n{CHANNEL_TOPIC_TIMESTAMP_PREFIX}{timestamp_str}"
+        # store the asker, if enabled
         if self.persist_asker and asker:
-            return "\n".join((description, "", "Current asker:", asker.mention))
-        else:
-            return description
+            description += f"\n\n{CHANNEL_TOPIC_ASKER_PREFIX}{asker.mention}"
+        return description
 
     def log_username(self, user: discord.User) -> str:
         if self.log_verbose_usernames:
             return f"{user.mention} ({user})"
         return user.mention
 
-    async def get_asker(self, channel: discord.Channel) -> discord.Member:
-        server: discord.Server = channel.server
+    def get_last_update_timestamp(self, channel: discord.Channel) -> datetime:
         if channel.topic:
             topic_lines = str(channel.topic).splitlines()
-            last_line = topic_lines[-1]
-            mention_match = MENTION_PATTERN.match(last_line)
-            if mention_match:
-                (user_id,) = mention_match.groups()
+            line_with_timestamp = None
+            for line in reversed(topic_lines):
+                if line.startswith(CHANNEL_TOPIC_TIMESTAMP_PREFIX):
+                    line_with_timestamp = line
+                    break
+            if line_with_timestamp:
+                text_with_timestamp = line_with_timestamp[
+                    len(CHANNEL_TOPIC_TIMESTAMP_PREFIX) :
+                ]
                 try:
+                    timestamp = datetime.strptime(
+                        text_with_timestamp, CHANNEL_TOPIC_TIMESTAMP_FORMAT
+                    )
+                    return timestamp
+                except:
+                    pass
+
+    def get_next_update_timestamp(self, channel: discord.Channel) -> datetime:
+        last_update = self.get_last_update_timestamp(channel)
+        # If no timestamp has been recorded yet, just return something that's
+        # guaranteed to be old enough.
+        if not last_update:
+            return datetime.utcnow() - self.channel_update_delta
+        next_update = last_update + self.channel_update_delta
+        return next_update
+
+    async def get_asker(self, channel: discord.Channel) -> discord.Member:
+        if channel.topic:
+            topic_lines = str(channel.topic).splitlines()
+            line_with_asker = None
+            for line in reversed(topic_lines):
+                if line.startswith(CHANNEL_TOPIC_ASKER_PREFIX):
+                    line_with_asker = line
+                    break
+            if line_with_asker:
+                text_with_asker = line_with_asker[len(CHANNEL_TOPIC_ASKER_PREFIX) :]
+                mention_match = MENTION_PATTERN.match(text_with_asker)
+                if mention_match:
+                    (user_id,) = mention_match.groups()
+                    server: discord.Server = channel.server
                     member = server.get_member(user_id)
                     return member
-                except Exception:
-                    self.log.exception(f"Failed to identify asker in {channel}")
 
     async def set_asker(
         self, channel: discord.Channel, asker: discord.Member
@@ -669,17 +760,6 @@ class HelpChatServerState:
         state = self.get_channel_state(channel)
         await self.set_channel(channel, state, asker=asker)
         return asker
-
-    async def delete_asker(self, channel: discord.Channel) -> discord.Member:
-        old_asker = await self.get_asker(channel)
-        if old_asker:
-            state = self.get_channel_state(channel)
-            description = state.format_description(channel)
-            try:
-                await self.bot.edit_channel(channel, topic=description or "")
-                return old_asker
-            except Exception:
-                self.log.exception(f"Failed to delete asker in {channel}")
 
     async def sync_channel_positions(self):
         # Go in reverse in case the positions were reverted. Otherwise, this
@@ -698,7 +778,10 @@ class HelpChatServerState:
                 latest_message = await self.bot.get_latest_message(channel)
                 # If there's no latest message, then... set it as answered?
                 if not latest_message:
-                    await self.set_channel_answered(channel)
+                    try:
+                        await self.set_channel_answered(channel)
+                    except ChannelUpdateTooSoon:
+                        pass
                     continue
                 now: datetime = datetime.utcnow()
                 latest: datetime = latest_message.timestamp
@@ -706,15 +789,21 @@ class HelpChatServerState:
                 if now > then:
                     # Busy channels become idle.
                     if state == self.busy_state:
-                        await self.set_channel_idle(channel)
+                        try:
+                            await self.set_channel_idle(channel)
+                        except ChannelUpdateTooSoon:
+                            pass
                     # Pending channels become answered.
                     elif state == self.pending_state:
-                        if await self.set_channel_answered(channel):
-                            await self.log_to_channel(
-                                emoji=self.log_answered_from_pending_emoji,
-                                description=f"{channel.mention} remained inactive and was automatically resolved",
-                                color=self.log_answered_from_pending_color,
-                            )
+                        try:
+                            if await self.set_channel_answered(channel):
+                                await self.log_to_channel(
+                                    emoji=self.log_answered_from_pending_emoji,
+                                    description=f"{channel.mention} remained inactive and was automatically resolved",
+                                    color=self.log_answered_from_pending_color,
+                                )
+                        except ChannelUpdateTooSoon:
+                            pass
 
     async def sync_hoisted_channels(self):
         # Don't do anything unless we care about hoisted channels.
@@ -735,17 +824,21 @@ class HelpChatServerState:
         self,
         channel: discord.Channel,
         state: ChannelState,
+        ignore_throttling: bool = False,
         asker: typing.Union[discord.User, bool] = None,
+        clear_asker: bool = False,
     ):
-        # If askers are enabled, and one was not provided...
-        if self.persist_asker and not asker:
-            # Clear the asker if requested.
-            if asker is False:
-                await self.delete_asker(channel)
-                asker = None
-            # Otherwise find the asker ourselves.
-            else:
-                asker = await self.get_asker(channel)
+        now = datetime.utcnow()
+        # If we're not ignoring throttling, make sure it's not too soon for the
+        # channel to update again.
+        if not ignore_throttling:
+            next_update = self.get_next_update_timestamp(channel)
+            if next_update > now:
+                raise ChannelUpdateTooSoon(next_update)
+        # If askers are enabled, one was not provided, and we have not been
+        # asked to clear the asker, then determine the asker automatically.
+        if self.persist_asker and (not asker) and (not clear_asker):
+            asker = await self.get_asker(channel)
         # Set the new channel name, which doubles as its persistent state.
         channel_key = self.get_channel_key(channel)
         if asker and self.renamed_role in asker.roles:
@@ -753,7 +846,9 @@ class HelpChatServerState:
         else:
             new_name = state.format_name(key=channel_key, channel=channel, asker=asker)
         # Determine the new topic based on the new channel state.
-        new_topic = self.build_channel_description(channel, state, asker=asker)
+        new_topic = self.build_channel_description(
+            channel, state, timestamp=now, asker=asker
+        )
         # Determine the new category as well.
         new_category = state.category
         # And finally, it's time to update the channel all in one go.
@@ -762,7 +857,10 @@ class HelpChatServerState:
         )
 
     async def set_channel_hoisted(
-        self, channel: discord.Channel, force: bool = False
+        self,
+        channel: discord.Channel,
+        force: bool = False,
+        ignore_throttling: bool = False,
     ) -> bool:
         # All of answered, pending, and idle channels can become hoisted when we
         # need to top-off the hoisted channels, each with their own priority.
@@ -780,15 +878,29 @@ class HelpChatServerState:
             # Attempt to send the prompt message.
             await self.maybe_send_prompt_message(channel)
             # Hoist the channel and clear the asker.
-            await self.set_channel(channel, self.hoisted_state, asker=False)
+            await self.set_channel(
+                channel,
+                self.hoisted_state,
+                ignore_throttling=ignore_throttling,
+                clear_asker=True,
+            )
             return True
 
     async def set_channel_busy(
-        self, channel: discord.Channel, force: bool = False, asker: discord.User = None
+        self,
+        channel: discord.Channel,
+        force: bool = False,
+        ignore_throttling: bool = False,
+        asker: discord.User = None,
     ) -> bool:
         # Any channel that's not already busy can become busy.
         if force or not self.is_channel_busy(channel):
-            await self.set_channel(channel, self.busy_state, asker=asker)
+            await self.set_channel(
+                channel,
+                self.busy_state,
+                ignore_throttling=ignore_throttling,
+                asker=asker,
+            )
             await self.sync_hoisted_channels()
             return True
 
@@ -831,15 +943,20 @@ class HelpChatServerState:
             await self.set_channel(channel, self.ducked_state)
             return True
 
-    async def reset_channel(self, channel: discord.Channel):
+    async def reset_channel(
+        self, channel: discord.Channel, ignore_throttling: bool = False
+    ):
         # Managed channels with an unknown state (perhaps due to outdated
         # emoji) will be considered answered.
         state = self.get_channel_state(channel) or self.answered_state
-        await self.set_channel(channel, state)
+        await self.set_channel(channel, state, ignore_throttling=ignore_throttling)
 
     async def reset_all(self):
         for channel in self.channels:
-            await self.reset_channel(channel)
+            try:
+                await self.reset_channel(channel)
+            except ChannelUpdateTooSoon:
+                pass
 
     async def is_channel_prompted(self, channel: discord.Channel) -> bool:
         # Check if the latest message is the hoisted message prompt. We do this
@@ -884,14 +1001,17 @@ class HelpChatServerState:
             if author.id != m.author.id:
                 return False
         # Finally, if we get all the way here, we can duck the channel.
-        if await self.set_channel_ducked(channel):
-            await self.bot.add_reaction(message, self.ducked_emoji)
-            await self.log_to_channel(
-                emoji=self.log_ducked_emoji,
-                description=f"ducked {channel.mention}",
-                message=message,
-                color=self.log_ducked_color,
-            )
+        try:
+            if await self.set_channel_ducked(channel):
+                await self.bot.add_reaction(message, self.ducked_emoji)
+                await self.log_to_channel(
+                    emoji=self.log_ducked_emoji,
+                    description=f"ducked {channel.mention}",
+                    message=message,
+                    color=self.log_ducked_color,
+                )
+        except ChannelUpdateTooSoon:
+            await self.bot.add_reaction(message, self.rate_limit_emoji)
 
     async def relocate(self, message: discord.Message, reactor: discord.Member):
         author: discord.Member = message.author
@@ -1007,7 +1127,7 @@ class HelpChatServerState:
                 and (self.renamed_role not in asker.roles)
             ):
                 await self.bot.add_roles(asker, self.renamed_role)
-                await self.reset_channel(channel)
+                await self.reset_channel(channel, ignore_throttling=True)
                 return asker
 
     async def restore_asker(
@@ -1029,14 +1149,135 @@ class HelpChatServerState:
             # 6. Asker must have the renamed role in order to remove it
             if asker and (self.renamed_role in asker.roles):
                 await self.bot.remove_roles(asker, self.renamed_role)
-                await self.reset_channel(channel)
+                await self.reset_channel(channel, ignore_throttling=True)
                 return asker
+
+    async def do_relocate(
+        self, channel: discord.Channel, message: discord.Message, actor: discord.Member
+    ):
+        if self.ignored_role in actor.roles:
+            return
+        await self.relocate(message, actor)
+        await self.bot.add_reaction(message, self.relocate_emoji)
+
+    async def do_reassign(
+        self, channel: discord.Channel, message: discord.Message, actor: discord.Member
+    ):
+        if self.ignored_role in actor.roles:
+            return
+        try:
+            old_asker, new_asker = await self.reassign_asker(
+                channel, new_asker=message.author, actor=actor
+            )
+            if old_asker:
+                await self.bot.add_reaction(message, self.reassign_emoji)
+                await self.log_to_channel(
+                    emoji=self.log_reassigned_emoji,
+                    description=f"reassigned {channel.mention} from {self.log_username(old_asker)} to {self.log_username(new_asker)}",
+                    message=message,
+                    actor=actor,
+                    color=self.log_reassigned_color,
+                )
+            elif new_asker:
+                await self.bot.add_reaction(message, self.reassign_emoji)
+                await self.log_to_channel(
+                    emoji=self.log_reassigned_emoji,
+                    description=f"reassigned {channel.mention} to {self.log_username(new_asker)}",
+                    message=message,
+                    actor=actor,
+                    color=self.log_reassigned_color,
+                )
+        except ChannelUpdateTooSoon:
+            await self.bot.add_reaction(message, self.rate_limit_emoji)
+
+    async def do_resolve(
+        self, channel: discord.Channel, message: discord.Message, actor: discord.Member
+    ):
+        # Ignored users cannot resolve, unless it's their own channel.
+        if self.ignored_role in actor.roles:
+            # Short-circuit if askers are not enabled.
+            if not self.persist_asker:
+                return
+            # Short-circuit if the actor is not the asker.
+            asker = await self.get_asker(channel)
+            if actor.id != asker.id:
+                return
+        # Otherwise, we can attempt to set the channel as answered.
+        try:
+            if await self.set_channel_answered(channel):
+                await self.bot.add_reaction(message, self.resolve_emoji)
+                await self.log_to_channel(
+                    emoji=self.log_resolved_emoji,
+                    description=f"resolved {channel.mention}",
+                    message=message,
+                    actor=actor,
+                    color=self.log_resolved_color,
+                )
+        except ChannelUpdateTooSoon:
+            await self.bot.add_reaction(message, self.rate_limit_emoji)
+
+    async def do_remind(
+        self, channel: discord.Channel, message: discord.Message, actor: discord.Member
+    ):
+        if self.ignored_role in actor.roles:
+            return
+        try:
+            affected_asker = await self.remind_asker(channel, actor)
+            if affected_asker:
+                await self.bot.add_reaction(message, self.remind_emoji)
+                await self.log_to_channel(
+                    emoji=self.log_reminded_emoji,
+                    description=f"reminded {self.log_username(affected_asker)} in {channel.mention}",
+                    message=message,
+                    actor=actor,
+                    color=self.log_reminded_color,
+                )
+        except ChannelUpdateTooSoon:
+            await self.bot.add_reaction(message, self.rate_limit_emoji)
+
+    async def do_rename(
+        self, channel: discord.Channel, message: discord.Message, actor: discord.Member
+    ):
+        if self.ignored_role in actor.roles:
+            return
+        try:
+            affected_asker = await self.rename_asker(channel, actor)
+            if affected_asker:
+                await self.bot.add_reaction(message, self.rename_emoji)
+                await self.log_to_channel(
+                    emoji=self.log_renamed_emoji,
+                    description=f"renamed {channel.mention} from {affected_asker.mention}",
+                    message=message,
+                    actor=actor,
+                    color=self.log_renamed_color,
+                )
+        except ChannelUpdateTooSoon:
+            await self.bot.add_reaction(message, self.rate_limit_emoji)
+
+    async def do_restore(
+        self, channel: discord.Channel, message: discord.Message, actor: discord.Member
+    ):
+        if self.ignored_role in actor.roles:
+            return
+        try:
+            affected_asker = await self.restore_asker(channel, actor)
+            if affected_asker:
+                await self.bot.add_reaction(message, self.restore_emoji)
+                await self.log_to_channel(
+                    emoji=self.log_restored_emoji,
+                    description=f"restored {channel.mention} to {affected_asker.mention}",
+                    message=message,
+                    actor=actor,
+                    color=self.log_restored_color,
+                )
+        except ChannelUpdateTooSoon:
+            await self.bot.add_reaction(message, self.rate_limit_emoji)
 
     async def try_hoist_channel(self):
         # If we've hit the max, don't hoist any more channels.
         if self.num_hoisted_channels < self.max_hoisted_channels:
             # Always try to get the oldest answered channel first.
-            channel_to_hoist = await self.get_oldest_answered_channel()
+            channel_to_hoist = await self.get_hoistable_answered_channel()
             # If there weren't any answered channels available, but we're
             # under the min, then we'll consider pending and idle channels.
             if (not channel_to_hoist) and (
@@ -1044,7 +1285,7 @@ class HelpChatServerState:
             ):
                 # Prioritize pending channels over idle ones, as the former are
                 # more likely to have an acceptable answer.
-                channel_to_hoist = await self.get_oldest_pending_channel()
+                channel_to_hoist = await self.get_hoistable_pending_channel()
                 if channel_to_hoist:
                     # Log when we recycle a pending channel.
                     await self.log_to_channel(
@@ -1053,7 +1294,7 @@ class HelpChatServerState:
                         color=self.log_hoisted_from_pending_color,
                     )
                 else:
-                    channel_to_hoist = await self.get_oldest_idle_channel()
+                    channel_to_hoist = await self.get_hoistable_idle_channel()
                     # Or when we recycle an idle channel.
                     if channel_to_hoist:
                         await self.log_to_channel(
@@ -1073,7 +1314,12 @@ class HelpChatServerState:
             # Otherwise, if we're still meeting the min, we're fine even if we
             # don't have another channel to hoist.
             if channel_to_hoist:
-                return await self.set_channel_hoisted(channel_to_hoist)
+                try:
+                    return await self.set_channel_hoisted(
+                        channel_to_hoist, ignore_throttling=True
+                    )
+                except ChannelUpdateTooSoon:
+                    return None
 
     async def on_ready(self):
         self.log.info("Readying state...")
@@ -1090,9 +1336,8 @@ class HelpChatServerState:
             )
         except:
             self.log.exception("Failed to cache messages preemptively:")
-        # Reset and sync all channels.
+        # Sync all channels. Avoid resetting them and triggerring their cooldown immediately.
         await self.sync_all()
-        await self.reset_all()
         # Let people know we're ready.
         self.log.info("Help-chat initialization complete!")
         await self.log_to_channel(
@@ -1112,10 +1357,7 @@ class HelpChatServerState:
             and reaction.count == 1
             and author != self.bot.user
         ):
-            if self.ignored_role in reactor.roles:
-                return
-            await self.relocate(message, reactor)
-            await self.bot.add_reaction(message, self.relocate_emoji)
+            await self.do_relocate(channel, message, reactor)
         # @@ REASSIGN
         # On the first reaction to a *human* message in a *managed* channel.
         elif (
@@ -1124,29 +1366,7 @@ class HelpChatServerState:
             and author != self.bot.user
             and channel in self.channels
         ):
-            if self.ignored_role in reactor.roles:
-                return
-            old_asker, new_asker = await self.reassign_asker(
-                channel, new_asker=author, actor=reactor
-            )
-            if old_asker:
-                await self.bot.add_reaction(message, self.reassign_emoji)
-                await self.log_to_channel(
-                    emoji=self.log_reassigned_emoji,
-                    description=f"reassigned {channel.mention} from {self.log_username(old_asker)} to {self.log_username(new_asker)}",
-                    message=message,
-                    actor=reactor,
-                    color=self.log_reassigned_color,
-                )
-            elif new_asker:
-                await self.bot.add_reaction(message, self.reassign_emoji)
-                await self.log_to_channel(
-                    emoji=self.log_reassigned_emoji,
-                    description=f"reassigned {channel.mention} to {self.log_username(new_asker)}",
-                    message=message,
-                    actor=reactor,
-                    color=self.log_reassigned_color,
-                )
+            await self.do_reassign(channel, message, reactor)
         # @@ RESOLVE
         # On the first reaction to a *recent* message in a *managed* channel.
         elif (
@@ -1157,25 +1377,7 @@ class HelpChatServerState:
                 message, limit=self.preemptive_cache_size
             )
         ):
-            # Ignored users cannot resolve, unless it's their own channel.
-            if self.ignored_role in reactor.roles:
-                # Short-circuit if askers are not enabled.
-                if not self.persist_asker:
-                    return
-                # Short-circuit if the reactor is not the asker.
-                asker = await self.get_asker(channel)
-                if reactor.id != asker.id:
-                    return
-            # Otherwise, we can attempt to set the channel as answered.
-            if await self.set_channel_answered(channel):
-                await self.bot.add_reaction(message, self.resolve_emoji)
-                await self.log_to_channel(
-                    emoji=self.log_resolved_emoji,
-                    description=f"resolved {channel.mention}",
-                    message=message,
-                    actor=reactor,
-                    color=self.log_resolved_color,
-                )
+            await self.do_resolve(channel, message, reactor)
         # @@ REMIND
         # On the first reaction to a *human* message in a *managed* channel.
         elif (
@@ -1184,19 +1386,7 @@ class HelpChatServerState:
             and author != self.bot.user
             and channel in self.channels
         ):
-            if self.ignored_role in reactor.roles:
-                return
-            # With the remind reaction, we can remind *anyone* - not just the
-            # channel asker.
-            if await self.remind(channel, author):
-                await self.bot.add_reaction(message, self.remind_emoji)
-                await self.log_to_channel(
-                    emoji=self.log_reminded_emoji,
-                    description=f"reminded {self.log_username(author)} in {channel.mention}",
-                    message=message,
-                    actor=reactor,
-                    color=self.log_reminded_color,
-                )
+            await self.do_remind(channel, message, reactor)
         # @@ RENAME
         # On the first reaction to *any* message in a *managed* channel.
         elif (
@@ -1204,18 +1394,7 @@ class HelpChatServerState:
             and reaction.count == 1
             and channel in self.channels
         ):
-            if self.ignored_role in reactor.roles:
-                return
-            affected_asker = await self.rename_asker(channel, reactor)
-            if affected_asker:
-                await self.bot.add_reaction(message, self.rename_emoji)
-                await self.log_to_channel(
-                    emoji=self.log_renamed_emoji,
-                    description=f"renamed {channel.mention} from {affected_asker.mention}",
-                    message=message,
-                    actor=reactor,
-                    color=self.log_renamed_color,
-                )
+            await self.do_rename(channel, message, reactor)
         # @@ RESTORE
         # On the first reaction to any message in a managed channel.
         elif (
@@ -1223,18 +1402,7 @@ class HelpChatServerState:
             and reaction.count == 1
             and channel in self.channels
         ):
-            if self.ignored_role in reactor.roles:
-                return
-            affected_asker = await self.restore_asker(channel, reactor)
-            if affected_asker:
-                await self.bot.add_reaction(message, self.restore_emoji)
-                await self.log_to_channel(
-                    emoji=self.log_restored_emoji,
-                    description=f"restored {channel.mention} to {affected_asker.mention}",
-                    message=message,
-                    actor=reactor,
-                    color=self.log_restored_color,
-                )
+            await self.do_restore(channel, message, reactor)
 
     async def on_message(self, message: discord.Message):
         channel: discord.Channel = message.channel
@@ -1246,80 +1414,38 @@ class HelpChatServerState:
             # @@ RESOLVE
             # Only when the message contains exactly the resolve emoji.
             if message.content == str(self.resolve_emoji):
-                # Ignored users cannot resolve, unless it's their own channel.
-                if self.ignored_role in author.roles:
-                    # Short-circuit if askers are not enabled.
-                    if not self.persist_asker:
-                        return
-                    # Short-circuit if the author is not the asker.
-                    asker = await self.get_asker(channel)
-                    if author.id != asker.id:
-                        return
-                # Otherwise, we can attempt to set the channel as answered.
-                if await self.set_channel_answered(channel):
-                    await self.bot.add_reaction(message, self.resolve_emoji)
-                    await self.log_to_channel(
-                        emoji=self.log_resolved_emoji,
-                        description=f"resolved {channel.mention}",
-                        message=message,
-                        color=self.log_resolved_color,
-                    )
+                await self.do_resolve(channel, message, author)
             # @@ REMIND
+            # Only when the message contains exactly the remind emoji.
             elif message.content == str(self.remind_emoji):
-                if self.ignored_role in author.roles:
-                    return
-                # With the remind message, we're automatically targetting the
-                # channel asker.
-                affected_asker = await self.remind_asker(channel, author)
-                if affected_asker:
-                    await self.bot.add_reaction(message, self.remind_emoji)
-                    await self.log_to_channel(
-                        emoji=self.log_reminded_emoji,
-                        description=f"reminded {self.log_username(affected_asker)} in {channel.mention}",
-                        message=message,
-                        color=self.log_reminded_color,
-                    )
+                await self.do_remind(channel, message, author)
             # @@ RENAME
             # Only when the message contains exactly the rename emoji.
             elif message.content == str(self.rename_emoji):
-                if self.ignored_role in author.roles:
-                    return
-                affected_asker = await self.rename_asker(channel, author)
-                if affected_asker:
-                    await self.bot.add_reaction(message, self.rename_emoji)
-                    await self.log_to_channel(
-                        emoji=self.log_renamed_emoji,
-                        description=f"renamed {channel.mention} from {affected_asker.mention}",
-                        message=message,
-                        color=self.log_renamed_color,
-                    )
+                await self.do_rename(channel, message, author)
             # @@ RESTORE
             # Only when the message contains exactly the restore emoji.
             elif message.content == str(self.restore_emoji):
-                if self.ignored_role in author.roles:
-                    return
-                affected_asker = await self.restore_asker(channel, author)
-                if affected_asker:
-                    await self.bot.add_reaction(message, self.restore_emoji)
-                    await self.log_to_channel(
-                        emoji=self.log_restored_emoji,
-                        description=f"restored {channel.mention} to {affected_asker.mention}",
-                        message=message,
-                        color=self.log_restored_color,
-                    )
-            # @@ QUACK
+                await self.do_restore(channel, message, author)
+            # @@ DUCK
+            # Only when the message contains exactly the ducked emoji.
             elif message.content == str(self.ducked_emoji):
                 await self.maybe_duck_channel(channel, message)
             # @@ MESSAGE: HOISTED
             # Update asker, change to busy, and log.
             elif prior_state == self.hoisted_state:
-                await self.set_channel_busy(channel, asker=author)
-                await self.log_to_channel(
-                    emoji=self.log_busied_from_hoisted_emoji,
-                    description=f"asked in {channel.mention}",
-                    message=message,
-                    color=self.log_busied_from_hoisted_color,
-                )
+                try:
+                    await self.set_channel_busy(
+                        channel, ignore_throttling=True, asker=author
+                    )
+                    await self.log_to_channel(
+                        emoji=self.log_busied_from_hoisted_emoji,
+                        description=f"asked in {channel.mention}",
+                        message=message,
+                        color=self.log_busied_from_hoisted_color,
+                    )
+                except ChannelUpdateTooSoon:
+                    await self.bot.add_reaction(message, self.rate_limit_emoji)
             # @@ MESSAGE: PENDING
             # *Maybe* change to busy and log.
             elif prior_state == self.pending_state:
@@ -1329,27 +1455,36 @@ class HelpChatServerState:
                     asker = await self.get_asker(channel)
                     if author.id != asker.id:
                         return
-                await self.set_channel_busy(channel)
-                await self.log_to_channel(
-                    emoji=self.log_busied_from_pending_emoji,
-                    description=f"responded in {channel.mention}",
-                    message=message,
-                    color=self.log_busied_from_pending_color,
-                )
+                try:
+                    await self.set_channel_busy(channel, ignore_throttling=True)
+                    await self.log_to_channel(
+                        emoji=self.log_busied_from_pending_emoji,
+                        description=f"responded in {channel.mention}",
+                        message=message,
+                        color=self.log_busied_from_pending_color,
+                    )
+                except ChannelUpdateTooSoon:
+                    await self.bot.add_reaction(message, self.rate_limit_emoji)
             # @@ MESSAGE: ANSWERED
             # Change to busy and log.
             elif prior_state == self.answered_state:
-                await self.set_channel_busy(channel)
-                await self.log_to_channel(
-                    emoji=self.log_busied_from_answered_emoji,
-                    description=f"re-opened {channel.mention}",
-                    message=message,
-                    color=self.log_busied_from_answered_color,
-                )
+                try:
+                    await self.set_channel_busy(channel, ignore_throttling=True)
+                    await self.log_to_channel(
+                        emoji=self.log_busied_from_answered_emoji,
+                        description=f"re-opened {channel.mention}",
+                        message=message,
+                        color=self.log_busied_from_answered_color,
+                    )
+                except ChannelUpdateTooSoon:
+                    await self.bot.add_reaction(message, self.rate_limit_emoji)
             # @@ ANYTHING ELSE
             # Just change to busy without logging.
             else:
-                await self.set_channel_busy(channel)
+                try:
+                    await self.set_channel_busy(channel, ignore_throttling=True)
+                except ChannelUpdateTooSoon:
+                    await self.bot.add_reaction(message, self.rate_limit_emoji)
 
     async def on_message_delete(self, message: discord.Message):
         channel: discord.Channel = message.channel
@@ -1373,8 +1508,11 @@ class HelpChatServerState:
                         )
                     else:
                         sent_message = None
-                    # Automatically set the channel as answered.
-                    await self.set_channel_answered(channel)
+                    # Automatically set the channel as answered... if it's not too soon.
+                    try:
+                        await self.set_channel_answered(channel)
+                    except ChannelUpdateTooSoon:
+                        await self.bot.add_reaction(sent_message, self.rate_limit_emoji)
                     # And create a log entry for this.
                     await self.log_to_channel(
                         emoji=self.log_fake_out_emoji,
