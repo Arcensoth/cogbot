@@ -4,6 +4,7 @@ import typing
 import discord
 from discord.ext import commands
 
+from cogbot import checks
 from cogbot.cog_bot import CogBot, RoleId
 
 log = logging.getLogger(__name__)
@@ -32,8 +33,11 @@ class JoinLeaveServerState:
         for role_entry in self.role_entries:
             for role_alias in role_entry.aliases:
                 self.role_entry_from_alias[role_alias] = role_entry
+        log.info(
+            f"Loaded {len(self.role_entries)} self-assignable roles with {len(self.role_entry_from_alias)} aliases"
+        )
 
-    async def join(
+    async def join_role(
         self, ctx: commands.Context, author: discord.Member, role_alias: str
     ):
         try:
@@ -45,7 +49,7 @@ class JoinLeaveServerState:
             log.info(f"{author} failed to join the role: {role_alias}")
             await self.bot.react_question(ctx)
 
-    async def leave(
+    async def leave_role(
         self, ctx: commands.Context, author: discord.Member, role_alias: str
     ):
         try:
@@ -56,6 +60,14 @@ class JoinLeaveServerState:
         except:
             log.info(f"{author} failed to leave the role: {role_alias}")
             await self.bot.react_question(ctx)
+
+    async def list_roles(self, ctx: commands.Context):
+        role_lines = [
+            f"{role_entry.role_id}  {role_entry.name}"
+            for role_entry in self.role_entries
+        ]
+        roles_str = "\n".join(role_lines)
+        await self.bot.say(f"Available self-assignable roles:\n```\n{roles_str}\n```")
 
 
 class JoinLeave:
@@ -81,7 +93,7 @@ class JoinLeave:
         if isinstance(author, discord.Member):
             state = self.get_state(author.server)
             if state:
-                await state.join(ctx, author, role_name)
+                await state.join_role(ctx, author, role_name)
 
     @commands.command(pass_context=True)
     async def leave(self, ctx: commands.Context, *, role_name: str):
@@ -90,7 +102,17 @@ class JoinLeave:
         if isinstance(author, discord.Member):
             state = self.get_state(author.server)
             if state:
-                await state.leave(ctx, author, role_name)
+                await state.leave_role(ctx, author, role_name)
+
+    @checks.is_staff()
+    @commands.command(pass_context=True)
+    async def roles(self, ctx: commands.Context):
+        message: discord.Message = ctx.message
+        author: discord.Member = message.author
+        if isinstance(author, discord.Member):
+            state = self.get_state(author.server)
+            if state:
+                await state.list_roles(ctx)
 
 
 def setup(bot):
