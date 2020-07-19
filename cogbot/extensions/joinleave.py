@@ -66,13 +66,25 @@ class JoinLeaveServerState:
             log.info(f"{author} failed to leave the role: {role_alias}")
             await self.bot.react_question(ctx)
 
-    async def list_roles(self, ctx: commands.Context):
-        role_lines = [
-            f"{role_entry.role_id}  {role_entry.name}"
-            for role_entry in self.role_entries
-        ]
+    async def list_roles(self, ctx: commands.Context, author: discord.Member):
+        role_lines = []
+        for role_entry in self.role_entries:
+            role: discord.Role = self.bot.get_role(self.server, role_entry.role_id)
+            role_lines.append(f"{role}")
+            role_aliases = role_entry.aliases
+            first_role_alias = role_aliases[0]
+            other_role_aliases = role_aliases[1:]
+            role_aliases_line = f"  >join {first_role_alias}"
+            if other_role_aliases:
+                other_role_aliases_str = " or ".join(
+                    f'"{role_alias}"' for role_alias in other_role_aliases
+                )
+                role_aliases_line = f"{role_aliases_line} (or {other_role_aliases_str})"
+            role_lines.append(role_aliases_line)
         roles_str = "\n".join(role_lines)
-        await self.bot.say(f"Available self-assignable roles:\n```\n{roles_str}\n```")
+        await self.bot.say(
+            f"{author.mention} Available self-assignable roles:\n```\n{roles_str}\n```"
+        )
 
 
 class JoinLeave:
@@ -159,7 +171,6 @@ class JoinLeave:
             if state:
                 await state.leave_role(ctx, author, role_name)
 
-    @checks.is_staff()
     @commands.command(pass_context=True)
     async def roles(self, ctx: commands.Context):
         message: discord.Message = ctx.message
@@ -167,7 +178,7 @@ class JoinLeave:
         if isinstance(author, discord.Member):
             state = self.get_state(author.server)
             if state:
-                await state.list_roles(ctx)
+                await state.list_roles(ctx, author)
 
     @checks.is_staff()
     @commands.command(pass_context=True)
