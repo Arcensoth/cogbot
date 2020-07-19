@@ -5,7 +5,7 @@ import discord
 from discord.ext import commands
 
 from cogbot import checks
-from cogbot.cog_bot import CogBot, RoleId
+from cogbot.cog_bot import CogBot, RoleId, ServerId
 
 log = logging.getLogger(__name__)
 
@@ -33,9 +33,14 @@ class JoinLeaveServerState:
         for role_entry in self.role_entries:
             for role_alias in role_entry.aliases:
                 self.role_entry_from_alias[role_alias] = role_entry
+
+    async def on_init(self):
         log.info(
-            f"Loaded {len(self.role_entries)} self-assignable roles with {len(self.role_entry_from_alias)} aliases"
+            f"Registered {len(self.role_entries)} self-assignable roles with {len(self.role_entry_from_alias)} aliases"
         )
+
+    async def on_destroy(self):
+        pass
 
     async def join_role(
         self, ctx: commands.Context, author: discord.Member, role_alias: str
@@ -73,18 +78,68 @@ class JoinLeaveServerState:
 class JoinLeave:
     def __init__(self, bot: CogBot, ext: str):
         self.bot: CogBot = bot
-        self.server_state: typing.Dict[discord.Server, JoinLeaveServerState] = {}
+        self.ext: str = ext
+        self.server_state: typing.Dict[ServerId, JoinLeaveServerState] = {}
         self.options = self.bot.state.get_extension_state(ext)
+        self.server_options: typing.Dict[ServerId, typing.Any] = {}
 
     def get_state(self, server: discord.Server) -> JoinLeaveServerState:
-        return self.server_state.get(server)
+        return self.server_state.get(server.id)
 
-    async def on_ready(self):
+    def set_state(self, server: discord.Server, state: JoinLeaveServerState):
+        self.server_state[server.id] = state
+
+    def remove_state(self, server: discord.Server):
+        if server.id in self.server_state:
+            del self.server_state[server.id]
+
+    async def create_state(
+        self, server: discord.Server, server_options: dict
+    ) -> JoinLeaveServerState:
+        state = JoinLeaveServerState(self.bot, server, **server_options)
+        self.set_state(server, state)
+        await state.on_init()
+        return state
+
+    async def setup_state(self, server: discord.Server) -> JoinLeaveServerState:
+        server_options = self.server_options[server.id]
+        # if options is just a string, use remote/external location
+        if isinstance(server_options, str):
+            state_address = server_options
+            try:
+                log.info(
+                    f"Loading state data for server {server} extension {self.ext} from: {state_address}"
+                )
+                actual_server_options = await self.bot.load_json(state_address)
+                log.info(
+                    f"Successfully loaded state data for server {server} extension {self.ext}"
+                )
+            except:
+                log.exception(
+                    f"Failed to load state data for server {server} extension {self.ext}; skipping..."
+                )
+                return
+            state = await self.create_state(server, actual_server_options)
+        # otherwise, use embedded/local config
+        else:
+            state = await self.create_state(server, server_options)
+        return state
+
+    async def reload(self):
+        # destroy all existing server states
+        for server_id, state in self.server_state.items():
+            await state.on_destroy()
+        # setup new server states
         for server_key, server_options in self.options.get("servers", {}).items():
             server = self.bot.get_server_from_key(server_key)
-            if server:
-                state = JoinLeaveServerState(self.bot, server, **server_options)
-                self.server_state[server] = state
+            if not server:
+                log.error(f"Skipping unknown server {server_key}.")
+                continue
+            self.server_options[server.id] = server_options
+            await self.setup_state(server)
+
+    async def on_ready(self):
+        await self.reload()
 
     @commands.command(pass_context=True)
     async def join(self, ctx: commands.Context, *, role_name: str):
@@ -113,6 +168,15 @@ class JoinLeave:
             state = self.get_state(author.server)
             if state:
                 await state.list_roles(ctx)
+
+    @checks.is_staff()
+    @commands.command(pass_context=True)
+    async def rolereload(self, ctx: commands.Context):
+        try:
+            await self.reload()
+            await self.bot.react_success(ctx)
+        except:
+            await self.bot.react_failure(ctx)
 
 
 def setup(bot):
