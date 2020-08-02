@@ -469,6 +469,9 @@ class HelpChatServerState:
         self.log_verbose_usernames: bool = log_verbose_usernames
         self.auto_poll: bool = auto_poll
 
+        ## @@ Rate limiting stuff
+        self.throttle_notif_cache: typing.Dict[ChannelId, datetime] = {}
+
         # @@ Setup polling task
         self.polling_task: asyncio.Task = None
         self.delta_until_idle = timedelta(seconds=self.seconds_until_idle)
@@ -1016,14 +1019,30 @@ class HelpChatServerState:
                     message=message,
                     color=self.log_ducked_color,
                 )
-        except ChannelUpdateTooSoon:
-            await self.notify_throttling(message)
+        except ChannelUpdateTooSoon as ex:
+            await self.notify_throttling(ex, message)
 
     async def notify_throttling(
-        self, message: discord.Message = None, react: bool = True
+        self, ex: ChannelUpdateTooSoon, message: discord.Message
     ):
-        # TODO Can we send a message every X minutes? (requires in-memory cache)
-        if react:
+        channel: discord.Channel = message.channel
+        now = datetime.utcnow()
+        last_notif = self.throttle_notif_cache.get(channel.id, None)
+        do_notif = True
+        if last_notif:
+            next_notif = last_notif + timedelta(seconds=self.second_to_throttle)
+            # either the next notification hasn't happened yet,
+            # or it hasn't happened during this rate-limiting cycle yet
+            do_notif = (next_notif <= now) or (next_notif < ex.next_update)
+        if do_notif:
+            self.throttle_notif_cache[channel.id] = now
+            delta = ex.next_update - now
+            minutes = delta.seconds // 60
+            seconds = delta.seconds % 60
+            response = f"This channel is being rate-limited, please try again in {minutes}m {seconds}s."
+            await self.bot.send_message(
+                channel, f"{message.author.mention} {self.rate_limit_emoji} {response}"
+            )
             await self.bot.add_reaction(message, self.rate_limit_emoji)
 
     async def relocate(self, message: discord.Message, reactor: discord.Member):
@@ -1200,8 +1219,8 @@ class HelpChatServerState:
                     actor=actor,
                     color=self.log_reassigned_color,
                 )
-        except ChannelUpdateTooSoon:
-            await self.notify_throttling(message)
+        except ChannelUpdateTooSoon as ex:
+            await self.notify_throttling(ex, message)
 
     async def do_resolve(
         self, channel: discord.Channel, message: discord.Message, actor: discord.Member
@@ -1226,8 +1245,8 @@ class HelpChatServerState:
                     actor=actor,
                     color=self.log_resolved_color,
                 )
-        except ChannelUpdateTooSoon:
-            await self.notify_throttling(message)
+        except ChannelUpdateTooSoon as ex:
+            await self.notify_throttling(ex, message)
 
     async def do_remind(
         self, channel: discord.Channel, message: discord.Message, actor: discord.Member
@@ -1245,8 +1264,8 @@ class HelpChatServerState:
                     actor=actor,
                     color=self.log_reminded_color,
                 )
-        except ChannelUpdateTooSoon:
-            await self.notify_throttling(message)
+        except ChannelUpdateTooSoon as ex:
+            await self.notify_throttling(ex, message)
 
     async def do_rename(
         self, channel: discord.Channel, message: discord.Message, actor: discord.Member
@@ -1264,8 +1283,8 @@ class HelpChatServerState:
                     actor=actor,
                     color=self.log_renamed_color,
                 )
-        except ChannelUpdateTooSoon:
-            await self.notify_throttling(message)
+        except ChannelUpdateTooSoon as ex:
+            await self.notify_throttling(ex, message)
 
     async def do_restore(
         self, channel: discord.Channel, message: discord.Message, actor: discord.Member
@@ -1283,8 +1302,8 @@ class HelpChatServerState:
                     actor=actor,
                     color=self.log_restored_color,
                 )
-        except ChannelUpdateTooSoon:
-            await self.notify_throttling(message)
+        except ChannelUpdateTooSoon as ex:
+            await self.notify_throttling(ex, message)
 
     async def try_hoist_channel(self):
         # If we've hit the max, don't hoist any more channels.
@@ -1457,8 +1476,8 @@ class HelpChatServerState:
                         message=message,
                         color=self.log_busied_from_hoisted_color,
                     )
-                except ChannelUpdateTooSoon:
-                    await self.notify_throttling(message)
+                except ChannelUpdateTooSoon as ex:
+                    await self.notify_throttling(ex, message)
             # @@ MESSAGE: PENDING
             # *Maybe* change to busy and log.
             elif prior_state == self.pending_state:
@@ -1476,8 +1495,8 @@ class HelpChatServerState:
                         message=message,
                         color=self.log_busied_from_pending_color,
                     )
-                except ChannelUpdateTooSoon:
-                    await self.notify_throttling(message, react=False)
+                except ChannelUpdateTooSoon as ex:
+                    await self.notify_throttling(ex, message)
             # @@ MESSAGE: ANSWERED
             # Change to busy and log.
             elif prior_state == self.answered_state:
@@ -1491,15 +1510,15 @@ class HelpChatServerState:
                         message=message,
                         color=self.log_busied_from_answered_color,
                     )
-                except ChannelUpdateTooSoon:
-                    await self.notify_throttling(message, react=False)
-            # @@ ANYTHING ELSE
+                except ChannelUpdateTooSoon as ex:
+                    await self.notify_throttling(ex, message)
+            # @@ ANYTHING ELSE (BUSY, IDLE)
             # Just change to busy without logging.
             else:
                 try:
                     await self.set_channel_busy(channel)
-                except ChannelUpdateTooSoon:
-                    await self.notify_throttling(message, react=False)
+                except ChannelUpdateTooSoon as ex:
+                    await self.notify_throttling(ex, message)
 
     async def on_message_delete(self, message: discord.Message):
         channel: discord.Channel = message.channel
@@ -1527,9 +1546,9 @@ class HelpChatServerState:
                     # Automatically set the channel as answered... if it's not too soon.
                     try:
                         await self.set_channel_answered(channel)
-                    except ChannelUpdateTooSoon:
+                    except ChannelUpdateTooSoon as ex:
                         if sent_message:
-                            await self.notify_throttling(sent_message)
+                            await self.notify_throttling(ex, sent_message)
                     # And create a log entry for this.
                     await self.log_to_channel(
                         emoji=self.log_fake_out_emoji,
