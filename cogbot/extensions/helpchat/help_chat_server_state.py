@@ -1512,6 +1512,7 @@ class HelpChatServerState:
                 # If the most recent message is now the prompt; probably yes.
                 if await self.is_channel_prompted(channel):
                     # Ping the user with a message, if configured.
+                    sent_message = None
                     if self.fake_out_message:
                         sent_message = await self.bot.send_message(
                             channel,
@@ -1527,7 +1528,8 @@ class HelpChatServerState:
                     try:
                         await self.set_channel_answered(channel)
                     except ChannelUpdateTooSoon:
-                        await self.bot.add_reaction(sent_message, self.rate_limit_emoji)
+                        if sent_message:
+                            await self.notify_throttling(sent_message)
                     # And create a log entry for this.
                     await self.log_to_channel(
                         emoji=self.log_fake_out_emoji,
