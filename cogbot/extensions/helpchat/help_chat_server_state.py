@@ -1020,32 +1020,46 @@ class HelpChatServerState:
                     color=self.log_ducked_color,
                 )
         except ChannelUpdateTooSoon as ex:
-            await self.notify_throttling(ex, message)
+            await self.notify_throttling(ex, message, actor=author)
 
     async def notify_throttling(
-        self, ex: ChannelUpdateTooSoon, message: discord.Message
+        self,
+        ex: ChannelUpdateTooSoon,
+        message: discord.Message,
+        actor: discord.Member = None,
+        reaction: discord.Reaction = None,
     ):
         channel: discord.Channel = message.channel
+        # Make sure we're only notifying about rate-limiting once per cycle.
         now = datetime.utcnow()
         last_notif = self.throttle_notif_cache.get(channel.id, None)
         do_notif = True
         if last_notif:
             next_notif = last_notif + timedelta(seconds=self.second_to_throttle)
-            # either the next notification hasn't happened yet,
-            # or it hasn't happened during this rate-limiting cycle yet
+            # Either the next notification hasn't happened yet, or it hasn't happened during this
+            # rate-limiting cycle yet
             do_notif = (next_notif <= now) or (next_notif < ex.next_update)
         if do_notif:
+            # Stop the notification from happening again during this cycle.
             self.throttle_notif_cache[channel.id] = now
+            # Notify the actor that the channel is beign rate-limited.
             delta = ex.next_update - now
             minutes = delta.seconds // 60
             seconds = delta.seconds % 60
             response = f"This channel is being rate-limited, please try again in {minutes}m {seconds}s."
-            await self.bot.send_message(
-                channel, f"{message.author.mention} {self.rate_limit_emoji} {response}"
-            )
-            await self.bot.add_reaction(message, self.rate_limit_emoji)
+            if actor:
+                response = f"{actor.mention} {response}"
+            await self.bot.send_message(channel, f"{self.rate_limit_emoji} {response}")
+            # Remove the actor's reaction so it can be used again later.
+            if reaction:
+                await self.bot.remove_reaction(message, reaction.emoji, actor)
 
-    async def relocate(self, message: discord.Message, reactor: discord.Member):
+    async def relocate(
+        self,
+        message: discord.Message,
+        reactor: discord.Member,
+        reaction: discord.Reaction = None,
+    ):
         author: discord.Member = message.author
         from_channel: discord.Channel = message.channel
         # Short-circuit if no relocate message is defined.
@@ -1185,15 +1199,23 @@ class HelpChatServerState:
                 return asker
 
     async def do_relocate(
-        self, channel: discord.Channel, message: discord.Message, actor: discord.Member
+        self,
+        channel: discord.Channel,
+        message: discord.Message,
+        actor: discord.Member,
+        reaction: discord.Reaction = None,
     ):
         if self.ignored_role in actor.roles:
             return
-        await self.relocate(message, actor)
+        await self.relocate(message, actor, reaction=reaction)
         await self.bot.add_reaction(message, self.relocate_emoji)
 
     async def do_reassign(
-        self, channel: discord.Channel, message: discord.Message, actor: discord.Member
+        self,
+        channel: discord.Channel,
+        message: discord.Message,
+        actor: discord.Member,
+        reaction: discord.Reaction = None,
     ):
         if self.ignored_role in actor.roles:
             return
@@ -1220,10 +1242,14 @@ class HelpChatServerState:
                     color=self.log_reassigned_color,
                 )
         except ChannelUpdateTooSoon as ex:
-            await self.notify_throttling(ex, message)
+            await self.notify_throttling(ex, message, actor=actor, reaction=reaction)
 
     async def do_resolve(
-        self, channel: discord.Channel, message: discord.Message, actor: discord.Member
+        self,
+        channel: discord.Channel,
+        message: discord.Message,
+        actor: discord.Member,
+        reaction: discord.Reaction = None,
     ):
         # Ignored users cannot resolve, unless it's their own channel.
         if self.ignored_role in actor.roles:
@@ -1246,10 +1272,14 @@ class HelpChatServerState:
                     color=self.log_resolved_color,
                 )
         except ChannelUpdateTooSoon as ex:
-            await self.notify_throttling(ex, message)
+            await self.notify_throttling(ex, message, actor=actor, reaction=reaction)
 
     async def do_remind(
-        self, channel: discord.Channel, message: discord.Message, actor: discord.Member
+        self,
+        channel: discord.Channel,
+        message: discord.Message,
+        actor: discord.Member,
+        reaction: discord.Reaction = None,
     ):
         if self.ignored_role in actor.roles:
             return
@@ -1265,10 +1295,14 @@ class HelpChatServerState:
                     color=self.log_reminded_color,
                 )
         except ChannelUpdateTooSoon as ex:
-            await self.notify_throttling(ex, message)
+            await self.notify_throttling(ex, message, actor=actor, reaction=reaction)
 
     async def do_rename(
-        self, channel: discord.Channel, message: discord.Message, actor: discord.Member
+        self,
+        channel: discord.Channel,
+        message: discord.Message,
+        actor: discord.Member,
+        reaction: discord.Reaction = None,
     ):
         if self.ignored_role in actor.roles:
             return
@@ -1284,10 +1318,14 @@ class HelpChatServerState:
                     color=self.log_renamed_color,
                 )
         except ChannelUpdateTooSoon as ex:
-            await self.notify_throttling(ex, message)
+            await self.notify_throttling(ex, message, actor=actor, reaction=reaction)
 
     async def do_restore(
-        self, channel: discord.Channel, message: discord.Message, actor: discord.Member
+        self,
+        channel: discord.Channel,
+        message: discord.Message,
+        actor: discord.Member,
+        reaction: discord.Reaction = None,
     ):
         if self.ignored_role in actor.roles:
             return
@@ -1303,7 +1341,7 @@ class HelpChatServerState:
                     color=self.log_restored_color,
                 )
         except ChannelUpdateTooSoon as ex:
-            await self.notify_throttling(ex, message)
+            await self.notify_throttling(ex, message, actor=actor, reaction=reaction)
 
     async def try_hoist_channel(self):
         # If we've hit the max, don't hoist any more channels.
@@ -1389,7 +1427,7 @@ class HelpChatServerState:
             and reaction.count == 1
             and author != self.bot.user
         ):
-            await self.do_relocate(channel, message, reactor)
+            await self.do_relocate(channel, message, reactor, reaction=reaction)
         # @@ REASSIGN
         # On the first reaction to a *human* message in a *managed* channel.
         elif (
@@ -1398,7 +1436,7 @@ class HelpChatServerState:
             and author != self.bot.user
             and channel in self.channels
         ):
-            await self.do_reassign(channel, message, reactor)
+            await self.do_reassign(channel, message, reactor, reaction=reaction)
         # @@ RESOLVE
         # On the first reaction to a *recent* message in a *managed* channel.
         elif (
@@ -1409,7 +1447,7 @@ class HelpChatServerState:
                 message, limit=self.preemptive_cache_size
             )
         ):
-            await self.do_resolve(channel, message, reactor)
+            await self.do_resolve(channel, message, reactor, reaction=reaction)
         # @@ REMIND
         # On the first reaction to a *human* message in a *managed* channel.
         elif (
@@ -1418,7 +1456,7 @@ class HelpChatServerState:
             and author != self.bot.user
             and channel in self.channels
         ):
-            await self.do_remind(channel, message, reactor)
+            await self.do_remind(channel, message, reactor, reaction=reaction)
         # @@ RENAME
         # On the first reaction to *any* message in a *managed* channel.
         elif (
@@ -1426,7 +1464,7 @@ class HelpChatServerState:
             and reaction.count == 1
             and channel in self.channels
         ):
-            await self.do_rename(channel, message, reactor)
+            await self.do_rename(channel, message, reactor, reaction=reaction)
         # @@ RESTORE
         # On the first reaction to any message in a managed channel.
         elif (
@@ -1434,7 +1472,7 @@ class HelpChatServerState:
             and reaction.count == 1
             and channel in self.channels
         ):
-            await self.do_restore(channel, message, reactor)
+            await self.do_restore(channel, message, reactor, reaction=reaction)
 
     async def on_message(self, message: discord.Message):
         channel: discord.Channel = message.channel
@@ -1477,7 +1515,7 @@ class HelpChatServerState:
                         color=self.log_busied_from_hoisted_color,
                     )
                 except ChannelUpdateTooSoon as ex:
-                    await self.notify_throttling(ex, message)
+                    await self.notify_throttling(ex, message, actor=author)
             # @@ MESSAGE: PENDING
             # *Maybe* change to busy and log.
             elif prior_state == self.pending_state:
@@ -1496,7 +1534,7 @@ class HelpChatServerState:
                         color=self.log_busied_from_pending_color,
                     )
                 except ChannelUpdateTooSoon as ex:
-                    await self.notify_throttling(ex, message)
+                    await self.notify_throttling(ex, message, actor=author)
             # @@ MESSAGE: ANSWERED
             # Change to busy and log.
             elif prior_state == self.answered_state:
@@ -1511,14 +1549,14 @@ class HelpChatServerState:
                         color=self.log_busied_from_answered_color,
                     )
                 except ChannelUpdateTooSoon as ex:
-                    await self.notify_throttling(ex, message)
+                    await self.notify_throttling(ex, message, actor=author)
             # @@ ANYTHING ELSE (BUSY, IDLE)
             # Just change to busy without logging.
             else:
                 try:
                     await self.set_channel_busy(channel)
                 except ChannelUpdateTooSoon as ex:
-                    await self.notify_throttling(ex, message)
+                    await self.notify_throttling(ex, message, actor=author)
 
     async def on_message_delete(self, message: discord.Message):
         channel: discord.Channel = message.channel
