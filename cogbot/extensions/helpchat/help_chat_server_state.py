@@ -998,7 +998,7 @@ class HelpChatServerState:
         # If askers are enabled, then the asker must also be the ducker.
         if self.persist_asker:
             asker = await self.get_asker(channel)
-            if asker.id != author.id:
+            if asker and asker.id != author.id:
                 return False
         # Otherwise, if askers are not enabled, short-circuit ignored users...
         # because then there's no way to tell if they're the true asker.
