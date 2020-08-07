@@ -1042,7 +1042,7 @@ class HelpChatServerState:
         if do_notif:
             # Stop the notification from happening again during this cycle.
             self.throttle_notif_cache[channel.id] = now
-            # Notify the actor that the channel is beign rate-limited.
+            # Post a notification about the channel is being rate-limited.
             delta = ex.next_update - now
             minutes = delta.seconds // 60
             seconds = delta.seconds % 60
@@ -1051,7 +1051,7 @@ class HelpChatServerState:
                 response = f"{actor.mention} {response}"
             await self.bot.send_message(channel, f"{self.rate_limit_emoji} {response}")
             # Remove the actor's reaction so it can be used again later.
-            if reaction:
+            if reaction and actor:
                 await self.bot.remove_reaction(message, reaction.emoji, actor)
 
     async def relocate(
@@ -1515,7 +1515,7 @@ class HelpChatServerState:
                         color=self.log_busied_from_hoisted_color,
                     )
                 except ChannelUpdateTooSoon as ex:
-                    await self.notify_throttling(ex, message, actor=author)
+                    await self.notify_throttling(ex, message)
             # @@ MESSAGE: PENDING
             # *Maybe* change to busy and log.
             elif prior_state == self.pending_state:
@@ -1534,7 +1534,7 @@ class HelpChatServerState:
                         color=self.log_busied_from_pending_color,
                     )
                 except ChannelUpdateTooSoon as ex:
-                    await self.notify_throttling(ex, message, actor=author)
+                    await self.notify_throttling(ex, message)
             # @@ MESSAGE: ANSWERED
             # Change to busy and log.
             elif prior_state == self.answered_state:
@@ -1549,14 +1549,14 @@ class HelpChatServerState:
                         color=self.log_busied_from_answered_color,
                     )
                 except ChannelUpdateTooSoon as ex:
-                    await self.notify_throttling(ex, message, actor=author)
+                    await self.notify_throttling(ex, message)
             # @@ ANYTHING ELSE (BUSY, IDLE)
             # Just change to busy without logging.
             else:
                 try:
                     await self.set_channel_busy(channel)
                 except ChannelUpdateTooSoon as ex:
-                    await self.notify_throttling(ex, message, actor=author)
+                    await self.notify_throttling(ex, message)
 
     async def on_message_delete(self, message: discord.Message):
         channel: discord.Channel = message.channel
