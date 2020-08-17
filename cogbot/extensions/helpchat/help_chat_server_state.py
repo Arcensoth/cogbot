@@ -1033,7 +1033,8 @@ class HelpChatServerState:
         # Make sure we're only notifying about rate-limiting once per cycle.
         now = datetime.utcnow()
         last_notif = self.throttle_notif_cache.get(channel.id, None)
-        do_notif = True
+        # Don't notify at all if there action was indirect (no actor).
+        do_notif = actor is not None
         if last_notif:
             next_notif = last_notif + timedelta(seconds=self.second_to_throttle)
             # Either the next notification hasn't happened yet, or it hasn't happened during this
