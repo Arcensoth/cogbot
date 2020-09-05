@@ -171,6 +171,14 @@ class CogBot(commands.Bot):
             if role.id == role_id:
                 return role
 
+    def get_roles(
+        self, server: discord.Server, role_ids: typing.Iterable[str]
+    ) -> typing.Iterable[discord.Role]:
+        role_id_set = set(role_ids)
+        for role in server.roles:
+            if role.id in role_id_set:
+                yield role
+
     def color_from_hex(self, color: str) -> discord.Color:
         return discord.Color(int(f"0x{color[1:]}", base=16))
 
