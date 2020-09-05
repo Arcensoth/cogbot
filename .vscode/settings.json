@@ -1,4 +1,12 @@
 {
   "python.pythonPath": "venv\\Scripts\\python.exe",
-  "python.formatting.provider": "black"
+  "python.formatting.provider": "black",
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/__pycache__": true
+  }
 }
