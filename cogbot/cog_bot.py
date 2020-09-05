@@ -91,21 +91,6 @@ class CogBot(commands.Bot):
                     return e
         return emoji
 
-    async def reply(self, content, *args, **kwargs):
-        author = kwargs.pop("author", _get_variable("_internal_author"))
-        destination = kwargs.pop("destination", _get_variable("_internal_channel"))
-        fmt = f"@{author.display_name} {content}"
-
-        extensions = ("delete_after",)
-        params = {k: kwargs.pop(k, None) for k in extensions}
-
-        coro = self.send_message(destination, fmt, *args, **kwargs)
-        sent_message = await self._augmented_msg(coro, **params)
-
-        fmt2 = f"{author.mention} {content}"
-
-        return await self.edit_message(sent_message, new_content=fmt2)
-
     def queue_message(self, dest_getter, dest_id, content):
         self.queued_messages.append((dest_getter, dest_id, content))
 
@@ -425,7 +410,8 @@ class CogBot(commands.Bot):
         self,
         destination: discord.channel,
         message: discord.Message,
-        quoter: discord.Member,
+        content: str = None,
+        quoter: discord.Member = None,
         mention: bool = False,
         text_only: bool = False,
     ):
@@ -451,7 +437,13 @@ class CogBot(commands.Bot):
         em.set_author(name=quote_name, icon_url=author.avatar_url)
         em.set_footer(text=footer_text, icon_url=server_icon_url)
 
-        content = ((author.mention + " ") if mention else "") + quote_link
+        content_tokens = [
+            quoter.mention if quoter else None,
+            author.mention if mention else None,
+            content if content else None,
+            f"\n{quote_link}",
+        ]
+        actual_content = " ".join([item for item in content_tokens if item])
 
         extra_urls = []
 
@@ -511,7 +503,7 @@ class CogBot(commands.Bot):
                     if att_values:
                         em.add_field(name="Attachments", value="\n".join(att_values))
 
-        await self.reply(content, embed=em, destination=destination, author=quoter)
+        await self.send_message(destination, content=actual_content, embed=em)
 
         if not text_only and extra_urls:
             await self.send_message(destination, content="\n".join(extra_urls))
