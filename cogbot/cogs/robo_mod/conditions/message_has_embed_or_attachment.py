@@ -11,11 +11,12 @@ class MessageHasEmbedOrAttachmentCondition(RoboModCondition):
 
     async def update(self, state: "RoboModServerState", data: dict):
         self.min_count = data.get("min_count", 1)
-        self.delay = data.get("delay", 2000)
+        self.delay = data.get("delay", 0)
 
     async def check(self, trigger: RoboModTrigger) -> bool:
-        # Give the client cache some time to update.
-        await asyncio.sleep(self.delay / 1000)
+        # Optionally give the client cache some time to update.
+        if self.delay > 0:
+            await asyncio.sleep(self.delay / 1000)
         count_embeds = len(trigger.message.embeds)
         count_attachments = len(trigger.message.attachments)
         count = count_embeds + count_attachments
