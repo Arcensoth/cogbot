@@ -1,0 +1,8 @@
+from enum import Enum
+
+
+class RoboModActionType(Enum):
+    SEND_REPLY = "SEND_REPLY"
+    DELETE_MESSAGE = "DELETE_MESSAGE"
+    KICK_AUTHOR = "KICK_AUTHOR"
+    ADD_ROLES_TO_AUTHOR = "ADD_ROLES_TO_AUTHOR"
