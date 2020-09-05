@@ -420,3 +420,98 @@ class CogBot(commands.Bot):
 
     async def react_poop(self, ctx: Context):
         await self.add_reaction(ctx.message, "💩")
+
+    async def quote_message(
+        self,
+        destination: discord.channel,
+        message: discord.Message,
+        quoter: discord.Member,
+        mention: bool = False,
+        text_only: bool = False,
+    ):
+        author: discord.Member = message.author
+        server: discord.Server = message.server
+        channel: discord.Channel = message.channel
+
+        quote_name = f"{author.display_name} ({author.name}#{author.discriminator})"
+        quote_link = self.make_message_link(message)
+
+        # include the server name if the source and destination are not the same server
+        footer_text = (
+            f"{server} #{channel}"
+            if server.id != destination.server.id
+            else f"#{channel}"
+        )
+
+        server_icon_url = f"https://cdn.discordapp.com/icons/{server.id}/{server.icon}"
+
+        em = discord.Embed(
+            description=message.clean_content, timestamp=message.timestamp
+        )
+        em.set_author(name=quote_name, icon_url=author.avatar_url)
+        em.set_footer(text=footer_text, icon_url=server_icon_url)
+
+        content = ((author.mention + " ") if mention else "") + quote_link
+
+        extra_urls = []
+
+        if not text_only:
+            # case 1: attachments
+            # - when the quotee uploaded an image directly
+            # - use the first image attachment (if any) as the embed's footer image
+            # - append the urls of any other attachments to the main message content
+            if message.attachments:
+                # find the first media attachment, if any, and use it as the embed image
+                first_media_url = None
+                for att in message.attachments:
+                    if att.get("url", None) and att.get("width", None):
+                        first_media_url = att["url"]
+                        em.set_image(url=first_media_url)
+                        break
+                # add any remaining attachments to the embed
+                # and, later, as a separate message with links that clients can render
+                if not first_media_url or len(message.attachments) > 1:
+                    att_values = []
+                    for att in message.attachments:
+                        att_url = att.get("url", None)
+                        att_name = att.get("filename", None)
+                        if att_url and att_name:
+                            extra_urls.append(att_url)
+                            att_values.append(f"[{att_name}]({att_url})")
+                    if att_values:
+                        em.add_field(name="Attachments", value="\n".join(att_values))
+            # case 2: embeds
+            # - when the quotee linked an image url
+            if message.embeds:
+                # find the first media attachment, if any, and use it as the embed image
+                first_media_url = None
+                for att in message.embeds:
+                    if (
+                        att.get("type", None) == "image"
+                        and att.get("url", None)
+                        and att.get("thumbnail", None)
+                    ):
+                        first_media_url = att["url"]
+                        em.set_image(url=first_media_url)
+                        break
+                # add any remaining attachments to the embed
+                # and, later, as a separate message with links that clients can render
+                if not first_media_url or len(message.embeds) > 1:
+                    att_values = []
+                    for att in message.embeds:
+                        att_url = att.get("url", None)
+                        if att_url:
+                            att_type = att.get("type", None)
+                            att_name = (
+                                att.get("title", att_url.split("/")[-1])
+                                + f" ({att_type})"
+                            )
+                            extra_urls.append(att_url)
+                            att_values.append(f"[{att_name}]({att_url})")
+                    if att_values:
+                        em.add_field(name="Attachments", value="\n".join(att_values))
+
+        await self.reply(content, embed=em, destination=destination, author=quoter)
+
+        if not text_only and extra_urls:
+            await self.send_message(destination, content="\n".join(extra_urls))
