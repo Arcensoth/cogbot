@@ -1,4 +1,4 @@
-from typing import Iterable, List, Optional, Set, Union
+from typing import Dict, Iterable, List, Optional, Set, Union
 
 from discord import Channel, Color, Message, Role
 
@@ -17,6 +17,7 @@ class RoboModActionLogEntry:
         channel_id: ChannelId = None,
         notify_role_ids: Iterable[RoleId] = None,
         quote_message: Message = None,
+        fields: Dict[str, str] = None,
     ):
         self._content: StrOrIterable = content
         self.icon: Optional[str] = icon
@@ -26,6 +27,7 @@ class RoboModActionLogEntry:
             Set[RoleId]
         ] = None if notify_role_ids is None else set(notify_role_ids)
         self.quote_message: Optional[Message] = quote_message
+        self.fields = fields
 
     @property
     def content(self) -> str:
@@ -83,6 +85,7 @@ class RoboModActionLogEntry:
                 channel=channel,
                 notify_roles=notify_roles,
                 footer_text=title,
+                fields=self.fields,
             )
             if self.quote_message:
                 await trigger.bot.quote_message(
