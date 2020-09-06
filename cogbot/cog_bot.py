@@ -226,6 +226,7 @@ class CogBot(commands.Bot):
         channel: discord.Channel = None,
         footer_text: str = None,
         notify_roles: typing.Iterable[discord.Role] = None,
+        fields: typing.Dict[str, str] = None,
     ):
         try:
             actual_server = server or member.server
@@ -242,6 +243,7 @@ class CogBot(commands.Bot):
                 channel=channel,
                 footer_text=footer_text,
                 notify_roles=notify_roles,
+                fields=fields,
             )
         except:
             log.exception("Failed to mod log:")

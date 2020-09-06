@@ -36,6 +36,7 @@ class CogBotServerState:
         channel: discord.Channel = None,
         footer_text: str = None,
         notify_roles: typing.Iterable[discord.Role] = None,
+        fields: typing.Dict[str, str] = None,
     ):
         actual_channel = channel or self.log_channel
         if self.log_channel:
@@ -60,6 +61,10 @@ class CogBotServerState:
 
             if title:
                 em.set_author(name=title, icon_url=icon_url)
+
+            if fields:
+                for field_name, field_value in fields.items():
+                    em.add_field(name=field_name, value=field_value, inline=False)
 
             if show_timestamp:
                 em.timestamp = datetime.utcnow()
