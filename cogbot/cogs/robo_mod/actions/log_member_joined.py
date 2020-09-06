@@ -13,8 +13,8 @@ class LogMemberJoinedAction(RoboModAction):
         member: Member = trigger.member
         # Name
         name_str = f"{member}"
-        # ID
-        id_str = f"{member.id}"
+        # User ID
+        user_id_str = f"{member.id}"
         # Joined on
         joined_on_str = member.joined_at.strftime("%Y/%m/%d at %H:%M:%S UTC")
         # Account age
@@ -26,10 +26,10 @@ class LogMemberJoinedAction(RoboModAction):
             mm = int(account_age.total_seconds() / 60) % 60
             account_age_str = f"{hh} hours, {mm} minutes"
         return RoboModActionLogEntry(
-            content=f"Hello! {member.mention} has joined the server.",
+            content=f"Hello! {member.mention} joined the server.",
             fields={
                 "Name": name_str,
-                "ID": id_str,
+                "User ID": user_id_str,
                 "Joined on": joined_on_str,
                 "Account age": account_age_str,
             },

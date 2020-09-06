@@ -13,8 +13,8 @@ class LogMemberLeftAction(RoboModAction):
         member: Member = trigger.member
         # Name
         name_str = f"{member}"
-        # ID
-        id_str = f"{member.id}"
+        # User ID
+        user_id_str = f"{member.id}"
         # Member for
         now = datetime.utcnow()
         member_for = now - member.joined_at
@@ -24,6 +24,6 @@ class LogMemberLeftAction(RoboModAction):
             mm = int(member_for.total_seconds() / 60) % 60
             member_for_str = f"{hh} hours, {mm} minutes"
         return RoboModActionLogEntry(
-            content=f"Goodbye! {member.mention} has left the server.",
-            fields={"Name": name_str, "ID": id_str, "Member for": member_for_str},
+            content=f"Goodbye! {member.mention} left the server.",
+            fields={"Name": name_str, "User ID": user_id_str, "Member for": member_for_str},
         )
