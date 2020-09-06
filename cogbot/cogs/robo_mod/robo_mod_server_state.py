@@ -1,7 +1,5 @@
-from discord import Member
+from discord import Member, Message, Reaction, Server
 from discord.ext.commands import Context
-from discord.message import Message
-from discord.reaction import Reaction
 
 from cogbot.cogs.abc.base_cog import BaseCogServerState
 from cogbot.cogs.robo_mod.robo_mod_options import RoboModOptions
@@ -49,3 +47,11 @@ class RoboModServerState(BaseCogServerState[RoboModOptions]):
 
     async def on_member_remove(self, member: Member):
         await self.do_trigger(RoboModTriggerType.MEMBER_LEFT, member=member)
+
+    async def on_member_ban(self, member: Member):
+        await self.do_trigger(RoboModTriggerType.MEMBER_BANNED, member=member)
+
+    async def on_member_unban(self, server: Server, member: Member):
+        await self.do_trigger(
+            RoboModTriggerType.MEMBER_UNBANNED, server=server, member=member
+        )
