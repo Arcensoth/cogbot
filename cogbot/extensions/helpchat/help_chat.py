@@ -163,23 +163,9 @@ class HelpChat:
             self.server_options[server.id] = server_options
             # if previous state exists, reload it
             if self.get_state(server):
-                await self.bot.mod_log(
-                    content=f"Reconnect detected. Reloading help-chats...",
-                    icon=":zap:",
-                    color=self.embed_color,
-                    show_timestamp=False,
-                    server=server,
-                )
                 await self.reload_state(server)
             # otherwise, just setup a new state
             else:
-                await self.bot.mod_log(
-                    content=f"Boot-up detected. Initializing help-chats...",
-                    icon=":bulb:",
-                    color=self.embed_color,
-                    show_timestamp=False,
-                    server=server,
-                )
                 await self.setup_state(server)
 
     async def get_channels_check_message(self, state: HelpChatServerState) -> str:
