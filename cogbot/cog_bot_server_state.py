@@ -1,12 +1,10 @@
-import json
 import logging
 import typing
 from datetime import datetime
 
 import discord
 
-from cogbot.types import ServerId, ChannelId
-
+from cogbot.types import ChannelId, RoleId
 
 log = logging.getLogger(__name__)
 
@@ -31,13 +29,16 @@ class CogBotServerState:
         content: str = None,
         message: discord.Message = None,
         icon: str = None,
+        title: str = None,
+        icon_url: str = None,
         color: int = None,
         show_timestamp: bool = True,
         channel: discord.Channel = None,
+        footer_text: str = None,
+        notify_roles: typing.Iterable[discord.Role] = None,
     ):
         actual_channel = channel or self.log_channel
         if self.log_channel:
-            icon = icon or ":arrow_right:"
             color = color or discord.Embed.Empty
 
             description_parts = []
@@ -49,22 +50,36 @@ class CogBotServerState:
 
             if message:
                 message_link = self.bot.make_message_link(message)
-                description = " ".join((f"[{icon}]({message_link})", description))
-            else:
-                description = " ".join((icon, description))
+                icon = icon or ":arrow_right:"
+                icon = f"[{icon}]({message_link})"
+
+            if icon and not title:
+                description = f"{icon} {description}"
+
+            em = discord.Embed(description=description, color=color)
+
+            if title:
+                em.set_author(name=title, icon_url=icon_url)
 
             if show_timestamp:
-                em = discord.Embed(
-                    timestamp=datetime.utcnow(), description=description, color=color
-                )
-            else:
-                em = discord.Embed(description=description, color=color)
+                em.timestamp = datetime.utcnow()
 
-            if member and message:
+            if footer_text:
+                em.set_footer(text=footer_text)
+            elif member and message:
                 em.set_footer(
                     text=f"{member} in #{message.channel}", icon_url=member.avatar_url
                 )
             elif member:
                 em.set_footer(text=f"{member}", icon_url=member.avatar_url)
 
-            await self.bot.send_message(actual_channel, embed=em)
+            outside_content = None
+            if notify_roles:
+                roles_mention_str = " ".join(
+                    [f"{role.mention}" for role in notify_roles]
+                )
+                outside_content = f"{roles_mention_str}"
+
+            await self.bot.send_message(
+                actual_channel, content=outside_content, embed=em
+            )

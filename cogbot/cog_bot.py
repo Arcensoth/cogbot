@@ -9,7 +9,6 @@ import discord
 import discord.http
 from discord.ext import commands
 from discord.ext.commands import Context
-from discord.ext.commands.bot import _get_variable
 from discord.ext.commands.errors import *
 
 from cogbot.cog_bot_server_state import CogBotServerState
@@ -219,10 +218,14 @@ class CogBot(commands.Bot):
         content: str = None,
         message: discord.Message = None,
         icon: str = None,
+        title: str = None,
+        icon_url: str = None,
         color: int = None,
         show_timestamp: bool = True,
         server: discord.Server = None,
         channel: discord.Channel = None,
+        footer_text: str = None,
+        notify_roles: typing.Iterable[discord.Role] = None,
     ):
         try:
             actual_server = server or member.server
@@ -232,9 +235,13 @@ class CogBot(commands.Bot):
                 content=content,
                 message=message,
                 icon=icon,
+                title=title,
+                icon_url=icon_url,
                 color=color,
                 show_timestamp=show_timestamp,
                 channel=channel,
+                footer_text=footer_text,
+                notify_roles=notify_roles,
             )
         except:
             log.exception("Failed to mod log:")
@@ -424,6 +431,7 @@ class CogBot(commands.Bot):
         quoter: discord.Member = None,
         mention: bool = False,
         text_only: bool = False,
+        exclude_extras: bool = False,
     ):
         author: discord.Member = message.author
         server: discord.Server = message.server
@@ -515,5 +523,5 @@ class CogBot(commands.Bot):
 
         await self.send_message(destination, content=actual_content, embed=em)
 
-        if not text_only and extra_urls:
+        if (not text_only) and (not exclude_extras) and extra_urls:
             await self.send_message(destination, content="\n".join(extra_urls))
