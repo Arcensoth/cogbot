@@ -126,6 +126,16 @@ class BaseCog(ABC, Generic[S]):
         if state:
             await state.on_member_remove(member)
 
+    async def on_member_ban(self, member: Member):
+        state = self.get_server_state(member.server)
+        if state:
+            await state.on_member_ban(member)
+
+    async def on_member_unban(self, server: Server, member: Member):
+        state = self.get_server_state(server)
+        if state:
+            await state.on_member_ban(server, member)
+
     @property
     @abstractmethod
     def server_state_class(self) -> Type[S]:

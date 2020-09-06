@@ -49,6 +49,12 @@ class BaseCogServerState(ABC, Generic[O]):
     async def on_member_remove(self, member: Member):
         """ Optional override to handle member remove events. """
 
+    async def on_member_ban(self, member: Member):
+        """ Optional override to handle member ban events. """
+
+    async def on_member_unban(self, server: Server, member: Member):
+        """ Optional override to handle member unban events. """
+
     @abstractmethod
     async def create_options(self) -> O:
         """ Create and return an arbitrary options object, used to encapsulate extension-specific
