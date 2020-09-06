@@ -43,3 +43,9 @@ class RoboModServerState(BaseCogServerState[RoboModOptions]):
         await self.do_trigger(
             RoboModTriggerType.REACTION_ADDED, reaction=reaction, reactor=reactor
         )
+
+    async def on_member_join(self, member: Member):
+        await self.do_trigger(RoboModTriggerType.MEMBER_JOINED, member=member)
+
+    async def on_member_remove(self, member: Member):
+        await self.do_trigger(RoboModTriggerType.MEMBER_LEFT, member=member)

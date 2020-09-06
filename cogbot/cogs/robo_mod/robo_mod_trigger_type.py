@@ -2,6 +2,8 @@ from enum import Enum
 
 
 class RoboModTriggerType(Enum):
+    MEMBER_JOINED = "MEMBER_JOINED"
+    MEMBER_LEFT = "MEMBER_LEFT"
     MESSAGE_SENT = "MESSAGE_SENT"
     MESSAGE_DELETED = "MESSAGE_DELETED"
     REACTION_ADDED = "REACTION_ADDED"
