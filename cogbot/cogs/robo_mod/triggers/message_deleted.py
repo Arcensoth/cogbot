@@ -28,3 +28,7 @@ class MessageDeletedTrigger(RoboModTrigger):
     @property
     def actor(self) -> Optional[Member]:
         return self._message.author
+
+    @property
+    def member(self) -> Optional[Member]:
+        return self._message.author

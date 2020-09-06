@@ -44,3 +44,8 @@ class RoboModTrigger(ABC):
     def actor(self) -> Optional[Member]:
         """ Return the acting user, if any. """
         pass
+
+    @property
+    def member(self) -> Optional[Member]:
+        """ Return the member-in-question, if any. """
+        pass

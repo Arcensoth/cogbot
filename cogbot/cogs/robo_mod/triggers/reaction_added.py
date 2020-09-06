@@ -37,3 +37,7 @@ class ReactionAddedTrigger(RoboModTrigger):
     @property
     def actor(self) -> Optional[Member]:
         return self._reactor
+
+    @property
+    def member(self) -> Optional[Member]:
+        return self._reactor

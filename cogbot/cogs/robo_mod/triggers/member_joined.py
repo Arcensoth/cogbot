@@ -12,5 +12,5 @@ class MemberJoinedTrigger(RoboModTrigger):
         self._member: Member = member
 
     @property
-    def actor(self) -> Optional[Member]:
+    def member(self) -> Optional[Member]:
         return self._member
