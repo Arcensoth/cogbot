@@ -33,7 +33,9 @@ class CogBotServerState:
         icon: str = None,
         color: int = None,
         show_timestamp: bool = True,
+        channel: discord.Channel = None,
     ):
+        actual_channel = channel or self.log_channel
         if self.log_channel:
             icon = icon or ":arrow_right:"
             color = color or discord.Embed.Empty
@@ -65,4 +67,4 @@ class CogBotServerState:
             elif member:
                 em.set_footer(text=f"{member}", icon_url=member.avatar_url)
 
-            await self.bot.send_message(self.log_channel, embed=em)
+            await self.bot.send_message(actual_channel, embed=em)

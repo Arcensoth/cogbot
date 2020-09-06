@@ -222,6 +222,7 @@ class CogBot(commands.Bot):
         color: int = None,
         show_timestamp: bool = True,
         server: discord.Server = None,
+        channel: discord.Channel = None,
     ):
         try:
             actual_server = server or member.server
@@ -233,6 +234,7 @@ class CogBot(commands.Bot):
                 icon=icon,
                 color=color,
                 show_timestamp=show_timestamp,
+                channel=channel,
             )
         except:
             log.exception("Failed to mod log:")
