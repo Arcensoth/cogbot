@@ -116,6 +116,16 @@ class BaseCog(ABC, Generic[S]):
             if state and message.author != self.bot.user:
                 await state.on_message_delete(message)
 
+    async def on_member_join(self, member: Member):
+        state = self.get_server_state(member.server)
+        if state:
+            await state.on_member_join(member)
+
+    async def on_member_remove(self, member: Member):
+        state = self.get_server_state(member.server)
+        if state:
+            await state.on_member_remove(member)
+
     @property
     @abstractmethod
     def server_state_class(self) -> Type[S]:

@@ -43,6 +43,12 @@ class BaseCogServerState(ABC, Generic[O]):
     async def on_message_delete(self, message: Message):
         """ Optional override to handle deleted message events. """
 
+    async def on_member_join(self, member: Member):
+        """ Optional override to handle member join events. """
+
+    async def on_member_remove(self, member: Member):
+        """ Optional override to handle member remove events. """
+
     @abstractmethod
     async def create_options(self) -> O:
         """ Create and return an arbitrary options object, used to encapsulate extension-specific
