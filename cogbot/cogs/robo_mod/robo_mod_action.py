@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 
 from cogbot.cogs.robo_mod.robo_mod_action_log_entry import RoboModActionLogEntry
 from cogbot.cogs.robo_mod.robo_mod_trigger import RoboModTrigger
@@ -26,13 +27,14 @@ class RoboModAction(ABC):
         if log_entry:
             await log_entry.do_log(trigger)
 
-    async def log(self, trigger: RoboModTrigger) -> RoboModActionLogEntry:
+    # NOTE #override
+    async def log(self, trigger: RoboModTrigger) -> Optional[RoboModActionLogEntry]:
         """ Return a log entry for this action, if any. """
 
-    @abstractmethod
+    # NOTE #override
     async def update(self, state: "RoboModServerState", data: dict):
         """ Initialize the instance asynchronously. """
 
-    @abstractmethod
+    # NOTE #override
     async def apply(self, trigger: RoboModTrigger):
         """ Apply the action. """

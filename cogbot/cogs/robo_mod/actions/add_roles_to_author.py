@@ -1,4 +1,4 @@
-from typing import List, Set
+from typing import List, Optional, Set
 
 from discord.role import Role
 
@@ -15,7 +15,7 @@ class AddRolesToAuthorAction(RoboModAction):
     async def update(self, state: "RoboModServerState", data: dict):
         self.role_ids = set(data["roles"])
 
-    async def log(self, trigger: RoboModTrigger) -> RoboModActionLogEntry:
+    async def log(self, trigger: RoboModTrigger) -> Optional[RoboModActionLogEntry]:
         roles = self.get_roles(trigger)
         roles_str = " ".join([f"{role.mention}" for role in roles])
         plural = "roles" if len(roles) > 1 else "role"
