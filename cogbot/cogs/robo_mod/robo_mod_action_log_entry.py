@@ -67,13 +67,13 @@ class RoboModActionLogEntry:
             notify_roles = self.get_notify_roles(trigger)
             await trigger.bot.mod_log(
                 content=self.content,
-                title=title,
                 icon_url=icon,
                 color=color,
-                show_timestamp=False,
+                show_timestamp=True,
                 server=trigger.state.server,
                 channel=channel,
                 notify_roles=notify_roles,
+                footer_text=title,
             )
             if self.quote_message:
                 await trigger.bot.quote_message(
