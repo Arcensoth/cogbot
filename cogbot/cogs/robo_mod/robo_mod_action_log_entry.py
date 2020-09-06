@@ -1,22 +1,24 @@
-from typing import Iterable, List, Optional, Set
+from typing import Iterable, List, Optional, Set, Union
 
 from discord import Channel, Color, Message, Role
 
 from cogbot.cogs.robo_mod.robo_mod_trigger import RoboModTrigger
 from cogbot.types import ChannelId, RoleId
 
+StrOrIterable = Union[str, Iterable[str]]
+
 
 class RoboModActionLogEntry:
     def __init__(
         self,
-        content: str,
+        content: StrOrIterable,
         icon: str = None,
         color: Color = None,
         channel_id: ChannelId = None,
         notify_role_ids: Iterable[RoleId] = None,
         quote_message: Message = None,
     ):
-        self.content: str = content
+        self._content: StrOrIterable = content
         self.icon: Optional[str] = icon
         self.color: Optional[Color] = color
         self.channel_id: Optional[ChannelId] = channel_id
@@ -24,6 +26,13 @@ class RoboModActionLogEntry:
             Set[RoleId]
         ] = None if notify_role_ids is None else set(notify_role_ids)
         self.quote_message: Optional[Message] = quote_message
+
+    @property
+    def content(self) -> str:
+        if isinstance(self._content, str):
+            return self._content
+        lines = [line for line in self._content]
+        return "\n".join(lines)
 
     def get_title(self, trigger: RoboModTrigger) -> str:
         return trigger.rule.name
