@@ -134,7 +134,7 @@ class BaseCog(ABC, Generic[S]):
     async def on_member_unban(self, server: Server, member: Member):
         state = self.get_server_state(server)
         if state:
-            await state.on_member_ban(server, member)
+            await state.on_member_unban(server, member)
 
     @property
     @abstractmethod
