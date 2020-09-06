@@ -65,7 +65,7 @@ class CogBotServerState:
                 em.timestamp = datetime.utcnow()
 
             if footer_text:
-                em.set_footer(text=footer_text)
+                em.set_footer(text=footer_text, icon_url=icon_url)
             elif member and message:
                 em.set_footer(
                     text=f"{member} in #{message.channel}", icon_url=member.avatar_url
