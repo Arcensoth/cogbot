@@ -1,4 +1,7 @@
+from datetime import datetime
 from typing import Optional
+
+from discord import Member
 
 from cogbot.cogs.robo_mod.robo_mod_action import RoboModAction
 from cogbot.cogs.robo_mod.robo_mod_action_log_entry import RoboModActionLogEntry
@@ -7,6 +10,27 @@ from cogbot.cogs.robo_mod.robo_mod_trigger import RoboModTrigger
 
 class LogMemberJoinedAction(RoboModAction):
     async def log(self, trigger: RoboModTrigger) -> Optional[RoboModActionLogEntry]:
+        actor: Member = trigger.actor
+        # Name
+        name_str = f"{actor}"
+        # ID
+        id_str = f"{actor.id}"
+        # Joined on
+        joined_on_str = actor.joined_at.strftime("%Y/%m/%d at %H:%M:%S UTC")
+        # Account age
+        now = datetime.utcnow()
+        account_age = now - actor.created_at
+        account_age_str = f"{account_age.days} days"
+        if account_age.days < 7:
+            hh = int(account_age.total_seconds() / 3600)
+            mm = int(account_age.total_seconds() / 60) % 60
+            account_age_str = f"{hh} hours, {mm} minutes"
         return RoboModActionLogEntry(
-            content=f"Hello! Member {trigger.actor.mention} has joined the server."
+            content=f"Hello! {actor.mention} has joined the server.",
+            fields={
+                "Name": name_str,
+                "ID": id_str,
+                "Joined on": joined_on_str,
+                "Account age": account_age_str,
+            },
         )
