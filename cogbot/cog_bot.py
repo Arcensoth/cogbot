@@ -213,38 +213,12 @@ class CogBot(commands.Bot):
         return self.edit_channel(channel, category=category, position=position)
 
     async def mod_log(
-        self,
-        member: discord.Member = None,
-        content: str = None,
-        message: discord.Message = None,
-        icon: str = None,
-        title: str = None,
-        icon_url: str = None,
-        color: int = None,
-        show_timestamp: bool = True,
-        server: discord.Server = None,
-        channel: discord.Channel = None,
-        footer_text: str = None,
-        notify_roles: typing.Iterable[discord.Role] = None,
-        fields: typing.Dict[str, str] = None,
+        self, server: discord.Server = None, member: discord.Member = None, **kwargs
     ):
         try:
             actual_server = server or member.server
             state = self.get_server_state(actual_server)
-            await state.mod_log(
-                member=member,
-                content=content,
-                message=message,
-                icon=icon,
-                title=title,
-                icon_url=icon_url,
-                color=color,
-                show_timestamp=show_timestamp,
-                channel=channel,
-                footer_text=footer_text,
-                notify_roles=notify_roles,
-                fields=fields,
-            )
+            await state.mod_log(member=member, **kwargs)
         except:
             log.exception("Failed to mod log:")
 

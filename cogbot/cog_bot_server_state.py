@@ -37,9 +37,35 @@ class CogBotServerState:
         footer_text: str = None,
         notify_roles: typing.Iterable[discord.Role] = None,
         fields: typing.Dict[str, str] = None,
+        compact: bool = False,
     ):
+        if not self.log_channel:
+            return
+
         actual_channel = channel or self.log_channel
-        if self.log_channel:
+
+        if compact:
+            parts = []
+            if icon:
+                parts.append(icon)
+            if notify_roles:
+                roles_mention_str = " ".join(
+                    [f"{role.mention}" for role in notify_roles]
+                )
+                outside_content = f"{roles_mention_str}"
+            if title:
+                parts.append(title)
+            if member:
+                parts.append(f"{member.mention}")
+            if content:
+                parts.append(content)
+            if fields:
+                fields_str = ", ".join([f"{k} `{v}`" for k, v in fields.items()])
+                parts.append(fields_str)
+            content = ">>> " + " ".join(parts)
+            await self.bot.send_message(actual_channel, content=content)
+
+        else:
             color = color or discord.Embed.Empty
 
             description_parts = []
