@@ -12,17 +12,21 @@ class RoboModActionLogEntry:
     def __init__(
         self,
         content: StrOrIterable,
+        emoji: str = None,
         icon: str = None,
         color: Color = None,
         channel_id: ChannelId = None,
+        compact: bool = None,
         notify_role_ids: Iterable[RoleId] = None,
         quote_message: Message = None,
         fields: Dict[str, str] = None,
     ):
         self._content: StrOrIterable = content
+        self.channel_id: Optional[ChannelId] = channel_id
+        self.compact: Optional[bool] = compact
+        self.emoji: Optional[str] = emoji
         self.icon: Optional[str] = icon
         self.color: Optional[Color] = color
-        self.channel_id: Optional[ChannelId] = channel_id
         self.notify_role_ids: Optional[
             Set[RoleId]
         ] = None if notify_role_ids is None else set(notify_role_ids)
@@ -36,15 +40,6 @@ class RoboModActionLogEntry:
         lines = [line for line in self._content]
         return "\n".join(lines)
 
-    def get_title(self, trigger: RoboModTrigger) -> str:
-        return trigger.rule.name
-
-    def get_icon(self, trigger: RoboModTrigger) -> str:
-        return self.icon or trigger.rule.log_icon or trigger.state.options.log_icon
-
-    def get_color(self, trigger: RoboModTrigger) -> Color:
-        return self.color or trigger.rule.log_color or trigger.state.options.log_color
-
     def get_channel_id(self, trigger: RoboModTrigger) -> ChannelId:
         return (
             self.channel_id
@@ -56,6 +51,24 @@ class RoboModActionLogEntry:
         channel_id = self.get_channel_id(trigger)
         if channel_id:
             return trigger.bot.get_channel(channel_id)
+
+    def get_compact(self, trigger: RoboModTrigger) -> bool:
+        if self.compact is not None:
+            return self.compact
+        if trigger.rule.compact_logs is not None:
+            return trigger.rule.compact_logs
+        if trigger.state.options.compact_logs:
+            return trigger.state.options.compact_logs
+        return False
+
+    def get_emoji(self, trigger: RoboModTrigger) -> str:
+        return self.emoji or trigger.rule.log_emoji or trigger.state.options.log_emoji
+
+    def get_icon(self, trigger: RoboModTrigger) -> str:
+        return self.icon or trigger.rule.log_icon or trigger.state.options.log_icon
+
+    def get_color(self, trigger: RoboModTrigger) -> Color:
+        return self.color or trigger.rule.log_color or trigger.state.options.log_color
 
     def get_notify_role_ids(self, trigger: RoboModTrigger) -> List[RoleId]:
         if self.notify_role_ids is not None:
@@ -69,15 +82,21 @@ class RoboModActionLogEntry:
         if notify_role_ids:
             return list(trigger.bot.get_roles(trigger.state.server, notify_role_ids))
 
+    def get_title(self, trigger: RoboModTrigger) -> str:
+        return trigger.rule.name
+
     async def do_log(self, trigger: RoboModTrigger):
         channel = self.get_channel(trigger)
         if channel:
-            title = self.get_title(trigger)
+            compact = self.get_compact(trigger)
+            emoji = self.get_emoji(trigger)
             icon = self.get_icon(trigger)
             color = self.get_color(trigger)
             notify_roles = self.get_notify_roles(trigger)
+            title = self.get_title(trigger)
             await trigger.bot.mod_log(
                 content=self.content,
+                icon=emoji,
                 icon_url=icon,
                 color=color,
                 show_timestamp=True,
@@ -86,6 +105,7 @@ class RoboModActionLogEntry:
                 notify_roles=notify_roles,
                 footer_text=title,
                 fields=self.fields,
+                compact=compact,
             )
             if self.quote_message:
                 await trigger.bot.quote_message(
