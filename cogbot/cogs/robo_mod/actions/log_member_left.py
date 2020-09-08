@@ -24,6 +24,6 @@ class LogMemberLeftAction(RoboModAction):
             mm = int(member_for.total_seconds() / 60) % 60
             member_for_str = f"{hh} hours, {mm} minutes"
         return RoboModActionLogEntry(
-            content=f"Goodbye! {member.mention} left the server.",
+            content=f"{member.mention} left the server.",
             fields={"Name": name_str, "User ID": user_id_str, "Member for": member_for_str},
         )

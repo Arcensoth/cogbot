@@ -26,7 +26,7 @@ class LogMemberJoinedAction(RoboModAction):
             mm = int(account_age.total_seconds() / 60) % 60
             account_age_str = f"{hh} hours, {mm} minutes"
         return RoboModActionLogEntry(
-            content=f"Hello! {member.mention} joined the server.",
+            content=f"{member.mention} joined the server.",
             fields={
                 "Name": name_str,
                 "User ID": user_id_str,
