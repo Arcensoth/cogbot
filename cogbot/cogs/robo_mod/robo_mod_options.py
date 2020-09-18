@@ -10,6 +10,7 @@ from cogbot.types import ChannelId, RoleId
 class RoboModOptions:
     def __init__(self,):
         self.rules: List[RoboModRule]
+        self.rules_by_name: Dict[str, RoboModRule]
         self.rules_by_trigger_type: Dict[RoboModTriggerType, List[RoboModRule]]
         self.log_channel_id: Optional[ChannelId]
         self.compact_logs: Optional[bool]
@@ -18,11 +19,17 @@ class RoboModOptions:
         self.log_color: Optional[Color]
         self.notify_role_ids: Optional[Set[RoleId]]
 
+    @property
+    def rule_names(self) -> List[str]:
+        return list(self.rules_by_name.keys())
+
     async def init(self, state: "RoboModServerState", data: dict) -> "RoboModOptions":
         self.rules = [await RoboModRule().init(state, entry) for entry in data["rules"]]
 
+        self.rules_by_name = {}
         self.rules_by_trigger_type = {}
         for rule in self.rules:
+            self.rules_by_name[rule.name] = rule
             trigger_type = rule.trigger_type
             if trigger_type not in self.rules_by_trigger_type:
                 self.rules_by_trigger_type[trigger_type] = []

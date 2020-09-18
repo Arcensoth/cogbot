@@ -28,6 +28,15 @@ class RoboModCog(BaseCog[RoboModServerState]):
             if state:
                 await state.list_rules(ctx, author)
 
+    @cmd_robomod.command(name="rule", pass_context=True)
+    async def cmd_robomod_rule(self, ctx: Context, *, rule_name: str):
+        message: Message = ctx.message
+        author: Member = message.author
+        if isinstance(author, Member):
+            state = self.get_server_state(author.server)
+            if state:
+                await state.list_rule_by_name(ctx, author, rule_name)
+
     @cmd_robomod.command(name="reload", pass_context=True)
     async def cmd_robomod_reload(self, ctx: Context):
         try:
