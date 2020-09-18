@@ -1,18 +1,13 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Optional
 
 from discord import Channel, Member, Message, Reaction
 
 from cogbot.cog_bot import CogBot
+from cogbot.lib.dict_repr import DictRepr
 
 
-class RoboModTrigger(ABC):
-    def __str__(self) -> str:
-        return f"<{self.__class__.__name__} #{id(self)}>"
-
-    def __repr__(self) -> str:
-        return str(self)
-
+class RoboModTrigger(ABC, DictRepr):
     def __init__(self, state: "RoboModServerState", rule: "RoboModRule"):
         self.state: "RoboModServerState" = state
         self.rule: "RoboModRule" = rule

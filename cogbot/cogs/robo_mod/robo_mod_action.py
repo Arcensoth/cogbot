@@ -1,18 +1,12 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Optional
 
 from cogbot.cogs.robo_mod.robo_mod_action_log_entry import RoboModActionLogEntry
 from cogbot.cogs.robo_mod.robo_mod_trigger import RoboModTrigger
-from cogbot.types import ChannelId, RoleId
+from cogbot.lib.dict_repr import DictRepr
 
 
-class RoboModAction(ABC):
-    def __str__(self) -> str:
-        return f"<{self.__class__.__name__} #{id(self)}>"
-
-    def __repr__(self) -> str:
-        return str(self)
-
+class RoboModAction(ABC, DictRepr):
     async def init(self, state: "RoboModServerState", data: dict) -> "RoboModAction":
         """ Initialize the instance asynchronously, and return itself. """
         await self.update(state, data)

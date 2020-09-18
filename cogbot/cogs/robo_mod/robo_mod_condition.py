@@ -1,15 +1,10 @@
 from abc import ABC, abstractmethod
 
 from cogbot.cogs.robo_mod.robo_mod_trigger import RoboModTrigger
+from cogbot.lib.dict_repr import DictRepr
 
 
-class RoboModCondition(ABC):
-    def __str__(self) -> str:
-        return f"<{self.__class__.__name__} #{id(self)}>"
-
-    def __repr__(self) -> str:
-        return str(self)
-
+class RoboModCondition(ABC, DictRepr):
     async def init(self, state: "RoboModServerState", data: dict) -> "RoboModCondition":
         """ Initialize the instance asynchronously, and return itself. """
         await self.update(state, data)
