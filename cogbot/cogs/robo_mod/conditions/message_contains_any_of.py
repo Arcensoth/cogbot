@@ -10,6 +10,7 @@ class MessageContainsAnyOfCondition(RoboModCondition):
         self.matches: Set[str] = None
         self.ignore_case: bool = None
         self.normalize_unicode: bool = None
+        self.normalization_form: str = None
 
     def __str__(self) -> str:
         params = dict(
@@ -21,7 +22,7 @@ class MessageContainsAnyOfCondition(RoboModCondition):
         return "".join((f"{self.__class__.__name__}(", ", ".join(pairs), ")"))
 
     def normalize(self, s: str) -> str:
-        return unicodedata.normalize("NFKD", s)
+        return unicodedata.normalize(self.normalization_form, s)
 
     async def update(self, state: "RoboModServerState", data: dict):
         matches = set(data["matches"])
@@ -31,11 +32,13 @@ class MessageContainsAnyOfCondition(RoboModCondition):
         normalize_unicode = data.get("normalize_unicode", False)
         if normalize_unicode:
             matches = set(self.normalize(match) for match in matches)
+        normalization_form = data.get("normalization_form", "NFKD")
         if len(matches) <= 0:
             raise ValueError("matches cannot be empty")
         self.matches = matches
         self.ignore_case = ignore_case
         self.normalize_unicode = normalize_unicode
+        self.normalization_form = normalization_form
 
     async def check(self, trigger: RoboModTrigger) -> bool:
         for match in self.matches:
