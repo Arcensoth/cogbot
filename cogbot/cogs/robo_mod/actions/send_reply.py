@@ -4,8 +4,8 @@ from cogbot.cogs.robo_mod.robo_mod_trigger import RoboModTrigger
 
 class SendReplyAction(RoboModAction):
     def __init__(self):
-        self.content: str
-        self.include_mention: bool
+        self.content: str = None
+        self.include_mention: bool = None
 
     async def update(self, state: "RoboModServerState", data: dict):
         self.content = data["content"]

@@ -7,10 +7,10 @@ from cogbot.cogs.robo_mod.robo_mod_trigger import RoboModTrigger
 
 class MessageContainsAnyOfCondition(RoboModCondition):
     def __init__(self):
-        self.matches: Set[str]
-        self.ignore_case: bool
-        self.normalization_form: str
-        self.normalize_unicode: bool
+        self.matches: Set[str] = None
+        self.ignore_case: bool = None
+        self.normalization_form: str = None
+        self.normalize_unicode: bool = None
 
     def normalize(self, s: str) -> str:
         return unicodedata.normalize(self.normalization_form, s)

@@ -6,8 +6,8 @@ from cogbot.cogs.robo_mod.robo_mod_trigger import RoboModTrigger
 
 class MessageHasAttachmentCondition(RoboModCondition):
     def __init__(self):
-        self.min_count: int
-        self.delay: int
+        self.min_count: int = None
+        self.delay: int = None
 
     async def update(self, state: "RoboModServerState", data: dict):
         self.min_count = data.get("min_count", 1)

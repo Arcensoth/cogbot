@@ -10,7 +10,7 @@ from cogbot.types import RoleId
 
 class AddRolesToAuthorAction(RoboModAction):
     def __init__(self):
-        self.role_ids: Set[RoleId]
+        self.role_ids: Set[RoleId] = None
 
     async def update(self, state: "RoboModServerState", data: dict):
         self.role_ids = set(data["roles"])
