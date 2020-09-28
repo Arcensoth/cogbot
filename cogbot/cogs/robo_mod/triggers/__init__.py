@@ -5,7 +5,9 @@ from cogbot.cogs.robo_mod.triggers.member_banned import MemberBannedTrigger
 from cogbot.cogs.robo_mod.triggers.member_joined import MemberJoinedTrigger
 from cogbot.cogs.robo_mod.triggers.member_left import MemberLeftTrigger
 from cogbot.cogs.robo_mod.triggers.member_unbanned import MemberUnbannedTrigger
+from cogbot.cogs.robo_mod.triggers.message import MessageTrigger
 from cogbot.cogs.robo_mod.triggers.message_deleted import MessageDeletedTrigger
+from cogbot.cogs.robo_mod.triggers.message_edited import MessageEditedTrigger
 from cogbot.cogs.robo_mod.triggers.message_sent import MessageSentTrigger
 from cogbot.cogs.robo_mod.triggers.reaction_added import ReactionAddedTrigger
 
@@ -16,6 +18,8 @@ TRIGGER_TYPE_TO_FACTORY = {
     RoboModTriggerType.MEMBER_UNBANNED: MemberUnbannedTrigger,
     RoboModTriggerType.MESSAGE_SENT: MessageSentTrigger,
     RoboModTriggerType.MESSAGE_DELETED: MessageDeletedTrigger,
+    RoboModTriggerType.MESSAGE_EDITED: MessageEditedTrigger,
+    RoboModTriggerType.MESSAGE: MessageTrigger,
     RoboModTriggerType.REACTION_ADDED: ReactionAddedTrigger,
 }
 

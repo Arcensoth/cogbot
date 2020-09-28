@@ -66,9 +66,16 @@ class RoboModServerState(BaseCogServerState[RoboModOptions]):
 
     async def on_message(self, message: Message):
         await self.do_trigger(RoboModTriggerType.MESSAGE_SENT, message=message)
+        await self.do_trigger(RoboModTriggerType.MESSAGE, message=message)
 
     async def on_message_delete(self, message: Message):
         await self.do_trigger(RoboModTriggerType.MESSAGE_DELETED, message=message)
+
+    async def on_message_edit(self, before: Message, after: Message):
+        await self.do_trigger(
+            RoboModTriggerType.MESSAGE_EDITED, before=before, after=after
+        )
+        await self.do_trigger(RoboModTriggerType.MESSAGE, message=after)
 
     async def on_reaction(self, reaction: Reaction, reactor: Member):
         await self.do_trigger(

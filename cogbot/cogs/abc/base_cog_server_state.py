@@ -43,6 +43,9 @@ class BaseCogServerState(ABC, Generic[O]):
     async def on_message_delete(self, message: Message):
         """ Optional override to handle deleted message events. """
 
+    async def on_message_edit(self, before: Message, after: Message):
+        """ Optional override to handle edited message events. """
+
     async def on_member_join(self, member: Member):
         """ Optional override to handle member join events. """
 

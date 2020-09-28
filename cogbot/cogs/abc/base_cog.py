@@ -116,6 +116,14 @@ class BaseCog(ABC, Generic[S]):
             if state and message.author != self.bot.user:
                 await state.on_message_delete(message)
 
+    async def on_message_edit(self, before: Message, after: Message):
+        # make sure this isn't a DM
+        if after.server:
+            state = self.get_server_state(after.server)
+            # ignore bot's messages
+            if state and after.author != self.bot.user:
+                await state.on_message_edit(before, after)
+
     async def on_member_join(self, member: Member):
         state = self.get_server_state(member.server)
         if state:
