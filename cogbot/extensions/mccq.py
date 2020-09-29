@@ -24,6 +24,9 @@ class MCCQExtensionState:
         # can be a local filesystem folder or an internet url
         self.database = options['database']
 
+        # optional bedrock commands.json
+        self.bedrock_database = options.get('bedrock_database')
+
         # path to the file containing nothing but the version of the generated files
         self.version_file = options.get('version_file', 'VERSION.txt')
 
@@ -60,6 +63,7 @@ class MCCQExtensionState:
 
 class MCCQExtension:
     LEGACY_VERSION_STRINGS = ('1.12', '1.11', '1.10', '1.9', '1.8', '1.7')
+    BEDROCK_VERSION_STRING = 'bedrock'
 
     def __init__(self, bot: CogBot, ext: str):
         self.bot = bot
@@ -67,6 +71,14 @@ class MCCQExtension:
         self.query_manager = QueryManager(
             database=VersionDatabase(
                 uri=self.state.database,
+                version_file=self.state.version_file,
+                whitelist=self.state.version_whitelist),
+            show_versions=self.state.show_versions)
+        self.bedrock_query_manager = None
+        if self.state.bedrock_database:
+            self.bedrock_query_manager = QueryManager(
+            database=VersionDatabase(
+                uri=self.state.bedrock_database,
                 version_file=self.state.version_file,
                 whitelist=self.state.version_whitelist),
             show_versions=self.state.show_versions)
@@ -83,17 +95,23 @@ class MCCQExtension:
             if version in command:
                 return True
 
-    def get_version_label(self, version: str) -> str:
-        actual_version = self.query_manager.database.get_actual_version(version) or version
+    def get_version_label(self, version: str, query_manager: QueryManager) -> str:
+        actual_version = query_manager.database.get_actual_version(version) or version
         return self.state.version_labels.get(version, version).format(version=version, actual=actual_version)
 
-    async def mcc(self, ctx: Context, command: str):
+    async def mcc(self, ctx: Context, command: str, query_manager: QueryManager):
+        # if not command was provided, print help and short-circuit
+        if not command:
+            help_message = ''.join(('```', QueryManager.ARGUMENT_PARSER.format_help(), '```'))
+            await self.bot.send_message(ctx.message.channel, help_message)
+            return
+
         try:
             # get a copy of the parsed arguments so we can tell the user about them
             arguments = QueryManager.parse_query_arguments(command)
 
             # get the command results to render
-            full_results = self.query_manager.results_from_arguments(arguments)
+            full_results = query_manager.results_from_arguments(arguments)
             num_full_results = sum(len(lines) for lines in full_results.values())
 
             # trim results, if enabled
@@ -122,7 +140,7 @@ class MCCQExtension:
             return
 
         except (mccq.errors.LoaderFailure, mccq.errors.ParserFailure):
-            log.info('Failed to load data for the command: {}'.format(command))
+            log.exception('Failed to load data for the command: {}'.format(command))
             await self.bot.add_reaction(ctx.message, u'😔')
 
             # just because how many people think 1.12 and prior are supported
@@ -148,13 +166,13 @@ class MCCQExtension:
 
         # if any version produced more than one command, render one paragraph per version
         if next((True for lines in results.values() if len(lines) > 1), False):
-            paragraphs = ('\n'.join(('# {}'.format(self.get_version_label(version)), *lines)) for version, lines in results.items())
+            paragraphs = ('\n'.join(('# {}'.format(self.get_version_label(version, query_manager)), *lines)) for version, lines in results.items())
             command_text = '\n'.join(paragraphs)
 
         # otherwise, if all versions rendered just 1 command, render one line per version (compact)
         else:
             command_text = '\n'.join(
-                '{}  # {}'.format(lines[0], self.get_version_label(version)) for version, lines in results.items() if lines)
+                '{}  # {}'.format(lines[0], self.get_version_label(version, query_manager)) for version, lines in results.items() if lines)
 
         # if results were trimmed, make note of them
         if num_trimmed_results:
@@ -191,8 +209,9 @@ class MCCQExtension:
 
     async def reload(self):
         self.query_manager.reload()
+        self.bedrock_query_manager.reload()
         if self.state.presence_version:
-            # pre-emptively load latest version into the cache
+            # pre-emptively load latest (java) version into the cache
             self.query_manager.database.get(self.state.presence_version)
             # and set it as the bot presence ("playing")
             actual_presence_version = self.query_manager.database.get_actual_version(self.state.presence_version)
@@ -213,13 +232,16 @@ class MCCQExtension:
     @commands.cooldown(
         MCCQExtensionState.DEFAULT_COOLDOWN_RATE, MCCQExtensionState.DEFAULT_COOLDOWN_PER, commands.BucketType.user)
     @commands.command(
-        pass_context=True, name='mccq', aliases=['mcc', 'command'], help=QueryManager.ARGUMENT_PARSER.format_help())
+        pass_context=True, name='mccq', aliases=['mcc'], help=QueryManager.ARGUMENT_PARSER.format_help())
     async def cmd_mcc(self, ctx: Context, *, command: str = None):
-        if command:
-            await self.mcc(ctx, command)
-        else:
-            help_message = ''.join(('```', QueryManager.ARGUMENT_PARSER.format_help(), '```'))
-            await self.bot.send_message(ctx.message.channel, help_message)
+        await self.mcc(ctx, command, self.query_manager)
+
+    @commands.cooldown(
+        MCCQExtensionState.DEFAULT_COOLDOWN_RATE, MCCQExtensionState.DEFAULT_COOLDOWN_PER, commands.BucketType.user)
+    @commands.command(
+        pass_context=True, name='mccb', aliases=['mccbedrock'], help=QueryManager.ARGUMENT_PARSER.format_help())
+    async def cmd_mccb(self, ctx: Context, *, command: str = None):
+        await self.mcc(ctx, command, self.bedrock_query_manager)
 
     @checks.is_manager()
     @commands.command(pass_context=True, name='mccqreload', aliases=['mccreload', 'commandreload'], hidden=True)
