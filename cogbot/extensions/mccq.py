@@ -1,13 +1,14 @@
 import logging
-import mccq.errors
-from discord import Game
-from discord.ext import commands
-from discord.ext.commands import Context
-from mccq.query_manager import QueryManager
-from mccq.version_database import VersionDatabase
 
 from cogbot import checks
 from cogbot.cog_bot import CogBot
+from discord import Game
+from discord.ext import commands
+from discord.ext.commands import Context
+
+import mccq.errors
+from mccq.query_manager import QueryManager
+from mccq.version_database import VersionDatabase
 
 log = logging.getLogger(__name__)
 
@@ -22,48 +23,50 @@ class MCCQExtensionState:
         # path to server-generated data, structured like:
         # `<database>/<version>/generated/reports/commands.json`
         # can be a local filesystem folder or an internet url
-        self.database = options['database']
+        self.database = options["database"]
 
         # optional bedrock commands.json
-        self.bedrock_database = options.get('bedrock_database')
+        self.bedrock_database = options.get("bedrock_database")
 
         # path to the file containing nothing but the version of the generated files
-        self.version_file = options.get('version_file', 'VERSION.txt')
+        self.version_file = options.get("version_file", "VERSION.txt")
 
         # labels to print instead of database keys
-        self.version_labels = options.get('version_labels', {})
+        self.version_labels = options.get("version_labels", {})
 
         # make sure a database is defined
         if not self.database:
-            raise ValueError('A versions database location must be defined')
+            raise ValueError("A versions database location must be defined")
 
         # version whitelist, disabled if empty
-        self.version_whitelist = tuple(options.get('version_whitelist', []))
+        self.version_whitelist = tuple(options.get("version_whitelist", []))
 
         last_version = self.version_whitelist[-1] if self.version_whitelist else None
 
         # versions to render in the output by default
         # if not specified, defaults to the last whitelist entry
-        self.show_versions = tuple(options.get('show_versions', [last_version] if last_version else ()))
+        self.show_versions = tuple(
+            options.get("show_versions", [last_version] if last_version else ())
+        )
 
         # url format to provide a help link, if any
         # the placeholder `{command}` will be replaced by the base command
-        self.help_url = options.get('help_url', None)
+        self.help_url = options.get("help_url", None)
 
         # version to set as the "playing" status, if any
-        self.presence_version = options.get('presence_version', None)
+        self.presence_version = options.get("presence_version", None)
 
         # max lines of results, useful to prevent potential chat spam
-        self.max_results = options.get('max_results', None)
+        self.max_results = options.get("max_results", None)
 
         # rate limiting
-        self.cooldown_rate = options.get('cooldown_rate', self.DEFAULT_COOLDOWN_RATE)
-        self.cooldown_per = options.get('cooldown_per', self.DEFAULT_COOLDOWN_PER)
+        self.cooldown_rate = options.get("cooldown_rate", self.DEFAULT_COOLDOWN_RATE)
+        self.cooldown_per = options.get("cooldown_per", self.DEFAULT_COOLDOWN_PER)
 
 
 class MCCQExtension:
-    LEGACY_VERSION_STRINGS = ('1.12', '1.11', '1.10', '1.9', '1.8', '1.7')
-    BEDROCK_VERSION_STRING = 'bedrock'
+    LEGACY_VERSION_STRINGS = ("1.12", "1.11", "1.10", "1.9", "1.8", "1.7")
+    BEDROCK_VERSION_STRING = "bedrock"
 
     def __init__(self, bot: CogBot, ext: str):
         self.bot = bot
@@ -72,16 +75,20 @@ class MCCQExtension:
             database=VersionDatabase(
                 uri=self.state.database,
                 version_file=self.state.version_file,
-                whitelist=self.state.version_whitelist),
-            show_versions=self.state.show_versions)
+                whitelist=self.state.version_whitelist,
+            ),
+            show_versions=self.state.show_versions,
+        )
         self.bedrock_query_manager = None
         if self.state.bedrock_database:
             self.bedrock_query_manager = QueryManager(
-            database=VersionDatabase(
-                uri=self.state.bedrock_database,
-                version_file=self.state.version_file,
-                whitelist=self.state.version_whitelist),
-            show_versions=self.state.show_versions)
+                database=VersionDatabase(
+                    uri=self.state.bedrock_database,
+                    version_file=self.state.version_file,
+                    whitelist=self.state.version_whitelist,
+                ),
+                show_versions=self.state.show_versions,
+            )
 
         # TODO fix hack
         self.cmd_mcc._buckets._cooldown.rate = self.state.cooldown_rate
@@ -97,12 +104,14 @@ class MCCQExtension:
 
     def get_version_label(self, version: str, query_manager: QueryManager) -> str:
         actual_version = query_manager.database.get_actual_version(version) or version
-        return self.state.version_labels.get(version, version).format(version=version, actual=actual_version)
+        return self.state.version_labels.get(version, version).format(
+            version=version, actual=actual_version
+        )
 
     async def mcc(self, ctx: Context, command: str, query_manager: QueryManager):
         # if not command was provided, print help and short-circuit
         if not command:
-            help_message = ''.join(('```', QueryManager.ARGUMENT_PARSER.format_help(), '```'))
+            help_message = "".join(("```", QueryManager.ARGUMENT_PARSER.format_help(), "```"))
             await self.bot.send_message(ctx.message.channel, help_message)
             return
 
@@ -130,56 +139,66 @@ class MCCQExtension:
                             break
 
         except mccq.errors.ArgumentParserFailed:
-            log.info('Failed to parse arguments for the command: {}'.format(command))
-            await self.bot.add_reaction(ctx.message, u'🤢')
+            log.info("Failed to parse arguments for the command: {}".format(command))
+            await self.bot.add_reaction(ctx.message, u"🤢")
             return
 
         except mccq.errors.NoVersionsAvailable:
-            log.info('No versions available for the command: {}'.format(command))
-            await self.bot.add_reaction(ctx.message, u'🤐')
+            log.info("No versions available for the command: {}".format(command))
+            await self.bot.add_reaction(ctx.message, u"🤐")
             return
 
         except (mccq.errors.LoaderFailure, mccq.errors.ParserFailure):
-            log.exception('Failed to load data for the command: {}'.format(command))
-            await self.bot.add_reaction(ctx.message, u'😔')
+            log.exception("Failed to load data for the command: {}".format(command))
+            await self.bot.add_reaction(ctx.message, u"😔")
 
             # just because how many people think 1.12 and prior are supported
             if self.should_warn_legacy(ctx, command):
                 await self.bot.send_message(
                     ctx.message.channel,
-                    '{} Versions below 1.13 snapshot 18w01a are not supported due to the lack of server-generated '
-                    'command data. Try `mcc12` for manually-written legacy versions.'.format(ctx.message.author.mention)
+                    "{} Versions below 1.13 snapshot 18w01a are not supported due to the lack of server-generated "
+                    "command data. Try `mcc12` for manually-written legacy versions.".format(
+                        ctx.message.author.mention
+                    ),
                 )
 
             return
 
         except:
-            log.exception('An unexpected error occurred while processing the command: {}'.format(command))
-            await self.bot.add_reaction(ctx.message, u'🤯')
+            log.exception(
+                "An unexpected error occurred while processing the command: {}".format(command)
+            )
+            await self.bot.add_reaction(ctx.message, u"🤯")
             return
 
         if not results:
             # let the user know if there were no results, and short-circuit
             # note this is different from an invalid base command
-            await self.bot.add_reaction(ctx.message, u'🤷')
+            await self.bot.add_reaction(ctx.message, u"🤷")
             return
 
         # if any version produced more than one command, render one paragraph per version
         if next((True for lines in results.values() if len(lines) > 1), False):
-            paragraphs = ('\n'.join(('# {}'.format(self.get_version_label(version, query_manager)), *lines)) for version, lines in results.items())
-            command_text = '\n'.join(paragraphs)
+            paragraphs = (
+                "\n".join(("# {}".format(self.get_version_label(version, query_manager)), *lines))
+                for version, lines in results.items()
+            )
+            command_text = "\n".join(paragraphs)
 
         # otherwise, if all versions rendered just 1 command, render one line per version (compact)
         else:
-            command_text = '\n'.join(
-                '{}  # {}'.format(lines[0], self.get_version_label(version, query_manager)) for version, lines in results.items() if lines)
+            command_text = "\n".join(
+                "{}  # {}".format(lines[0], self.get_version_label(version, query_manager))
+                for version, lines in results.items()
+                if lines
+            )
 
         # if results were trimmed, make note of them
         if num_trimmed_results:
-            command_text += '\n# ... trimmed {} results'.format(num_trimmed_results)
+            command_text += "\n# ... trimmed {} results".format(num_trimmed_results)
 
         # render the full code section
-        code_section = '```python\n{}\n```'.format(command_text)
+        code_section = "```python\n{}\n```".format(command_text)
 
         help_section = None
 
@@ -193,19 +212,24 @@ class MCCQExtension:
             # only post the help link if we can unambiguously determine the base command
             base_command = tuple(base_commands)[0] if (len(base_commands) == 1) else None
             if base_command:
-                help_section = ''.join(('<', self.state.help_url.format(command=base_command), '>'))
+                help_section = "".join(("<", self.state.help_url.format(command=base_command), ">"))
 
         # leave out blank sections
-        message = '\n'.join(section for section in (code_section, help_section) if section is not None)
+        message = "\n".join(
+            section for section in (code_section, help_section) if section is not None
+        )
 
         # sometimes the message is too big to send
         try:
             await self.bot.send_message(ctx.message.channel, message)
         except:
             num_full_results = sum(len(lines) for lines in results.values())
-            log.exception('Something went wrong while trying to respond with {} results ({} characters)'.format(
-                num_full_results, len(message)))
-            await self.bot.add_reaction(ctx.message, u'😬')
+            log.exception(
+                "Something went wrong while trying to respond with {} results ({} characters)".format(
+                    num_full_results, len(message)
+                )
+            )
+            await self.bot.add_reaction(ctx.message, u"😬")
 
     async def reload(self):
         self.query_manager.reload()
@@ -214,8 +238,10 @@ class MCCQExtension:
             # pre-emptively load latest (java) version into the cache
             self.query_manager.database.get(self.state.presence_version)
             # and set it as the bot presence ("playing")
-            actual_presence_version = self.query_manager.database.get_actual_version(self.state.presence_version)
-            log.info('Setting presence to latest version: {}'.format(actual_presence_version))
+            actual_presence_version = self.query_manager.database.get_actual_version(
+                self.state.presence_version
+            )
+            log.info("Setting presence to latest version: {}".format(actual_presence_version))
             await self.bot.change_presence(game=Game(name=actual_presence_version))
 
     async def mccreload(self, ctx: Context):
@@ -223,28 +249,44 @@ class MCCQExtension:
             await self.reload()
 
         except:
-            log.exception('An unexpected error occurred while reloading commands')
-            await self.bot.add_reaction(ctx.message, u'🤯')
+            log.exception("An unexpected error occurred while reloading commands")
+            await self.bot.add_reaction(ctx.message, u"🤯")
             return
 
         await self.bot.react_success(ctx)
 
     @commands.cooldown(
-        MCCQExtensionState.DEFAULT_COOLDOWN_RATE, MCCQExtensionState.DEFAULT_COOLDOWN_PER, commands.BucketType.user)
+        MCCQExtensionState.DEFAULT_COOLDOWN_RATE,
+        MCCQExtensionState.DEFAULT_COOLDOWN_PER,
+        commands.BucketType.user,
+    )
     @commands.command(
-        pass_context=True, name='mccq', aliases=['mcc'], help=QueryManager.ARGUMENT_PARSER.format_help())
+        pass_context=True,
+        name="mccq",
+        aliases=["mcc"],
+        help=QueryManager.ARGUMENT_PARSER.format_help(),
+    )
     async def cmd_mcc(self, ctx: Context, *, command: str = None):
         await self.mcc(ctx, command, self.query_manager)
 
     @commands.cooldown(
-        MCCQExtensionState.DEFAULT_COOLDOWN_RATE, MCCQExtensionState.DEFAULT_COOLDOWN_PER, commands.BucketType.user)
+        MCCQExtensionState.DEFAULT_COOLDOWN_RATE,
+        MCCQExtensionState.DEFAULT_COOLDOWN_PER,
+        commands.BucketType.user,
+    )
     @commands.command(
-        pass_context=True, name='mccb', aliases=['mccbedrock'], help=QueryManager.ARGUMENT_PARSER.format_help())
+        pass_context=True,
+        name="mccb",
+        aliases=["mccbedrock"],
+        help=QueryManager.ARGUMENT_PARSER.format_help(),
+    )
     async def cmd_mccb(self, ctx: Context, *, command: str = None):
         await self.mcc(ctx, command, self.bedrock_query_manager)
 
     @checks.is_manager()
-    @commands.command(pass_context=True, name='mccqreload', aliases=['mccreload', 'commandreload'], hidden=True)
+    @commands.command(
+        pass_context=True, name="mccqreload", aliases=["mccreload", "commandreload"], hidden=True
+    )
     async def cmd_mccreload(self, ctx):
         await self.mccreload(ctx)
 
