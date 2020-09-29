@@ -1,6 +1,6 @@
 __pycache__
 venv
-.idea
+.vscode/**
 
 bot.json
 bot.token
