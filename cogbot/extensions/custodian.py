@@ -33,8 +33,8 @@ class CustodianServerState:
             if matching_roles:
                 await self.bot.delete_message(reaction.message)
                 await self.bot.mod_log(
-                    reactor,
-                    f"deleted a bot message from {message.channel.mention}",
+                    member=reactor,
+                    content=f"deleted a bot message from {message.channel.mention}",
                     icon=":wastebasket:",
                 )
 
