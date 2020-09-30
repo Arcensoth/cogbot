@@ -233,7 +233,8 @@ class MCCQExtension:
 
     async def reload(self):
         self.query_manager.reload()
-        self.bedrock_query_manager.reload()
+        if self.bedrock_query_manager:
+            self.bedrock_query_manager.reload()
         if self.state.presence_version:
             # pre-emptively load latest (java) version into the cache
             self.query_manager.database.get(self.state.presence_version)
