@@ -112,9 +112,7 @@ class MCCQExtension:
     async def mcc(self, ctx: Context, command: str, query_manager: QueryManager):
         # if not command was provided, print help and short-circuit
         if not command:
-            help_message = "".join(
-                ("```", QueryManager.ARGUMENT_PARSER.format_help(), "```")
-            )
+            help_message = "".join(("```", QueryManager.ARGUMENT_PARSER.format_help(), "```"))
             await self.bot.send_message(ctx.message.channel, help_message)
             return
 
@@ -143,9 +141,7 @@ class MCCQExtension:
 
         except mccq.errors.ArgumentParserFailed:
             log.info("Failed to parse arguments for the command: {}".format(command))
-            await self.bot.send_message(
-                ctx.message.channel, "Invalid arguments for that command"
-            )
+            await self.bot.send_message(ctx.message.channel, "Invalid arguments for that command")
             return
 
         except mccq.errors.NoVersionsAvailable:
@@ -157,9 +153,7 @@ class MCCQExtension:
 
         except (mccq.errors.LoaderFailure, mccq.errors.ParserFailure):
             log.exception("Failed to load data for the command: {}".format(command))
-            await self.bot.send_message(
-                ctx.message.channel, "Failed to load data for that command"
-            )
+            await self.bot.send_message(ctx.message.channel, "Failed to load data for that command")
 
             # just because how many people think 1.12 and prior are supported
             if self.should_warn_legacy(ctx, command):
@@ -176,16 +170,13 @@ class MCCQExtension:
         except RegexError:
             log.info("Invalid regex for the command: {}".format(command))
             await self.bot.send_message(
-                ctx.message.channel,
-                "Invalid regex for that command (you may need to use escaping)",
+                ctx.message.channel, "Invalid regex for that command (you may need to use escaping)"
             )
             return
 
         except:
             log.exception(
-                "An unexpected error occurred while processing the command: {}".format(
-                    command
-                )
+                "An unexpected error occurred while processing the command: {}".format(command)
             )
             await self.bot.add_reaction(ctx.message, "🤯")
             return
@@ -193,20 +184,13 @@ class MCCQExtension:
         if not results:
             # let the user know if there were no results, and short-circuit
             # note this is different from an invalid base command
-            await self.bot.send_message(
-                ctx.message.channel, "No results found for that command"
-            )
+            await self.bot.send_message(ctx.message.channel, "No results found for that command")
             return
 
         # if any version produced more than one command, render one paragraph per version
         if next((True for lines in results.values() if len(lines) > 1), False):
             paragraphs = (
-                "\n".join(
-                    (
-                        "# {}".format(self.get_version_label(version, query_manager)),
-                        *lines,
-                    )
-                )
+                "\n".join(("# {}".format(self.get_version_label(version, query_manager)), *lines))
                 for version, lines in results.items()
             )
             command_text = "\n".join(paragraphs)
@@ -214,9 +198,7 @@ class MCCQExtension:
         # otherwise, if all versions rendered just 1 command, render one line per version (compact)
         else:
             command_text = "\n".join(
-                "{}  # {}".format(
-                    lines[0], self.get_version_label(version, query_manager)
-                )
+                "{}  # {}".format(lines[0], self.get_version_label(version, query_manager))
                 for version, lines in results.items()
                 if lines
             )
@@ -238,13 +220,9 @@ class MCCQExtension:
                     base_commands.add(line.split(maxsplit=1)[0])
 
             # only post the help link if we can unambiguously determine the base command
-            base_command = (
-                tuple(base_commands)[0] if (len(base_commands) == 1) else None
-            )
+            base_command = tuple(base_commands)[0] if (len(base_commands) == 1) else None
             if base_command:
-                help_section = "".join(
-                    ("<", self.state.help_url.format(command=base_command), ">")
-                )
+                help_section = "".join(("<", self.state.help_url.format(command=base_command), ">"))
 
         # leave out blank sections
         message = "\n".join(
@@ -274,9 +252,7 @@ class MCCQExtension:
             actual_presence_version = self.query_manager.database.get_actual_version(
                 self.state.presence_version
             )
-            log.info(
-                "Setting presence to latest version: {}".format(actual_presence_version)
-            )
+            log.info("Setting presence to latest version: {}".format(actual_presence_version))
             await self.bot.change_presence(game=Game(name=actual_presence_version))
 
     async def mccreload(self, ctx: Context):
@@ -320,10 +296,7 @@ class MCCQExtension:
 
     @checks.is_manager()
     @commands.command(
-        pass_context=True,
-        name="mccqreload",
-        aliases=["mccreload", "commandreload"],
-        hidden=True,
+        pass_context=True, name="mccqreload", aliases=["mccreload", "commandreload"], hidden=True
     )
     async def cmd_mccreload(self, ctx):
         await self.mccreload(ctx)
