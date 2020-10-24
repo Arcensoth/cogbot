@@ -246,14 +246,26 @@ class MCCQExtension:
         if self.bedrock_query_manager:
             self.bedrock_query_manager.reload()
         if self.state.presence_version:
-            # pre-emptively load latest (java) version into the cache
+            # get the latest java version (required)
             self.query_manager.database.get(self.state.presence_version)
-            # and set it as the bot presence ("playing")
-            actual_presence_version = self.query_manager.database.get_actual_version(
+            java_presence_version = self.query_manager.database.get_actual_version(
                 self.state.presence_version
             )
-            log.info("Setting presence to latest version: {}".format(actual_presence_version))
-            await self.bot.change_presence(game=Game(name=actual_presence_version))
+            full_presence_version = java_presence_version
+
+            # and the latest bedrock version, if configured (optional)
+            if self.bedrock_query_manager:
+                self.bedrock_query_manager.database.get(self.state.presence_version)
+                bedrock_presence_version = self.bedrock_query_manager.database.get_actual_version(
+                    self.state.presence_version
+                )
+                full_presence_version = "{} (Java), {} (Bedrock)".format(
+                    java_presence_version, bedrock_presence_version
+                )
+
+            # and then set the bot's presence status
+            log.info("Setting presence to latest version: {}".format(full_presence_version))
+            await self.bot.change_presence(game=Game(name=full_presence_version))
 
     async def mccreload(self, ctx: Context):
         try:
