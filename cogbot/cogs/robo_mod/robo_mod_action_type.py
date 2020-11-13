@@ -3,6 +3,7 @@ from enum import Enum
 
 class RoboModActionType(Enum):
     SEND_REPLY = "SEND_REPLY"
+    REPLY_TO_AUTHOR = "REPLY_TO_AUTHOR"
     DELETE_MESSAGE = "DELETE_MESSAGE"
     KICK_AUTHOR = "KICK_AUTHOR"
     ADD_ROLES_TO_AUTHOR = "ADD_ROLES_TO_AUTHOR"
