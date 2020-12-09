@@ -2,6 +2,7 @@ from cogbot.cogs.robo_mod.actions.add_reaction import AddReactionsAction
 from cogbot.cogs.robo_mod.actions.add_roles_to_author import AddRolesToAuthorAction
 from cogbot.cogs.robo_mod.actions.delete_message import DeleteMessageAction
 from cogbot.cogs.robo_mod.actions.kick_author import KickAuthorAction
+from cogbot.cogs.robo_mod.actions.log_custom import LogCustomAction
 from cogbot.cogs.robo_mod.actions.log_member_banned import LogMemberBannedAction
 from cogbot.cogs.robo_mod.actions.log_member_joined import LogMemberJoinedAction
 from cogbot.cogs.robo_mod.actions.log_member_left import LogMemberLeftAction
@@ -22,6 +23,7 @@ ACTION_TYPE_TO_FACTORY = {
     RoboModActionType.LOG_MEMBER_LEFT: LogMemberLeftAction,
     RoboModActionType.LOG_MEMBER_BANNED: LogMemberBannedAction,
     RoboModActionType.LOG_MEMBER_UNBANNED: LogMemberUnbannedAction,
+    RoboModActionType.LOG_CUSTOM: LogCustomAction,
 }
 
 
