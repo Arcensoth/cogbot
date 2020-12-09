@@ -4,7 +4,7 @@ from datetime import datetime
 
 import discord
 
-from cogbot.types import ChannelId, RoleId
+from cogbot.types import ChannelId
 
 log = logging.getLogger(__name__)
 
@@ -19,9 +19,7 @@ class CogBotServerState:
         if log_channel:
             self.log_channel = self.bot.get_channel(log_channel)
             if not self.log_channel:
-                log.warning(
-                    f"[{self.server}] Failed to resolve log channel <{log_channel}>"
-                )
+                log.warning(f"[{self.server}] Failed to resolve log channel <{log_channel}>")
 
     async def mod_log(
         self,
@@ -49,9 +47,7 @@ class CogBotServerState:
             if icon:
                 parts.append(icon)
             if notify_roles:
-                roles_mention_str = " ".join(
-                    [f"{role.mention}" for role in notify_roles]
-                )
+                roles_mention_str = " ".join([f"{role.mention}" for role in notify_roles])
                 outside_content = f"{roles_mention_str}"
             if title:
                 parts.append(title)
@@ -62,8 +58,10 @@ class CogBotServerState:
             if fields:
                 fields_str = ", ".join([f"{k} `{v}`" for k, v in fields.items()])
                 parts.append(fields_str)
-            content = ">>> " + " ".join(parts)
-            await self.bot.send_message(actual_channel, content=content)
+            content = " ".join(parts)
+            # send a dummy message and then edit it so that people don't get pinged
+            log_message = await self.bot.send_message(actual_channel, content="🤖")
+            await self.bot.edit_message(log_message, new_content=content)
 
         else:
             color = color or discord.Embed.Empty
@@ -98,19 +96,13 @@ class CogBotServerState:
             if footer_text:
                 em.set_footer(text=footer_text, icon_url=icon_url)
             elif member and message:
-                em.set_footer(
-                    text=f"{member} in #{message.channel}", icon_url=member.avatar_url
-                )
+                em.set_footer(text=f"{member} in #{message.channel}", icon_url=member.avatar_url)
             elif member:
                 em.set_footer(text=f"{member}", icon_url=member.avatar_url)
 
             outside_content = None
             if notify_roles:
-                roles_mention_str = " ".join(
-                    [f"{role.mention}" for role in notify_roles]
-                )
+                roles_mention_str = " ".join([f"{role.mention}" for role in notify_roles])
                 outside_content = f"{roles_mention_str}"
 
-            await self.bot.send_message(
-                actual_channel, content=outside_content, embed=em
-            )
+            await self.bot.send_message(actual_channel, content=outside_content, embed=em)
