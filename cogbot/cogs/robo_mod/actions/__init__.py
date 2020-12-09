@@ -1,3 +1,4 @@
+from cogbot.cogs.robo_mod.actions.add_reaction import AddReactionsAction
 from cogbot.cogs.robo_mod.actions.add_roles_to_author import AddRolesToAuthorAction
 from cogbot.cogs.robo_mod.actions.delete_message import DeleteMessageAction
 from cogbot.cogs.robo_mod.actions.kick_author import KickAuthorAction
@@ -16,6 +17,7 @@ ACTION_TYPE_TO_FACTORY = {
     RoboModActionType.DELETE_MESSAGE: DeleteMessageAction,
     RoboModActionType.KICK_AUTHOR: KickAuthorAction,
     RoboModActionType.ADD_ROLES_TO_AUTHOR: AddRolesToAuthorAction,
+    RoboModActionType.ADD_REACTIONS: AddReactionsAction,
     RoboModActionType.LOG_MEMBER_JOINED: LogMemberJoinedAction,
     RoboModActionType.LOG_MEMBER_LEFT: LogMemberLeftAction,
     RoboModActionType.LOG_MEMBER_BANNED: LogMemberBannedAction,
