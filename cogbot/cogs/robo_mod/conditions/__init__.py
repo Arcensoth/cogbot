@@ -1,6 +1,13 @@
+from cogbot.cogs.robo_mod.conditions.author_account_age import AuthorAccountAgeCondition
+from cogbot.cogs.robo_mod.conditions.author_has_been_member_for import (
+    AuthorHasBeenMemberForCondition,
+)
 from cogbot.cogs.robo_mod.conditions.author_is_not_self import AuthorIsNotSelfCondition
 from cogbot.cogs.robo_mod.conditions.message_contains import MessageContainsCondition
 from cogbot.cogs.robo_mod.conditions.message_contains_any_of import MessageContainsAnyOfCondition
+from cogbot.cogs.robo_mod.conditions.message_contains_external_media import (
+    MessageContainsExternalMediaCondition,
+)
 from cogbot.cogs.robo_mod.conditions.message_has_attachment import MessageHasAttachmentCondition
 from cogbot.cogs.robo_mod.conditions.message_has_embed import MessageHasEmbedCondition
 from cogbot.cogs.robo_mod.conditions.message_has_embed_or_attachment import (
@@ -20,8 +27,11 @@ CONDITION_TYPE_TO_FACTORY = {
     RoboModConditionType.MESSAGE_HAS_EMBED: MessageHasEmbedCondition,
     RoboModConditionType.MESSAGE_HAS_ATTACHMENT: MessageHasAttachmentCondition,
     RoboModConditionType.MESSAGE_HAS_EMBED_OR_ATTACHMENT: MessageHasEmbedOrAttachmentCondition,
+    RoboModConditionType.MESSAGE_CONTAINS_EXTERNAL_MEDIA: MessageContainsExternalMediaCondition,
     RoboModConditionType.REACTION_MATCHES: ReactionMatchesCondition,
     RoboModConditionType.AUTHOR_IS_NOT_SELF: AuthorIsNotSelfCondition,
+    RoboModConditionType.AUTHOR_ACCOUNT_AGE: AuthorAccountAgeCondition,
+    RoboModConditionType.AUTHOR_HAS_BEEN_MEMBER_FOR: AuthorHasBeenMemberForCondition,
 }
 
 
